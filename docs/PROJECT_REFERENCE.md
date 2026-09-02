@@ -340,6 +340,7 @@ frontières claires entre composants frontend, routes HTTP et services serveur.
 | Icônes | Lucide React | SVG cohérents et légers, sans illustrations générées par IA. |
 | Mouvement | CSS, transitions React et SVG écrits manuellement | Animations propres à chaque opération sans dépendance supplémentaire. |
 | Fichiers | Vercel Blob privé | Upload direct adapté aux limites de payload des fonctions Vercel. |
+| PDF natif | `pdf-parse` 2.4.5 | Extraction page par page compatible Node/Vercel, sans OCR ni framework RAG. |
 | Persistance | MongoDB Atlas | Une base pour données métier, chunks, vecteurs, filtres et recherche hybride. |
 | Accès MongoDB | Driver officiel `mongodb` | Pas d'ORM nécessaire pour trois collections simples. |
 | Runtime | Node.js 22 minimum, Node.js 24 sur Vercel | Compatible avec Next.js 16 et AI SDK 7 tout en préparant les déploiements Vercel actuels. |
@@ -760,7 +761,7 @@ intégrés par l'agent principal avant le lancement d'une nouvelle vague.
 | [x] | UPL-02 | API-01 | Backend | Implémenter `POST /api/batches` avec manifeste validé, limites serveur, identifiants et statuts initiaux. Les erreurs suivent `ApiError`. |
 | [~] | UPL-03 | UPL-02, SET-02 | Backend | Implémenter `POST /api/upload` et l'upload Blob privé sans exposer de secret. Code et tests locaux terminés ; l'upload réel d'une fixture reste bloqué par l'absence du store et des secrets Vercel. |
 | [x] | DB-01 | SET-02, SET-04 | Backend | Créer l'accès MongoDB, les repositories minimaux et les définitions d'index classiques, TTL et Vector Search. Connexion réutilisée et filtres de session testés. |
-| [ ] | PAR-01 | SET-04, SET-05 | Ingestion | Extraire un PDF natif page par page vers `DocumentBlock[]`, avec numéro de page et erreurs explicites pour PDF vide, chiffré ou non extractible. |
+| [x] | PAR-01 | SET-04, SET-05 | Ingestion | Extraire un PDF natif page par page vers `DocumentBlock[]`, avec numéro de page et erreurs explicites pour PDF vide, chiffré ou non extractible. |
 | [ ] | RAG-01 | PAR-01 | Ingestion | Implémenter le chunking sourcé avec paramètres configurables, sans mélange de documents ni perte de page. Tests de taille, overlap et source réussis. |
 | [ ] | RAG-02 | SET-02, RAG-01 | Backend/RAG | Générer les embeddings Gemini par lots avec la dimension confirmée. Les erreurs, timeouts et réponses de taille invalide sont gérés. |
 | [ ] | ING-01 | UPL-03, DB-01, RAG-02 | Principal | Orchestrer `uploading → validating → extracting → chunking → embedding → indexing → ready/failed`. `ready` est écrit seulement après persistance complète et vérification d'interrogeabilité. |
@@ -1030,3 +1031,4 @@ Le projet est terminé uniquement lorsque :
 | 2026-09-02 | Utiliser une UI sobre avec des animations CSS/SVG manuelles et spécifiques à chaque opération. |
 | 2026-09-02 | Conserver trois limites indépendantes : 10 fichiers, 10 MiB par fichier et 50 MiB par batch. |
 | 2026-09-02 | Envoyer les fichiers directement vers Blob privé avec une seule action utilisateur et une concurrence navigateur limitée à trois. |
+| 2026-09-02 | Limiter le parcours PDF initial au texte natif avec `pdf-parse` 2.4.5 ; les PDF scannés sont refusés explicitement sans OCR. |
