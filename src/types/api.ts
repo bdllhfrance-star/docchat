@@ -1,5 +1,6 @@
 import type {
   BatchSummary,
+  DocumentSummary,
   DocumentSource,
   SupportedFileType,
 } from "@/types/documents";
@@ -64,6 +65,10 @@ export type BlobUploadClientPayload = {
 export type ReportUploadFailureRequest = {
   type: "docchat.upload-failed";
   payload: BlobUploadClientPayload;
+};
+
+export type RetryDocumentResponse = {
+  document: DocumentSummary;
 };
 
 export type ChatRequest = {

@@ -60,6 +60,11 @@ export type CompleteDocumentIndexing = DocumentOwnership & {
   chunks: ChunkRecord[];
 };
 
+export type DeleteDocumentResult = {
+  batchDeleted: boolean;
+  deleted: boolean;
+};
+
 function hasSameFailure(
   document: DocumentRecord,
   error: NonNullable<DocumentRecord["error"]>,
@@ -221,6 +226,13 @@ export function createBatchRepository(
         batchId,
         id: documentId,
       });
+    },
+
+    findDocumentByIdForSession(
+      sessionId: string,
+      documentId: string,
+    ): Promise<DocumentRecord | null> {
+      return collections.documents.findOne({ sessionId, id: documentId });
     },
 
     findDocumentsByBatch(
@@ -410,6 +422,115 @@ export function createBatchRepository(
       await refreshBatchProgress(collections, failure);
 
       return collections.documents.findOne(ownershipFilter);
+    },
+
+    async restartFailedDocument(
+      ownership: DocumentOwnership,
+    ): Promise<DocumentRecord | null> {
+      const ownershipFilter = {
+        sessionId: ownership.sessionId,
+        batchId: ownership.batchId,
+        id: ownership.documentId,
+      } satisfies Filter<DocumentRecord>;
+      const current = await collections.documents.findOne(ownershipFilter);
+
+      if (!current?.blobUrl || current.status !== "failed") {
+        return null;
+      }
+
+      const result = await collections.documents.updateOne(
+        { ...ownershipFilter, status: "failed" },
+        { $set: { status: "validating" }, $unset: { error: "" } },
+      );
+
+      if (result.matchedCount !== 1) {
+        return null;
+      }
+
+      try {
+        await collections.chunks.deleteMany({
+          sessionId: ownership.sessionId,
+          batchId: ownership.batchId,
+          documentId: ownership.documentId,
+        });
+        await refreshBatchProgress(collections, ownership);
+      } catch (error) {
+        await collections.documents.updateOne(
+          { ...ownershipFilter, status: "validating" },
+          {
+            $set: {
+              status: "failed",
+              error: current.error ?? {
+                code: "RETRY_PREPARATION_FAILED",
+                message: "The document could not be prepared for retry.",
+              },
+            },
+          },
+        );
+        await refreshBatchProgress(collections, ownership).catch(() => undefined);
+        throw error;
+      }
+
+      return collections.documents.findOne(ownershipFilter);
+    },
+
+    async deleteDocument(
+      ownership: DocumentOwnership,
+    ): Promise<DeleteDocumentResult> {
+      const documentFilter = {
+        sessionId: ownership.sessionId,
+        batchId: ownership.batchId,
+        id: ownership.documentId,
+      } satisfies Filter<DocumentRecord>;
+
+      await collections.chunks.deleteMany({
+        sessionId: ownership.sessionId,
+        batchId: ownership.batchId,
+        documentId: ownership.documentId,
+      });
+      const deletion = await collections.documents.deleteOne(documentFilter);
+
+      if (deletion.deletedCount !== 1) {
+        return { batchDeleted: false, deleted: false };
+      }
+
+      const remainingDocuments = await collections.documents
+        .find({ sessionId: ownership.sessionId, batchId: ownership.batchId })
+        .toArray();
+
+      if (remainingDocuments.length === 0) {
+        await collections.batches.deleteOne({
+          sessionId: ownership.sessionId,
+          id: ownership.batchId,
+        });
+
+        return { batchDeleted: true, deleted: true };
+      }
+
+      const readyFiles = remainingDocuments.filter(
+        (document) => document.status === "ready",
+      ).length;
+      const failedFiles = remainingDocuments.filter(
+        (document) => document.status === "failed",
+      ).length;
+
+      await collections.batches.updateOne(
+        { sessionId: ownership.sessionId, id: ownership.batchId },
+        {
+          $set: {
+            totalFiles: remainingDocuments.length,
+            readyFiles,
+            failedFiles,
+            status: getBatchStatus(
+              remainingDocuments.length,
+              readyFiles,
+              failedFiles,
+            ),
+          },
+        },
+      );
+
+      return { batchDeleted: false, deleted: true };
     },
 
     async completeDocumentIndexing(

@@ -6,7 +6,10 @@ import { describe, expect, test, vi } from "vitest";
 import type { BlobEnv } from "@/lib/env";
 import type { DocumentRecord } from "@/types/persistence";
 
-import { downloadPrivateDocument } from "./blob-storage";
+import {
+  deletePrivateDocument,
+  downloadPrivateDocument,
+} from "./blob-storage";
 
 const content = new TextEncoder().encode("%PDF-test");
 const document: DocumentRecord = {
@@ -90,5 +93,22 @@ describe("private document download", () => {
         getBlob: async () => blobResult({ size: content.byteLength + 1 }),
       }),
     ).rejects.toMatchObject({ code: "BLOB_VALIDATION_FAILED" });
+  });
+});
+
+describe("private document deletion", () => {
+  test("deletes the exact Blob pathname from the configured store", async () => {
+    const deleteBlob = vi.fn(async () => undefined);
+
+    await deletePrivateDocument(document, blob, { deleteBlob });
+
+    expect(deleteBlob).toHaveBeenCalledWith(
+      document.blobPathname,
+      expect.objectContaining({
+        oidcToken: "oidc-token",
+        storeId: "store-id",
+        abortSignal: expect.any(AbortSignal),
+      }),
+    );
   });
 });

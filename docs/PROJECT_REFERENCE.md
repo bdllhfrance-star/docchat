@@ -774,7 +774,7 @@ intégrés par l'agent principal avant le lancement d'une nouvelle vague.
 | [x] | UPL-04 | ING-01 | Backend | Implémenter `GET /api/batches/:batchId` avec les états et erreurs de chaque fichier, filtrés par session. Le contrat est testé avant son utilisation par l'UI. |
 | [x] | UI-02 | UPL-04 | UI | Afficher la progression par polling borné, une ligne stable par fichier et le libellé réel de chaque opération. Aucun faux pourcentage n'est affiché. |
 | [ ] | UI-03 | UI-02 | UI | Réaliser manuellement les animations CSS/SVG définies en 8.4, y compris succès, échec, retry et suppression. `prefers-reduced-motion` et `aria-live` sont testés. |
-| [ ] | API-02 | ING-01 | Backend | Implémenter statut de batch, retry idempotent, remplacement et suppression cohérente du Blob, document et chunks. Les erreurs partielles ne stoppent pas les autres fichiers. |
+| [~] | API-02 | ING-01 | Backend | Statut du batch, retry idempotent depuis un Blob existant et suppression ordonnée Blob → chunks → document terminés et testés localement. Le remplacement par un nouveau fichier reste à relier au flux d'upload ; les appels réels Blob, Atlas et Gemini restent bloqués par SET-07. |
 | [ ] | UI-04 | API-02, UI-03 | UI | Ajouter `Réessayer`, `Remplacer`, `Supprimer` et appliquer exactement `canSendMessage`. Le chat reste bloqué jusqu'à résolution de chaque échec. |
 | [ ] | RAG-03 | DB-01, RAG-02 | Backend/RAG | Implémenter la recherche vectorielle cosinus filtrée par `sessionId`, batch et documents autorisés. Les sources conservent fichier, page, extrait et score. |
 | [ ] | CHAT-01 | RAG-03 | Backend/RAG | Implémenter le prompt fondé uniquement sur le contexte, le seuil de refus et `POST /api/chat` en streaming. Une question absente produit un refus explicite. |

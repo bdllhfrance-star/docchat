@@ -1,4 +1,5 @@
 import {
+  del as deleteBlob,
   get as getBlob,
   type GetBlobResult,
   type GetCommandOptions,
@@ -30,10 +31,41 @@ type BlobGetter = (
   options: GetCommandOptions,
 ) => Promise<GetBlobResult | null>;
 
+type BlobDeleter = (
+  pathname: string,
+  options: {
+    abortSignal?: AbortSignal;
+    oidcToken: string;
+    storeId: string;
+  },
+) => Promise<void>;
+
 export type DownloadPrivateDocumentOptions = {
   abortSignal?: AbortSignal;
   getBlob?: BlobGetter;
 };
+
+export type DeletePrivateDocumentOptions = {
+  abortSignal?: AbortSignal;
+  deleteBlob?: BlobDeleter;
+};
+
+export async function deletePrivateDocument(
+  document: DocumentRecord,
+  blob: BlobEnv,
+  options: DeletePrivateDocumentOptions = {},
+): Promise<void> {
+  const timeoutSignal = AbortSignal.timeout(blobDownloadTimeoutMilliseconds);
+  const signal = options.abortSignal
+    ? AbortSignal.any([options.abortSignal, timeoutSignal])
+    : timeoutSignal;
+
+  await (options.deleteBlob ?? deleteBlob)(document.blobPathname, {
+    oidcToken: blob.VERCEL_OIDC_TOKEN,
+    storeId: blob.BLOB_STORE_ID,
+    abortSignal: signal,
+  });
+}
 
 export async function downloadPrivateDocument(
   document: DocumentRecord,

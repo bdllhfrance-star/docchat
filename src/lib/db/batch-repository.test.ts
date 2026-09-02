@@ -205,6 +205,9 @@ describe("batch repository", () => {
       repository.findDocumentBySession(sessionB, batchId, documentId),
     ).resolves.toBeNull();
     await expect(
+      repository.findDocumentByIdForSession(sessionB, documentId),
+    ).resolves.toBeNull();
+    await expect(
       repository.findDocumentsByBatch(sessionB, batchId),
     ).resolves.toEqual([]);
     await expect(
@@ -428,5 +431,98 @@ describe("batch repository", () => {
       readyFiles: 0,
       failedFiles: 1,
     });
+  });
+
+  test("restarts only a failed document that still has its uploaded original", async () => {
+    const { batches, chunks, documents, repository } = createMemoryRepository();
+    await repository.createBatch(createFixture());
+    Object.assign(documents.records[0], {
+      status: "failed",
+      blobUrl: "https://blob.example/guide.pdf",
+      error: { code: "INVALID_PDF", message: "The PDF is invalid." },
+    });
+    Object.assign(batches.records[0], { status: "failed", failedFiles: 1 });
+    chunks.records.push({
+      id: "80140e63-f8cb-4095-9cbd-dae9da4cf930",
+      sessionId: sessionA,
+      batchId,
+      documentId,
+      filename: "guide.pdf",
+      fileType: "pdf",
+      text: "stale chunk",
+      embedding: [0.1],
+      source: { label: "Page 1", page: 1 },
+      chunkIndex: 0,
+      createdAt,
+      expiresAt,
+    });
+
+    await expect(
+      repository.restartFailedDocument({ sessionId: sessionA, batchId, documentId }),
+    ).resolves.toMatchObject({ status: "validating" });
+    expect(documents.records[0]).not.toHaveProperty("error");
+    expect(chunks.records).toEqual([]);
+    expect(batches.records[0]).toMatchObject({
+      status: "processing",
+      failedFiles: 0,
+    });
+    await expect(
+      repository.restartFailedDocument({ sessionId: sessionA, batchId, documentId }),
+    ).resolves.toBeNull();
+  });
+
+  test("deletes a document and recalculates its remaining batch", async () => {
+    const { batches, chunks, documents, repository } = createMemoryRepository();
+    const fixture = createFixture();
+    const secondDocumentId = "80ca62f0-dac4-49c3-aef2-60f0f2b4c1ae";
+    fixture.batch.totalFiles = 2;
+    fixture.documents.push({
+      ...fixture.documents[0],
+      id: secondDocumentId,
+      clientId: "0821134d-a736-4cc4-baa9-9ac3a6d42a10",
+      filename: "second.pdf",
+    });
+    await repository.createBatch(fixture);
+    documents.records.forEach((storedDocument) => {
+      storedDocument.status = "ready";
+      storedDocument.blobUrl = `https://blob.example/${storedDocument.id}.pdf`;
+    });
+    chunks.records.push({
+      id: "80140e63-f8cb-4095-9cbd-dae9da4cf930",
+      sessionId: sessionA,
+      batchId,
+      documentId,
+      filename: "guide.pdf",
+      fileType: "pdf",
+      text: "indexed chunk",
+      embedding: [0.1],
+      source: { label: "Page 1", page: 1 },
+      chunkIndex: 0,
+      createdAt,
+      expiresAt,
+    });
+
+    await expect(
+      repository.deleteDocument({ sessionId: sessionA, batchId, documentId }),
+    ).resolves.toEqual({ batchDeleted: false, deleted: true });
+    expect(chunks.records).toEqual([]);
+    expect(documents.records).toHaveLength(1);
+    expect(documents.records[0].id).toBe(secondDocumentId);
+    expect(batches.records[0]).toMatchObject({
+      totalFiles: 1,
+      readyFiles: 1,
+      failedFiles: 0,
+      status: "ready",
+    });
+
+    await expect(
+      repository.deleteDocument({
+        sessionId: sessionA,
+        batchId,
+        documentId: secondDocumentId,
+      }),
+    ).resolves.toEqual({ batchDeleted: true, deleted: true });
+    expect(documents.records).toEqual([]);
+    expect(batches.records).toEqual([]);
   });
 });
