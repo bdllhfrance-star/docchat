@@ -809,8 +809,8 @@ intégrés par l'agent principal avant le lancement d'une nouvelle vague.
 | [x] | SET-03 | P0 | SET-01, SET-02 | Principal | Installer uniquement les dépendances directement requises et enregistrer un lockfile cohérent. `pnpm check` et `pnpm build` réussissent. |
 | [x] | SET-04 | P0 | SET-01 | Principal | Créer les contrats TypeScript partagés : fichier, batch, statuts, source, parser et erreur API. Les statuts et transitions impossibles sont testés. |
 | [x] | SET-05 | P0 | SET-00 | QA | Préparer les fixtures libres de droits et le manifeste d'évaluation : petit PDF français, PDF arabe natif et fichiers invalides. La licence ou l'origine est documentée. |
-| [~] | SET-07 | P0 | SET-02 | Principal | Upstash, Gemini et Atlas sont vérifiés réellement avec des fixtures temporaires supprimées après test. Les secrets restent uniquement dans `.env.local`. Blob, le projet Vercel et le remote GitHub restent à configurer. |
-| [!] | SET-06 | P0 | SET-03, SET-07 | Principal | Déployer le squelette sur Vercel et vérifier une URL publique avant l'ajout du pipeline. Bloqué tant que les accès de SET-07 ne sont pas fournis. |
+| [x] | SET-07 | P0 | SET-02 | Principal | GitHub, le projet Vercel, Blob privé, Upstash, Gemini et Atlas sont configurés et vérifiés réellement. Les secrets restent hors Git et les variables serveur sont présentes dans Production, Preview et Development. |
+| [~] | SET-06 | P0 | SET-03, SET-07 | Principal | Le projet Vercel est créé et connecté au repository GitHub. Le premier déploiement public et son smoke test restent à exécuter après validation de l'intégration Blob standard. |
 
 ### 19.5 Tâches P0 - parcours PDF obligatoire
 
@@ -820,32 +820,32 @@ intégrés par l'agent principal avant le lancement d'une nouvelle vague.
 | [x] | API-01 | SET-03, SET-04 | Backend | Créer la session anonyme par cookie HTTP-only signé et appliquer `sessionId` à toutes les opérations. Un accès croisé est refusé par test. |
 | [x] | UPL-01 | SET-04, UI-01 | UI | Implémenter sélection multiple, drag-and-drop et vérification locale du nombre, type et poids. Les erreurs sont affichées fichier par fichier avant l'envoi. |
 | [x] | UPL-02 | API-01 | Backend | Implémenter `POST /api/batches` avec manifeste validé, limites serveur, identifiants et statuts initiaux. Les erreurs suivent `ApiError`. |
-| [~] | UPL-03 | UPL-02, SET-02 | Backend | Implémenter `POST /api/upload` et l'upload Blob privé sans exposer de secret. Code et tests locaux terminés ; l'upload réel d'une fixture reste bloqué par l'absence du store et des secrets Vercel. |
+| [~] | UPL-03 | UPL-02, SET-02 | Backend | `POST /api/upload` utilise le flux client officiel `BLOB_READ_WRITE_TOKEN`, sans faire transiter le fichier par la fonction. Un PDF réel a été envoyé dans le store privé, refusé sans authentification (`403`), téléchargé avec un hash identique puis supprimé. Le callback applicatif reste à valider sur l'URL déployée. |
 | [x] | DB-01 | SET-02, SET-04 | Backend | Créer l'accès MongoDB, les repositories minimaux et les définitions d'index classiques, TTL et Vector Search. Connexion réutilisée et filtres de session testés. |
 | [x] | PAR-01 | SET-04, SET-05 | Ingestion | Extraire un PDF natif page par page vers `DocumentBlock[]`, avec numéro de page et erreurs explicites pour PDF vide, chiffré ou non extractible. |
 | [x] | RAG-01 | PAR-01 | Ingestion | Implémenter le chunking sourcé avec paramètres configurables, sans mélange de documents ni perte de page. Tests de taille, overlap et source réussis. |
 | [x] | RAG-02 | SET-02, RAG-01 | Backend/RAG | Code, batching AI SDK, concurrence 2, timeout et validation 768 terminés. Les appels réels `gemini-embedding-2` avec `RETRIEVAL_QUERY` et `RETRIEVAL_DOCUMENT` ont produit 768 valeurs finies. |
-| [~] | ING-01 | UPL-03, DB-01, RAG-02 | Principal | Orchestrer `uploading → validating → extracting → chunking → embedding → indexing → ready/failed`. Pipeline PDF, Gemini et Atlas sont prêts ; l'essai complet attend uniquement un fichier fourni par Blob. |
+| [~] | ING-01 | UPL-03, DB-01, RAG-02 | Principal | Orchestrer `uploading → validating → extracting → chunking → embedding → indexing → ready/failed`. Pipeline PDF, Gemini, Atlas et stockage Blob sont prêts ; l'essai complet attend le callback réel de l'application déployée. |
 | [x] | UPL-04 | ING-01 | Backend | Implémenter `GET /api/batches/:batchId` avec les états et erreurs de chaque fichier, filtrés par session. Le contrat est testé avant son utilisation par l'UI. |
 | [x] | UI-02 | UPL-04 | UI | Afficher la progression par polling borné, une ligne stable par fichier et le libellé réel de chaque opération. Aucun faux pourcentage n'est affiché. |
 | [x] | UI-03 | UI-02 | UI | Animations CSS/SVG manuelles terminées pour sélection, validation, upload réel, extraction, chunking, embeddings, indexation, succès, échec, retry, remplacement et suppression. `prefers-reduced-motion` et les annonces `aria-live` sont couverts par les tests. |
-| [~] | API-02 | ING-01 | Backend | Statut du batch, retry idempotent, remplacement en place via le flux d'upload existant et suppression terminés et testés localement. Le remplacement conserve le `documentId`, recalcule la limite de 50 MiB et nettoie l'ancien Blob et les chunks ; le parcours réel attend Blob. |
+| [~] | API-02 | ING-01 | Backend | Statut du batch, retry idempotent, remplacement en place via le flux d'upload existant et suppression terminés et testés localement. Le remplacement conserve le `documentId`, recalcule la limite de 50 MiB et nettoie l'ancien Blob et les chunks ; le parcours réel attend le smoke test déployé. |
 | [~] | UI-04 | API-02, UI-03 | UI | `Réessayer`, `Remplacer` et `Supprimer` sont reliés aux routes réelles avec validation locale, progression d'upload, erreurs par document et reprise du polling. Le gate du composer est maintenant relié à l'état `ready` de tous les documents. |
 | [x] | RAG-03 | DB-01, RAG-02 | Backend/RAG | Recherche vectorielle cosinus, embedding de question, filtres `sessionId`/batch/documents, déduplication et validation défensive terminés. Une fixture temporaire a été indexée, retrouvée par Vector Search avec les trois filtres exacts puis supprimée. |
 | [~] | CHAT-01 | RAG-03 | Backend/RAG | `POST /api/chat`, validations avant stream, contexte dynamique, prompt fondé uniquement sur les documents, refus sans contexte et UI message stream sourcé sont implémentés et testés localement. Une génération réelle `gemini-3.7-flash` a réussi ; le seuil et le parcours complet attendent Atlas. |
-| [~] | UI-05 | UI-04, CHAT-01 | UI | Chat relié à `/api/chat` avec `useChat`, historique `sessionStorage` isolé par batch, annulation et affichage progressif. Le composer ne s'active que lorsque tous les documents sont `ready` ; le parcours réel attend l'upload Blob. |
-| [~] | UI-06 | UI-05 | UI | Sources dépliables affichées sous chaque réponse avec numéro de citation, fichier, emplacement, extrait et score : `Similarity` pour le cosinus seul ou `Hybrid score` pour RRF. Le contrôle natif est utilisable au clavier et responsive ; le flux réel Atlas/Gemini reste à valider avec SET-07. |
+| [~] | UI-05 | UI-04, CHAT-01 | UI | Chat relié à `/api/chat` avec `useChat`, historique `sessionStorage` isolé par batch, annulation et affichage progressif. Le composer ne s'active que lorsque tous les documents sont `ready` ; le parcours réel attend le smoke test Vercel. |
+| [~] | UI-06 | UI-05 | UI | Sources dépliables affichées sous chaque réponse avec numéro de citation, fichier, emplacement, extrait et score : `Similarity` pour le cosinus seul ou `Hybrid score` pour RRF. Le contrôle natif est utilisable au clavier et responsive ; le flux réel Atlas/Gemini reste à valider dans `GATE-01`. |
 | [x] | SEC-01 | UPL-03, CHAT-01 | Backend/QA | Extension, MIME, signature PDF, limites de fichiers et requêtes, noms, sessions, propriété des ressources, prompt injection, rendu HTML inerte, headers et absence de logs sensibles sont vérifiés localement avec cas négatifs. |
 | [x] | TST-01 | SEC-01, UI-06 | QA | Les tests unitaires et d'intégration P0 couvrent contrats, upload, parser, chunker, statuts, retrieval, refus, streaming, sources, sécurité et erreurs. `lint`, `typecheck`, tests et build réussissent localement. |
-| [!] | GATE-01 | TST-01 | Principal | Le code et le parcours simulé sont verts ; Gemini, Upstash et Atlas sont joignables. Le parcours PDF réel local et Vercel — Blob, ingestion, streaming, source, refus, retry et suppression — reste bloqué par le store Blob et la configuration Vercel absents de `SET-07`; aucune simulation n'est présentée comme un E2E réel. |
+| [~] | GATE-01 | TST-01 | Principal | Le code et le parcours déterministe sont verts ; Gemini, Upstash, Atlas et Blob sont joignables. Le parcours PDF applicatif complet — callback, ingestion, streaming, source, refus, retry et suppression — doit maintenant être validé sur l'URL Vercel ; aucune simulation n'est présentée comme un E2E réel. |
 
 ### 19.6 Tâches P1 - bonus retenus
 
 | État | ID | Dépend de | Responsable | Tâche et condition de fin |
 | --- | --- | --- | --- | --- |
-| [~] | BON-01 | GATE-01 | Principal/UI | Multi-PDF, réussite indépendante, sélection de tous les documents par défaut et exclusion contrôlée sont implémentés. Les tests prouvent que le backend applique les identifiants choisis ; le batch réel reste bloqué par `SET-07`. |
+| [~] | BON-01 | GATE-01 | Principal/UI | Multi-PDF, réussite indépendante, sélection de tous les documents par défaut et exclusion contrôlée sont implémentés. Les tests prouvent que le backend applique les identifiants choisis ; le batch réel reste à valider dans `GATE-01`. |
 | [x] | BON-02 | GATE-01 | Backend/RAG | Les index réels `chunk_vector_search` et `chunk_text_search` sont `READY`. Une fixture temporaire a été retrouvée par les deux recherches avec les filtres exacts puis supprimée ; la fusion RRF côté application est couverte par les tests déterministes. |
-| [~] | BON-03 | GATE-01, SET-02 | Backend | Rate limiting partagé Upstash implémenté et testé localement sur upload/remplacement `30/min`, retry `5/min` et chat `10/min`, avec réponses `429` structurées. La connexion réelle Upstash en lecture/écriture est validée et le callback Blob signé est exempté ; le parcours d'API déployé attend `GATE-02`. |
+| [~] | BON-03 | GATE-01, SET-02 | Backend | Rate limiting partagé Upstash implémenté et testé localement sur upload/remplacement `30/min`, retry `5/min` et chat `10/min`, avec réponses `429` structurées. La connexion réelle Upstash en lecture/écriture est validée et le callback Blob authentifié est exempté ; le parcours d'API déployé attend `GATE-02`. |
 | [x] | BON-04 | GATE-01 | Backend/QA | Chaque route API produit une ligne JSON avec `requestId`, durée, opération et code d'erreur sur `stdout`, sans contenu documentaire, question, réponse, vecteur, secret, IP brute ni session. Les cas succès, rejet et exception sont testés. |
 | [ ] | BON-05 | GATE-01, SET-05 | QA | Vérifier le parcours complet sur PDF français et arabe, affichage RTL du contenu arabe compris. Les résultats et défauts sont enregistrés. |
 | [ ] | BON-06 | BON-02, BON-05 | QA/RAG | Exécuter les cinq questions d'évaluation, dont une absente, et mesurer présence de la source dans le top-K, refus et citation. Ajuster seulement sur preuve. |
@@ -962,9 +962,7 @@ Variables attendues :
 MONGODB_URI
 MONGODB_DATABASE
 GOOGLE_GENERATIVE_AI_API_KEY
-BLOB_STORE_ID
-VERCEL_OIDC_TOKEN
-BLOB_WEBHOOK_PUBLIC_KEY
+BLOB_READ_WRITE_TOKEN
 UPSTASH_REDIS_REST_URL
 UPSTASH_REDIS_REST_TOKEN
 APP_SECRET
@@ -1035,8 +1033,11 @@ limites de démonstration resteront en dessous de ces quotas.
   `sessionId`, `batchId` et `documentId`. L'index Search lexical reste séparé
   pour le bonus hybride ; la fusion RRF est faite dans l'application pour ne pas
   dépendre de `$rankFusion` ou d'une version de cluster particulière.
-- Blob : store privé et upload direct signé depuis le navigateur, limité par
-  fichier à 10 Mo. Le callback de fin d'upload est idempotent.
+- Blob : store privé `docchat-files` en région `cdg1` et upload client direct
+  signé avec le flux officiel `BLOB_READ_WRITE_TOKEN`, limité à 10 Mo par
+  fichier. Le callback de fin d'upload est authentifié et idempotent. L'offre
+  Hobby observée inclut 1 Go de stockage, 10 000 opérations simples, 2 000
+  opérations avancées et 10 Go de transfert par mois, sans dépassement payant.
 - Upstash : Redis régional avec sliding windows indépendantes : upload et
   remplacement `30/min`, retry `5/min`, chat `10/min`. L'adresse transmise par
   Vercel est transformée en identifiant HMAC avec `APP_SECRET` avant tout accès
@@ -1046,10 +1047,10 @@ limites de démonstration resteront en dessous de ces quotas.
 - Runtime : Node.js 22 minimum en local et Node.js 24 sélectionné sur Vercel.
 
 Les packages sont installés et compilent. Upstash, les deux modèles Gemini,
-MongoDB Atlas, les 11 index standards/TTL et les deux index Search ont été
-vérifiés réellement le 2026-09-02. Les appels Blob restent bloqués tant que le
-store et ses secrets ne sont pas fournis ; aucun mock ne sera présenté comme une
-validation externe.
+MongoDB Atlas, les 11 index standards/TTL, les deux index Search et le store
+Blob privé ont été vérifiés réellement le 2026-09-02. Le repository GitHub est
+connecté au projet Vercel et les variables serveur sont configurées dans les
+trois environnements. Aucun mock n'est présenté comme une validation externe.
 
 ## 21. Risques et réponses prévues
 

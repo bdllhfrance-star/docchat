@@ -34,9 +34,7 @@ export async function POST(request: Request): Promise<Response> {
 
         return handleBlobUpload(request, {
           blob: {
-            oidcToken: blobEnv.VERCEL_OIDC_TOKEN,
-            storeId: blobEnv.BLOB_STORE_ID,
-            webhookPublicKey: blobEnv.BLOB_WEBHOOK_PUBLIC_KEY,
+            token: blobEnv.BLOB_READ_WRITE_TOKEN,
           },
           requireSession,
           checkRateLimit: () => checkRequestRateLimit(request, "upload"),

@@ -29,9 +29,7 @@ const document: DocumentRecord = {
   expiresAt: new Date("2026-09-09T12:00:00.000Z"),
 };
 const blob: BlobEnv = {
-  BLOB_STORE_ID: "store-id",
-  VERCEL_OIDC_TOKEN: "oidc-token",
-  BLOB_WEBHOOK_PUBLIC_KEY: "public-key",
+  BLOB_READ_WRITE_TOKEN: "blob-read-write-token",
 };
 
 type SuccessfulBlob = Extract<GetBlobResult, { statusCode: 200 }>["blob"];
@@ -73,8 +71,7 @@ describe("private document download", () => {
       expect.objectContaining({
         access: "private",
         useCache: false,
-        oidcToken: "oidc-token",
-        storeId: "store-id",
+        token: "blob-read-write-token",
       }),
     );
   });
@@ -105,8 +102,7 @@ describe("private document deletion", () => {
     expect(deleteBlob).toHaveBeenCalledWith(
       document.blobPathname,
       expect.objectContaining({
-        oidcToken: "oidc-token",
-        storeId: "store-id",
+        token: "blob-read-write-token",
         abortSignal: expect.any(AbortSignal),
       }),
     );

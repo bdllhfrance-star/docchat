@@ -1,5 +1,5 @@
-import type { IssuedSignedToken, PutBlobResult } from "@vercel/blob";
-import type { HandleUploadPresignedOptions } from "@vercel/blob/client";
+import type { PutBlobResult } from "@vercel/blob";
+import type { HandleUploadOptions } from "@vercel/blob/client";
 import { describe, expect, test, vi } from "vitest";
 
 import type { DocumentRecord } from "@/types/persistence";
@@ -10,12 +10,6 @@ const sessionId = "271bf840-1fed-443d-86fb-a82b0bd70465";
 const batchId = "9f92701f-4866-45e6-b21f-1be3decc8d7d";
 const documentId = "e267df76-9b0e-4616-b187-0252faf57880";
 const pathname = `documents/${batchId}/${documentId}.pdf`;
-const token: IssuedSignedToken = {
-  clientSigningToken: "client-token",
-  delegationToken: "delegation-token",
-  validUntil: 1_800_000_600_000,
-};
-
 const document: DocumentRecord = {
   id: documentId,
   clientId: "5f36e79a-30b9-4866-9157-524d7de72af3",
@@ -42,9 +36,7 @@ function request(body: unknown): Request {
 function dependencies() {
   return {
     blob: {
-      oidcToken: "oidc-token",
-      storeId: "store-id",
-      webhookPublicKey: "public-key",
+      token: "blob-read-write-token",
     },
     completeDocumentUpload: vi.fn(
       async (): Promise<DocumentRecord | null> => ({
@@ -70,7 +62,6 @@ function dependencies() {
     ),
     ingestDocument: vi.fn(async () => undefined),
     requireSession: vi.fn(async (): Promise<string | null> => sessionId),
-    issueSignedToken: vi.fn(async () => token),
     now: () => 1_800_000_000_000,
     requestId: () => "request-123",
   };
@@ -80,48 +71,49 @@ function issuanceHandler(
   multipart = false,
   requestedPathname = pathname,
 ) {
-  return vi.fn(async (options: HandleUploadPresignedOptions) => {
-    const signed = await options.getSignedToken(
+  return vi.fn(async (options: HandleUploadOptions) => {
+    const uploadOptions = await options.onBeforeGenerateToken(
       requestedPathname,
       JSON.stringify({ batchId, documentId }),
       multipart,
     );
 
     return {
-      type: "blob.generate-presigned-url" as const,
-      presignedUrlPayload: {
-        delegationToken: signed.token.delegationToken,
-        signature: "signature",
-        params: {},
-      },
+      type: "blob.generate-client-token" as const,
+      clientToken: JSON.stringify(uploadOptions),
     };
   });
 }
 
 describe("private Blob upload handler", () => {
-  test("issues a short-lived, document-scoped token", async () => {
+  test("issues short-lived, document-scoped upload authorization", async () => {
     const deps = dependencies();
     const handleUpload = issuanceHandler();
     const response = await handleBlobUpload(
-      request({ type: "blob.generate-presigned-url", payload: {} }),
+      request({ type: "blob.generate-client-token", payload: {} }),
       { ...deps, handleUpload },
     );
 
     expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      type: "blob.generate-client-token",
+      clientToken: JSON.stringify({
+        validUntil: 1_800_000_600_000,
+        allowedContentTypes: ["application/pdf"],
+        maximumSizeInBytes: 1024,
+        addRandomSuffix: false,
+        allowOverwrite: false,
+        tokenPayload: JSON.stringify({ sessionId, batchId, documentId }),
+      }),
+    });
     expect(deps.findDocumentBySession).toHaveBeenCalledWith(
       sessionId,
       batchId,
       documentId,
     );
-    expect(deps.issueSignedToken).toHaveBeenCalledWith({
-      pathname,
-      operations: ["put"],
-      validUntil: 1_800_000_600_000,
-      allowedContentTypes: ["application/pdf"],
-      maximumSizeInBytes: 1024,
-      oidcToken: "oidc-token",
-      storeId: "store-id",
-    });
+    expect(handleUpload).toHaveBeenCalledWith(
+      expect.objectContaining({ token: "blob-read-write-token" }),
+    );
     expect(deps.markDocumentUploading).toHaveBeenCalledWith({
       sessionId,
       batchId,
@@ -138,7 +130,7 @@ describe("private Blob upload handler", () => {
     });
 
     expect(sessionResponse.status).toBe(401);
-    expect(missingSession.issueSignedToken).not.toHaveBeenCalled();
+    expect(missingSession.markDocumentUploading).not.toHaveBeenCalled();
 
     const multipart = dependencies();
     const multipartResponse = await handleBlobUpload(request({}), {
@@ -146,7 +138,7 @@ describe("private Blob upload handler", () => {
       handleUpload: issuanceHandler(true),
     });
     expect(multipartResponse.status).toBe(400);
-    expect(multipart.issueSignedToken).not.toHaveBeenCalled();
+    expect(multipart.markDocumentUploading).not.toHaveBeenCalled();
 
     const divergent = dependencies();
     const divergentResponse = await handleBlobUpload(request({}), {
@@ -154,7 +146,7 @@ describe("private Blob upload handler", () => {
       handleUpload: issuanceHandler(false, "documents/another.pdf"),
     });
     expect(divergentResponse.status).toBe(400);
-    expect(divergent.issueSignedToken).not.toHaveBeenCalled();
+    expect(divergent.markDocumentUploading).not.toHaveBeenCalled();
   });
 
   test("accepts a signed callback without requiring the browser cookie", async () => {
@@ -174,7 +166,7 @@ describe("private Blob upload handler", () => {
       etag: "etag",
     };
     const handleUpload = vi.fn(
-      async (options: HandleUploadPresignedOptions) => {
+      async (options: HandleUploadOptions) => {
         await options.onUploadCompleted?.({
           blob,
           tokenPayload: JSON.stringify({ sessionId, batchId, documentId }),
@@ -216,7 +208,7 @@ describe("private Blob upload handler", () => {
     });
 
     expect(response.status).toBe(404);
-    expect(deps.issueSignedToken).not.toHaveBeenCalled();
+    expect(deps.markDocumentUploading).not.toHaveBeenCalled();
     await expect(response.json()).resolves.toMatchObject({
       error: { code: "NOT_FOUND", requestId: "request-123" },
     });
@@ -242,7 +234,7 @@ describe("private Blob upload handler", () => {
         message: "The browser upload did not complete.",
       },
     });
-    expect(deps.issueSignedToken).not.toHaveBeenCalled();
+    expect(deps.markDocumentUploading).not.toHaveBeenCalled();
   });
 
   test("stops a rate-limited browser upload before session work", async () => {
@@ -260,7 +252,7 @@ describe("private Blob upload handler", () => {
 
     expect(response.status).toBe(429);
     expect(deps.requireSession).not.toHaveBeenCalled();
-    expect(deps.issueSignedToken).not.toHaveBeenCalled();
+    expect(deps.markDocumentUploading).not.toHaveBeenCalled();
   });
 
   test("does not return a token or acknowledge a callback after a refused transition", async () => {
@@ -272,7 +264,7 @@ describe("private Blob upload handler", () => {
     });
 
     expect(authorizationResponse.status).toBe(409);
-    expect(refusedAuthorization.issueSignedToken).not.toHaveBeenCalled();
+    expect(refusedAuthorization.markDocumentUploading).toHaveBeenCalledOnce();
 
     const refusedCallback = dependencies();
     refusedCallback.completeDocumentUpload.mockResolvedValueOnce(null);
@@ -286,7 +278,7 @@ describe("private Blob upload handler", () => {
     };
     const callbackResponse = await handleBlobUpload(request({}), {
       ...refusedCallback,
-      handleUpload: vi.fn(async (options: HandleUploadPresignedOptions) => {
+      handleUpload: vi.fn(async (options: HandleUploadOptions) => {
         await options.onUploadCompleted?.({
           blob,
           tokenPayload: JSON.stringify({ sessionId, batchId, documentId }),

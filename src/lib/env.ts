@@ -4,9 +4,7 @@ const serverEnvSchema = z.object({
   MONGODB_URI: z.string().min(1),
   MONGODB_DATABASE: z.string().min(1),
   GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1),
-  BLOB_STORE_ID: z.string().min(1),
-  VERCEL_OIDC_TOKEN: z.string().min(1),
-  BLOB_WEBHOOK_PUBLIC_KEY: z.string().min(1),
+  BLOB_READ_WRITE_TOKEN: z.string().min(1),
   UPSTASH_REDIS_REST_URL: z.string().url(),
   UPSTASH_REDIS_REST_TOKEN: z.string().min(1),
   APP_SECRET: z.string().min(32),
@@ -22,9 +20,7 @@ const databaseEnvSchema = z.object({
 });
 
 const blobEnvSchema = z.object({
-  BLOB_STORE_ID: z.string().min(1),
-  VERCEL_OIDC_TOKEN: z.string().min(1),
-  BLOB_WEBHOOK_PUBLIC_KEY: z.string().min(1),
+  BLOB_READ_WRITE_TOKEN: z.string().min(1),
 });
 
 const rateLimitEnvSchema = z.object({

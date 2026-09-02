@@ -1,5 +1,5 @@
 import type { PutBlobResult, UploadProgressEvent } from "@vercel/blob";
-import { uploadPresigned } from "@vercel/blob/client";
+import { upload } from "@vercel/blob/client";
 
 import { validateBatchFiles } from "@/lib/uploads/validation";
 import type {
@@ -63,7 +63,7 @@ type ClientUploadDependencies = {
 const defaultDependencies: ClientUploadDependencies = {
   createId: () => crypto.randomUUID(),
   fetch: (...args) => fetch(...args),
-  upload: (...args) => uploadPresigned(...args),
+  upload: (...args) => upload(...args),
 };
 
 function errorMessage(error: unknown): string {

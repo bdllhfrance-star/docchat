@@ -1,14 +1,10 @@
 import { randomUUID } from "node:crypto";
 
+import { type PutBlobResult } from "@vercel/blob";
 import {
-  issueSignedToken as issueVercelSignedToken,
-  type IssuedSignedToken,
-  type PutBlobResult,
-} from "@vercel/blob";
-import {
-  handleUploadPresigned as handleVercelUploadPresigned,
-  type HandleUploadPresignedBody,
-  type HandleUploadPresignedOptions,
+  handleUpload as handleVercelUpload,
+  type HandleUploadBody,
+  type HandleUploadOptions,
 } from "@vercel/blob/client";
 
 import { apiErrorResponse } from "@/lib/api/errors";
@@ -35,27 +31,15 @@ import type { ApiErrorCode } from "@/types/api";
 import type { DocumentRecord } from "@/types/persistence";
 
 const maxUploadRequestBodyBytes = 32 * 1024;
-const signedUploadTtlMilliseconds = 10 * 60 * 1000;
+const uploadTokenTtlMilliseconds = 10 * 60 * 1000;
 
-type UploadHandler = (options: HandleUploadPresignedOptions) => ReturnType<
-  typeof handleVercelUploadPresigned
+type UploadHandler = (options: HandleUploadOptions) => ReturnType<
+  typeof handleVercelUpload
 >;
-
-type SignedTokenIssuer = (options: {
-  pathname: string;
-  operations: ["put"];
-  validUntil: number;
-  allowedContentTypes: string[];
-  maximumSizeInBytes: number;
-  oidcToken: string;
-  storeId: string;
-}) => Promise<IssuedSignedToken>;
 
 export type BlobUploadDependencies = {
   blob: {
-    oidcToken: string;
-    storeId: string;
-    webhookPublicKey: string;
+    token: string;
   };
   completeDocumentUpload: (input: {
     sessionId: string;
@@ -81,7 +65,6 @@ export type BlobUploadDependencies = {
   }) => Promise<DocumentRecord | null>;
   requireSession: () => Promise<string | null>;
   handleUpload?: UploadHandler;
-  issueSignedToken?: SignedTokenIssuer;
   ingestDocument: (document: DocumentRecord) => Promise<void>;
   now?: () => number;
   requestId?: () => string;
@@ -121,7 +104,7 @@ async function parseRequestBody(
   }
 
   try {
-    return JSON.parse(rawBody) as HandleUploadPresignedBody;
+    return JSON.parse(rawBody) as HandleUploadBody;
   } catch {
     throw new UploadRequestError(
       400,
@@ -174,10 +157,7 @@ export async function handleBlobUpload(
   dependencies: BlobUploadDependencies,
 ): Promise<Response> {
   const requestId = (dependencies.requestId ?? randomUUID)();
-  const handleUpload =
-    dependencies.handleUpload ?? handleVercelUploadPresigned;
-  const issueSignedToken =
-    dependencies.issueSignedToken ?? issueVercelSignedToken;
+  const handleUpload = dependencies.handleUpload ?? handleVercelUpload;
 
   try {
     const body = await parseRequestBody(request);
@@ -234,10 +214,10 @@ export async function handleBlobUpload(
     }
 
     const response = await handleUpload({
-      body: body as HandleUploadPresignedBody,
+      body: body as HandleUploadBody,
       request,
-      webhookPublicKey: dependencies.blob.webhookPublicKey,
-      getSignedToken: async (pathname, clientPayload, multipart) => {
+      token: dependencies.blob.token,
+      onBeforeGenerateToken: async (pathname, clientPayload, multipart) => {
         if (multipart) {
           throw new UploadRequestError(
             400,
@@ -267,7 +247,7 @@ export async function handleBlobUpload(
         assertUploadableDocument(document, pathname);
 
         const validUntil =
-          (dependencies.now ?? Date.now)() + signedUploadTtlMilliseconds;
+          (dependencies.now ?? Date.now)() + uploadTokenTtlMilliseconds;
         const allowedContentTypes = [
           ...getAllowedMimeTypes(document.fileType),
         ];
@@ -289,45 +269,17 @@ export async function handleBlobUpload(
           );
         }
 
-        let token: IssuedSignedToken;
-
-        try {
-          token = await issueSignedToken({
-            pathname,
-            operations: ["put"],
-            validUntil,
-            allowedContentTypes,
-            maximumSizeInBytes,
-            oidcToken: dependencies.blob.oidcToken,
-            storeId: dependencies.blob.storeId,
-          });
-        } catch (error) {
-          await dependencies.failDocumentUpload({
+        return {
+          validUntil,
+          allowedContentTypes,
+          maximumSizeInBytes,
+          addRandomSuffix: false,
+          allowOverwrite: false,
+          tokenPayload: JSON.stringify({
             sessionId,
             batchId: payload.batchId,
             documentId: payload.documentId,
-            error: {
-              code: "UPLOAD_AUTHORIZATION_FAILED",
-              message: "The private upload could not be authorized.",
-            },
-          });
-          throw error;
-        }
-
-        return {
-          token,
-          urlOptions: {
-            validUntil,
-            allowedContentTypes,
-            maximumSizeInBytes,
-            addRandomSuffix: false,
-            allowOverwrite: false,
-            tokenPayload: JSON.stringify({
-              sessionId,
-              batchId: payload.batchId,
-              documentId: payload.documentId,
-            }),
-          },
+          }),
         };
       },
       onUploadCompleted: async ({ blob, tokenPayload }) => {

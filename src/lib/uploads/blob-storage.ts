@@ -35,8 +35,7 @@ type BlobDeleter = (
   pathname: string,
   options: {
     abortSignal?: AbortSignal;
-    oidcToken: string;
-    storeId: string;
+    token: string;
   },
 ) => Promise<void>;
 
@@ -61,8 +60,7 @@ export async function deletePrivateDocument(
     : timeoutSignal;
 
   await (options.deleteBlob ?? deleteBlob)(document.blobPathname, {
-    oidcToken: blob.VERCEL_OIDC_TOKEN,
-    storeId: blob.BLOB_STORE_ID,
+    token: blob.BLOB_READ_WRITE_TOKEN,
     abortSignal: signal,
   });
 }
@@ -81,8 +79,7 @@ export async function downloadPrivateDocument(
     const result = await (options.getBlob ?? getBlob)(document.blobPathname, {
       access: "private",
       useCache: false,
-      oidcToken: blob.VERCEL_OIDC_TOKEN,
-      storeId: blob.BLOB_STORE_ID,
+      token: blob.BLOB_READ_WRITE_TOKEN,
       abortSignal: signal,
     });
 

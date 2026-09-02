@@ -12,9 +12,7 @@ const validEnv = {
   MONGODB_URI: "mongodb+srv://example.invalid/docchat",
   MONGODB_DATABASE: "docchat",
   GOOGLE_GENERATIVE_AI_API_KEY: "test-gemini-key",
-  BLOB_STORE_ID: "store_test",
-  VERCEL_OIDC_TOKEN: "test-oidc-token",
-  BLOB_WEBHOOK_PUBLIC_KEY: "test-public-key",
+  BLOB_READ_WRITE_TOKEN: "test-blob-token",
   UPSTASH_REDIS_REST_URL: "https://example.invalid",
   UPSTASH_REDIS_REST_TOKEN: "test-upstash-token",
   APP_SECRET: "a-test-secret-that-is-at-least-32-chars",
@@ -58,9 +56,7 @@ describe("server environment", () => {
 
   test("validates private Blob variables independently", () => {
     expect(getBlobEnv(validEnv)).toEqual({
-      BLOB_STORE_ID: validEnv.BLOB_STORE_ID,
-      BLOB_WEBHOOK_PUBLIC_KEY: validEnv.BLOB_WEBHOOK_PUBLIC_KEY,
-      VERCEL_OIDC_TOKEN: validEnv.VERCEL_OIDC_TOKEN,
+      BLOB_READ_WRITE_TOKEN: validEnv.BLOB_READ_WRITE_TOKEN,
     });
   });
 
