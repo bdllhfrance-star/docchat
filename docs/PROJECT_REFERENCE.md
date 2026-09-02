@@ -270,6 +270,9 @@ de son traitement.
   tiroir sur mobile.
 - **Composer** : fixé au bas de la zone de conversation, désactivé avec une
   raison visible tant que `canSendMessage` vaut `false`.
+- **Mutation du contexte** : pendant un retry ou une suppression, la zone de
+  conversation reste montée sans flash vers le sélecteur. Seul le composer est
+  temporairement verrouillé jusqu'à confirmation du nouveau contexte.
 - **Sources** : présentées sous la réponse dans une liste compacte et
   dépliable, avec fichier, emplacement, extrait et score.
 

@@ -26,6 +26,7 @@ import { RagPipelineVisualizer } from "./rag-pipeline-visualizer";
 type ChatWorkspaceProps = {
   batchId: string;
   documentIds: readonly string[];
+  isContextUpdating?: boolean;
 };
 
 function readStoredMessages(storageKey: string): DocChatUIMessage[] {
@@ -155,6 +156,7 @@ function ActiveChat({
   batchId,
   documentIds,
   initialMessages,
+  isContextUpdating = false,
   storageKey,
 }: ActiveChatProps) {
   const [input, setInput] = useState("");
@@ -176,7 +178,8 @@ function ActiveChat({
     transport,
   });
   const isResponding = status === "submitted" || status === "streaming";
-  const canSend = input.trim().length > 0 && !isResponding;
+  const canSend =
+    input.trim().length > 0 && !isResponding && !isContextUpdating;
 
   useEffect(() => {
     endRef.current?.scrollIntoView?.({ block: "end" });
@@ -196,7 +199,7 @@ function ActiveChat({
     event.preventDefault();
     const message = input.trim();
 
-    if (!message || isResponding) {
+    if (!message || isResponding || isContextUpdating) {
       return;
     }
 
@@ -276,7 +279,7 @@ function ActiveChat({
               value={input}
               onChange={(event) => setInput(event.target.value)}
               onKeyDown={handleKeyDown}
-              disabled={isResponding}
+              disabled={isResponding || isContextUpdating}
               placeholder="Ask a question about your documents"
               className="block min-h-14 max-h-36 w-full resize-none overflow-y-auto bg-transparent py-4 pr-14 pl-4 text-sm text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed dark:text-slate-100 dark:placeholder:text-slate-500"
             />
@@ -300,16 +303,30 @@ function ActiveChat({
               </button>
             )}
           </div>
-          <p className="mt-2 text-center text-xs leading-5 text-slate-500 dark:text-slate-400">
-            Answers use {documentIds.length} ready {documentIds.length === 1 ? "document" : "documents"}. Shift + Enter adds a line.
-          </p>
+          {isContextUpdating ? (
+            <p
+              className="mt-2 flex items-center justify-center gap-1.5 text-center text-xs font-medium leading-5 text-blue-700 dark:text-blue-300"
+              role="status"
+            >
+              <LoaderCircle size={13} className="animate-spin" aria-hidden="true" />
+              Updating document context…
+            </p>
+          ) : (
+            <p className="mt-2 text-center text-xs leading-5 text-slate-500 dark:text-slate-400">
+              Answers use {documentIds.length} ready {documentIds.length === 1 ? "document" : "documents"}. Shift + Enter adds a line.
+            </p>
+          )}
         </form>
       </footer>
     </div>
   );
 }
 
-export function ChatWorkspace({ batchId, documentIds }: ChatWorkspaceProps) {
+export function ChatWorkspace({
+  batchId,
+  documentIds,
+  isContextUpdating,
+}: ChatWorkspaceProps) {
   const storageKey = `docchat:chat:${batchId}:${[...documentIds].sort().join(",")}`;
   const [initialMessages] = useState(() => readStoredMessages(storageKey));
 
@@ -318,6 +335,7 @@ export function ChatWorkspace({ batchId, documentIds }: ChatWorkspaceProps) {
       batchId={batchId}
       documentIds={documentIds}
       initialMessages={initialMessages}
+      isContextUpdating={isContextUpdating}
       storageKey={storageKey}
     />
   );

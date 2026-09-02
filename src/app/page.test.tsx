@@ -769,6 +769,17 @@ test("deletes the last ready document and returns to the initial workspace", asy
   expect(screen.getByText("guide.pdf").closest("li")?.className).toContain(
     "document-row-deleting",
   );
+  expect(
+    screen.getByRole("heading", { name: "Your documents are ready" }),
+  ).toBeDefined();
+  expect(
+    screen.queryByRole("heading", { name: "Review your documents" }),
+  ).toBeNull();
+  expect(screen.getByText("Updating document context…")).toBeDefined();
+  expect(screen.getByRole("textbox", { name: "Message DocChat" })).toHaveProperty(
+    "disabled",
+    true,
+  );
   await act(async () => finishDeletion());
 
   expect(deleteDocumentMock).toHaveBeenCalledWith("document-1");

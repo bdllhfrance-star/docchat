@@ -878,8 +878,9 @@ export function DocumentSelectionWorkspace() {
           document.status !== "ready" && document.status !== "failed",
       ),
   );
+  const isDocumentContextUpdating = Object.keys(documentActions).length > 0;
   const isSelectionLocked =
-    isUploading || isBatchProcessing || Object.keys(documentActions).length > 0;
+    isUploading || isBatchProcessing || isDocumentContextUpdating;
   const canSubmitChanges =
     pendingFiles.length > 0 &&
     validationResult.isValid &&
@@ -896,8 +897,7 @@ export function DocumentSelectionWorkspace() {
   const canChat =
     batch !== null &&
     pendingFiles.length === 0 &&
-    readyDocumentIds.length > 0 &&
-    !isSelectionLocked;
+    readyDocumentIds.length > 0;
   const excludedChatDocumentIdSet = new Set(excludedChatDocumentIds);
   const chatDocumentIds = readyDocumentIds.filter(
     (id) => !excludedChatDocumentIdSet.has(id),
@@ -1280,6 +1280,7 @@ export function DocumentSelectionWorkspace() {
             key={`${batch.id}:${chatDocumentIds.join(",")}`}
             batchId={batch.id}
             documentIds={chatDocumentIds}
+            isContextUpdating={isDocumentContextUpdating}
           />
         ) : (
           <>

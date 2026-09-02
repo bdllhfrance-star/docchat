@@ -87,6 +87,30 @@ test("enables the composer and sends a trimmed question", async () => {
   expect(composer).toHaveProperty("value", "");
 });
 
+test("keeps the chat mounted while its document context is updating", async () => {
+  render(
+    <ChatWorkspace
+      batchId="batch-1"
+      documentIds={["document-1"]}
+      isContextUpdating
+    />,
+  );
+
+  expect(
+    await screen.findByRole("heading", { name: "Your documents are ready" }),
+  ).toBeDefined();
+  expect(screen.getByTestId("rag-pipeline-visualizer")).toBeDefined();
+  expect(screen.getByText("Updating document context…")).toBeDefined();
+  expect(screen.getByRole("textbox", { name: "Message DocChat" })).toHaveProperty(
+    "disabled",
+    true,
+  );
+  expect(screen.getByRole("button", { name: "Send message" })).toHaveProperty(
+    "disabled",
+    true,
+  );
+});
+
 test("renders progressive text and allows the request to be stopped", async () => {
   useChatMock.mockReturnValue(
     chatState({
