@@ -96,6 +96,8 @@ function uploadResult(
 test("renders the initial document workspace", () => {
   render(<Home />);
 
+  expect(screen.getByLabelText("Smartly.ai")).toBeDefined();
+  expect(screen.queryByText("Answers grounded in your documents")).toBeNull();
   expect(
     screen.getByRole("heading", {
       level: 3,

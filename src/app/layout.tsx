@@ -12,8 +12,24 @@ const themeInitializer = `
 `;
 
 export const metadata: Metadata = {
-  title: "DocChat",
-  description: "Ask grounded questions about your PDF documents.",
+  metadataBase: new URL("https://docchat-bdllhfrance-star.vercel.app"),
+  title: "Smartly.ai — Chat with your documents",
+  description:
+    "Upload multiple documents and get streamed, source-grounded answers from your private workspace.",
+  applicationName: "Smartly.ai",
+  openGraph: {
+    type: "website",
+    siteName: "Smartly.ai",
+    title: "Smartly.ai — Chat with your documents",
+    description:
+      "Turn PDFs, presentations, spreadsheets and text files into searchable knowledge.",
+  },
+  twitter: {
+    card: "summary",
+    title: "Smartly.ai — Chat with your documents",
+    description:
+      "Turn your documents into searchable knowledge and grounded answers.",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
