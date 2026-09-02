@@ -139,10 +139,40 @@ test("shows grounded sources in an accessible disclosure", async () => {
   ).toBeDefined();
 });
 
+test("labels an RRF source score as hybrid relevance", async () => {
+  const answer: DocChatUIMessage = {
+    id: "assistant-rrf",
+    role: "assistant",
+    parts: [
+      {
+        type: "data-sources",
+        data: [
+          {
+            documentId: "document-1",
+            filename: "guide.pdf",
+            excerpt: "A hybrid retrieval result.",
+            score: 0.0325,
+            scoreKind: "rrf",
+            source: { label: "Page 3", page: 3 },
+          },
+        ],
+      },
+      { type: "text", text: "Hybrid answer." },
+    ],
+  };
+  useChatMock.mockReturnValue(chatState({ messages: [answer] }));
+
+  render(
+    <ChatWorkspace batchId="batch-1" documentIds={["document-1"]} />,
+  );
+
+  expect(await screen.findByText("Hybrid score 0.0325")).toBeDefined();
+});
+
 test("restores and persists the browser-session conversation", async () => {
   const storedMessage = message("user-stored", "user", "Stored question");
   sessionStorage.setItem(
-    "docchat:chat:batch-1",
+    "docchat:chat:batch-1:document-1",
     JSON.stringify([storedMessage]),
   );
   const currentMessages = [
@@ -161,7 +191,11 @@ test("restores and persists the browser-session conversation", async () => {
     );
   });
   await waitFor(() => {
-    expect(JSON.parse(sessionStorage.getItem("docchat:chat:batch-1") ?? "[]"))
+    expect(
+      JSON.parse(
+        sessionStorage.getItem("docchat:chat:batch-1:document-1") ?? "[]",
+      ),
+    )
       .toEqual(currentMessages);
   });
 });

@@ -93,6 +93,18 @@ export const chunkTextSearchIndex = {
         text: {
           type: "string",
         },
+        sessionId: {
+          type: "token",
+          normalizer: "none",
+        },
+        batchId: {
+          type: "token",
+          normalizer: "none",
+        },
+        documentId: {
+          type: "token",
+          normalizer: "none",
+        },
       },
     },
   },

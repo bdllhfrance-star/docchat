@@ -96,6 +96,7 @@ export type ChatSource = {
   filename: string;
   excerpt: string;
   score: number;
+  scoreKind?: "similarity" | "rrf";
   source: DocumentSource;
 };
 

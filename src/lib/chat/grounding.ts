@@ -115,6 +115,7 @@ export function buildGroundedChatContext(
     filename: chunk.filename,
     excerpt: sourceExcerpt(chunk.text),
     score: chunk.score,
+    ...(chunk.scoreKind ? { scoreKind: chunk.scoreKind } : {}),
     source: chunk.source,
   }));
   const prompt = `DOCUMENT_CONTEXT_JSONL_BEGIN

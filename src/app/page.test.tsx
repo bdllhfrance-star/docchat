@@ -400,6 +400,70 @@ test("keeps each file row stable while showing real processing states", async ()
   );
 });
 
+test("selects all ready documents by default and allows a chat subset", async () => {
+  const files = [file("guide.pdf"), file("appendix.pdf")];
+  const documents = [
+    {
+      id: "document-1",
+      batchId: "batch-1",
+      filename: "guide.pdf",
+      fileType: "pdf" as const,
+      size: 1024,
+      status: "ready" as const,
+    },
+    {
+      id: "document-2",
+      batchId: "batch-1",
+      filename: "appendix.pdf",
+      fileType: "pdf" as const,
+      size: 1024,
+      status: "ready" as const,
+    },
+  ];
+  const readyBatch: BatchSummary = {
+    id: "batch-1",
+    status: "ready",
+    documents,
+    createdAt: "2026-09-02T12:00:00.000Z",
+    expiresAt: "2026-09-09T12:00:00.000Z",
+  };
+
+  createAndUploadBatchMock.mockResolvedValue({
+    batch: { ...readyBatch, status: "processing", documents: [] },
+    uploads: [
+      { index: 0, documentId: "document-1", status: "uploaded" },
+      { index: 1, documentId: "document-2", status: "uploaded" },
+    ],
+  });
+  pollBatchStatusMock.mockImplementationOnce(async (_, onUpdate) => {
+    onUpdate(readyBatch);
+    return readyBatch;
+  });
+
+  render(<Home />);
+  fireEvent.change(screen.getByLabelText("Select documents from device"), {
+    target: { files },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Upload and process" }));
+
+  const guideCheckbox = await screen.findByRole("checkbox", {
+    name: "Use guide.pdf in chat",
+  });
+  const appendixCheckbox = screen.getByRole("checkbox", {
+    name: "Use appendix.pdf in chat",
+  });
+
+  expect(guideCheckbox).toHaveProperty("checked", true);
+  expect(appendixCheckbox).toHaveProperty("checked", true);
+  expect(screen.getByText(/Answers use 2 ready documents/)).toBeDefined();
+
+  fireEvent.click(appendixCheckbox);
+
+  expect(appendixCheckbox).toHaveProperty("checked", false);
+  expect(guideCheckbox).toHaveProperty("disabled", true);
+  expect(screen.getByText(/Answers use 1 ready document\./)).toBeDefined();
+});
+
 test("retries a failed document and resumes status polling", async () => {
   let finishRetry!: () => void;
   const failedDocument = {

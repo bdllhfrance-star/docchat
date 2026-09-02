@@ -47,7 +47,12 @@ describe("database index definitions", () => {
       definition: {
         mappings: {
           dynamic: false,
-          fields: { text: { type: "string" } },
+          fields: {
+            text: { type: "string" },
+            sessionId: { type: "token", normalizer: "none" },
+            batchId: { type: "token", normalizer: "none" },
+            documentId: { type: "token", normalizer: "none" },
+          },
         },
       },
     });

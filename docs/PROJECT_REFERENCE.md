@@ -350,6 +350,7 @@ frontières claires entre composants frontend, routes HTTP et services serveur.
 | Rate limiting | Upstash Redis | Compteur distribué compatible serverless, ajouté au moment du hardening. |
 | Framework RAG | Pipeline TypeScript direct | Le périmètre est petit et doit rester visible, testable et explicable. |
 | Queue | Aucune initialement | Le traitement synchrone est mesuré avant d'ajouter une infrastructure. |
+| Coût des services | Offres gratuites uniquement | Aucun composant obligatoire ne dépend d'un plan payant ; si une capacité n'existe pas dans le free tier retenu, l'implémentation doit utiliser une alternative gratuite. |
 
 ## 10. Modèle de données minimal
 
@@ -558,7 +559,9 @@ Embedding de la question
         ↓
 Filtre MongoDB sur sessionId et documentId
         ↓
-Recherche vectorielle, puis recherche hybride
+Recherche vectorielle et full-text en parallèle
+        ↓
+Fusion RRF déterministe côté application
         ↓
 Déduplication et sélection du contexte
         ↓
@@ -580,6 +583,11 @@ Paramètres initiaux :
 - La recherche ANN examine initialement 20 fois plus de voisins que de
   résultats demandés, avec un maximum Atlas de 10 000 candidats. Ces valeurs
   ne changent qu'après mesure du rappel et de la latence.
+- La fusion hybride utilise RRF côté application avec la constante standard 60.
+  Ce choix combine deux pipelines Atlas simples, reste testable et ne dépend
+  pas de l'étage serveur `$rankFusion` ni d'une version MongoDB imposée. Le
+  score affiché est nommé `Hybrid score`, distinct de la similarité
+  cosinus affichée lors d'une recherche vectorielle seule.
 - Le budget documentaire vaut la limite d'entrée de 1 048 576 tokens moins les
   instructions, l'historique, la question et une marge de sécurité de 16 384
   tokens.
@@ -594,6 +602,9 @@ Paramètres initiaux :
 - Les custom data parts de sources restent dans l'historique UI mais ne sont pas
   reconverties en contexte modèle. Le serveur reconstruit explicitement le
   contexte RAG autorisé à chaque question.
+- L'historique navigateur est séparé par batch et par combinaison de documents
+  sélectionnés. Changer la sélection démarre donc un contexte de chat distinct
+  et ne réinjecte pas les réponses obtenues depuis un document ensuite exclu.
 
 ## 15. Sécurité
 
@@ -806,7 +817,7 @@ intégrés par l'agent principal avant le lancement d'une nouvelle vague.
 | [~] | RAG-03 | DB-01, RAG-02 | Backend/RAG | Recherche vectorielle cosinus, embedding de question, filtres `sessionId`/batch/documents, déduplication et validation défensive des sources et scores terminés et testés localement. La requête réelle sur l'index Atlas reste bloquée par SET-07. |
 | [~] | CHAT-01 | RAG-03 | Backend/RAG | `POST /api/chat`, validations avant stream, contexte dynamique, prompt fondé uniquement sur les documents, refus sans contexte et UI message stream sourcé sont implémentés et testés localement. Le seuil de pertinence doit encore être calibré par l'évaluation et le parcours réel Atlas/Gemini reste bloqué par SET-07. |
 | [~] | UI-05 | UI-04, CHAT-01 | UI | Chat relié à `/api/chat` avec `useChat`, historique `sessionStorage` isolé par batch, annulation et affichage progressif. Le composer ne s'active que lorsque tous les documents sont `ready` ; le parcours réel Atlas/Gemini reste bloqué par SET-07. |
-| [~] | UI-06 | UI-05 | UI | Sources dépliables affichées sous chaque réponse avec numéro de citation, fichier, emplacement, extrait et score nommé explicitement `similarity`. Le contrôle natif est utilisable au clavier et responsive ; le flux réel Atlas/Gemini reste à valider avec SET-07. |
+| [~] | UI-06 | UI-05 | UI | Sources dépliables affichées sous chaque réponse avec numéro de citation, fichier, emplacement, extrait et score : `Similarity` pour le cosinus seul ou `Hybrid score` pour RRF. Le contrôle natif est utilisable au clavier et responsive ; le flux réel Atlas/Gemini reste à valider avec SET-07. |
 | [x] | SEC-01 | UPL-03, CHAT-01 | Backend/QA | Extension, MIME, signature PDF, limites de fichiers et requêtes, noms, sessions, propriété des ressources, prompt injection, rendu HTML inerte, headers et absence de logs sensibles sont vérifiés localement avec cas négatifs. |
 | [x] | TST-01 | SEC-01, UI-06 | QA | Les tests unitaires et d'intégration P0 couvrent contrats, upload, parser, chunker, statuts, retrieval, refus, streaming, sources, sécurité et erreurs. `lint`, `typecheck`, tests et build réussissent localement. |
 | [!] | GATE-01 | TST-01 | Principal | Le code et le parcours simulé sont verts. Le parcours PDF réel local et Vercel — Blob, Atlas, Gemini, streaming, source, refus, retry et suppression — reste bloqué uniquement par les accès externes absents de `SET-07`; aucune simulation n'est présentée comme un E2E réel. |
@@ -815,8 +826,8 @@ intégrés par l'agent principal avant le lancement d'une nouvelle vague.
 
 | État | ID | Dépend de | Responsable | Tâche et condition de fin |
 | --- | --- | --- | --- | --- |
-| [ ] | BON-01 | GATE-01 | Principal/UI | Valider le batch multi-PDF, la réussite indépendante et la sélection des documents interrogés. Le backend applique réellement les filtres choisis. |
-| [ ] | BON-02 | GATE-01 | Backend/RAG | Ajouter Atlas Search full-text et la fusion RRF avec la recherche vectorielle. Un test prouve la fusion et l'absence de fuite entre documents. |
+| [~] | BON-01 | GATE-01 | Principal/UI | Multi-PDF, réussite indépendante, sélection de tous les documents par défaut et exclusion contrôlée sont implémentés. Les tests prouvent que le backend applique les identifiants choisis ; le batch réel reste bloqué par `SET-07`. |
+| [~] | BON-02 | GATE-01 | Backend/RAG | Atlas Search full-text, filtres exacts et fusion RRF côté application avec la recherche vectorielle sont implémentés et testés sans fuite entre sessions/documents. Les deux index Atlas réels restent à créer et tester avec `SET-07`. |
 | [ ] | BON-03 | GATE-01, SET-02 | Backend | Ajouter le rate limiting partagé Upstash sur upload, retry et chat. Les réponses `429` sont structurées et testées. |
 | [ ] | BON-04 | GATE-01 | Backend/QA | Ajouter des logs JSON avec `requestId`, durée, étape et codes d'erreur, sans texte documentaire, vecteur ni secret. |
 | [ ] | BON-05 | GATE-01, SET-05 | QA | Vérifier le parcours complet sur PDF français et arabe, affichage RTL du contenu arabe compris. Les résultats et défauts sont enregistrés. |
@@ -992,6 +1003,11 @@ Ces règles proviennent de la documentation livrée avec Next.js 16.3.3 dans
 
 ### 20.3 Choix externes confirmés dans les documentations officielles
 
+Tous les services externes doivent être configurés sur leur offre gratuite.
+Aucune carte, montée de plan ou capacité réservée à un plan payant n'est une
+dépendance acceptable. Les quotas réels seront relevés pendant `SET-07` et les
+limites de démonstration resteront en dessous de ces quotas.
+
 - AI SDK : `ai@7.0.90`, `@ai-sdk/react@4.0.93` et
   `@ai-sdk/google@4.0.62`. Les anciens contrats `StreamingTextResponse`,
   `message.content` et `ai/react` sont interdits.
@@ -1000,7 +1016,8 @@ Ces règles proviennent de la documentation livrée avec Next.js 16.3.3 dans
   documents et questions utilisent des préfixes de tâche cohérents.
 - Atlas : index Vector Search cosine de 768 dimensions, avec champs de filtre
   `sessionId`, `batchId` et `documentId`. L'index Search lexical reste séparé
-  pour le bonus hybride.
+  pour le bonus hybride ; la fusion RRF est faite dans l'application pour ne pas
+  dépendre de `$rankFusion` ou d'une version de cluster particulière.
 - Blob : store privé et upload direct signé depuis le navigateur, limité par
   fichier à 10 Mo. Le callback de fin d'upload est idempotent.
 - Upstash : Redis régional et sliding window initial de 10 chats par minute,
@@ -1068,3 +1085,5 @@ Le projet est terminé uniquement lorsque :
 | 2026-09-02 | Conserver provisoirement un PDF partiellement extractible si au moins une page contient du texte ; les pages sans texte sont ignorées jusqu'à la révision de cette règle. |
 | 2026-09-02 | Adapter le contexte à `gemini-3.7-flash` : 1 048 576 tokens d'entrée, 65 536 tokens de sortie, niveau `medium` et aucun plafond fixe de chunks. |
 | 2026-09-02 | Générer les vecteurs documentaires avec `gemini-embedding-2`, `RETRIEVAL_DOCUMENT`, 768 dimensions et deux appels simultanés maximum. |
+| 2026-09-02 | Utiliser exclusivement les offres gratuites des services externes et refuser toute dépendance obligatoire à une capacité payante. |
+| 2026-09-02 | Exécuter Vector Search et Search lexical en parallèle puis fusionner leurs rangs par RRF dans l'application avec une constante de 60. |

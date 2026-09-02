@@ -109,6 +109,36 @@ describe("chat API", () => {
     );
   });
 
+  test("restricts a ready multi-document batch to the user's selection", async () => {
+    const secondDocumentId = "75f9d4bc-c530-43dd-a30f-91dad3ab8ff4";
+    const secondDocument: DocumentRecord = {
+      ...document,
+      id: secondDocumentId,
+      filename: "appendix.pdf",
+      blobPathname: `documents/${batchId}/${secondDocumentId}.pdf`,
+    };
+    const deps = dependencies({
+      findBatchBySession: vi.fn().mockResolvedValue({
+        ...batch,
+        totalFiles: 2,
+        readyFiles: 2,
+      }),
+      findDocumentsByBatch: vi
+        .fn()
+        .mockResolvedValue([document, secondDocument]),
+    });
+
+    const response = await handleChatRequest(
+      request({ documentIds: [secondDocumentId] }),
+      deps,
+    );
+
+    expect(response.status).toBe(200);
+    expect(deps.retrieveChunks).toHaveBeenCalledWith(
+      expect.objectContaining({ documentIds: [secondDocumentId] }),
+    );
+  });
+
   test("rejects invalid or oversized input before reading the session", async () => {
     const deps = dependencies();
     const duplicateResponse = await handleChatRequest(

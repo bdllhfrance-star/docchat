@@ -1,7 +1,7 @@
 import { handleChatRequest } from "@/lib/api/chat";
 import { createChatStreamResponse } from "@/lib/chat/stream";
 import { getBatchRepository } from "@/lib/db/batch-repository";
-import { retrieveRelevantChunks } from "@/lib/rag/vector-search";
+import { retrieveHybridChunks } from "@/lib/rag/hybrid-search";
 import { requireSession } from "@/lib/session-request";
 
 export const runtime = "nodejs";
@@ -20,7 +20,7 @@ export async function POST(request: Request): Promise<Response> {
     findDocumentsByBatch: async (sessionId, batchId) =>
       (await repository()).findDocumentsByBatch(sessionId, batchId),
     retrieveChunks: ({ abortSignal, ...input }) =>
-      retrieveRelevantChunks(input, { abortSignal }),
+      retrieveHybridChunks(input, { abortSignal }),
     streamResponse: createChatStreamResponse,
   });
 }

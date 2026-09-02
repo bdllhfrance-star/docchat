@@ -85,7 +85,9 @@ function MessageSources({ sources }: { sources: readonly ChatSource[] }) {
                 [{index + 1}] {source.filename}
               </p>
               <span className="shrink-0 text-[11px] font-medium text-slate-500">
-                Similarity {Math.round(source.score * 100)}%
+                {source.scoreKind === "rrf"
+                  ? `Hybrid score ${source.score.toFixed(4)}`
+                  : `Similarity ${Math.round(source.score * 100)}%`}
               </span>
             </div>
             <p className="mt-1 text-[11px] font-medium text-slate-500">
@@ -313,7 +315,7 @@ function ActiveChat({
 }
 
 export function ChatWorkspace({ batchId, documentIds }: ChatWorkspaceProps) {
-  const storageKey = `docchat:chat:${batchId}`;
+  const storageKey = `docchat:chat:${batchId}:${[...documentIds].sort().join(",")}`;
   const [initialMessages] = useState(() => readStoredMessages(storageKey));
 
   return (

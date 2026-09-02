@@ -49,6 +49,7 @@ export type RetrievedChunk = {
   source: DocumentSource;
   chunkIndex: number;
   score: number;
+  scoreKind?: "similarity" | "rrf";
 };
 
 type StoredVectorSearchResult = RetrievedChunk & {
@@ -83,7 +84,7 @@ function invalidInput(message: string): never {
   throw new VectorRetrievalError("RETRIEVAL_INVALID_INPUT", message);
 }
 
-function validateInput(input: VectorRetrievalInput): string[] {
+export function validateRetrievalInput(input: VectorRetrievalInput): string[] {
   if (!input.sessionId || !input.batchId) {
     invalidInput("Session and batch identifiers are required.");
   }
@@ -132,7 +133,10 @@ export function createVectorSearchPipeline(
   input: Omit<VectorRetrievalInput, "query">,
   queryVector: readonly number[],
 ): Document[] {
-  const documentIds = validateInput({ ...input, query: "validated-query" });
+  const documentIds = validateRetrievalInput({
+    ...input,
+    query: "validated-query",
+  });
   validateQueryVector(queryVector);
   const numCandidates = Math.min(
     VECTOR_SEARCH_CONFIG.maxCandidates,
@@ -237,7 +241,7 @@ export async function retrieveRelevantChunks(
   input: VectorRetrievalInput,
   options: VectorRetrievalOptions = {},
 ): Promise<RetrievedChunk[]> {
-  const documentIds = validateInput(input);
+  const documentIds = validateRetrievalInput(input);
   const queryVector = await (options.embedQuery ?? embedRetrievalQuery)(
     input.query.trim(),
     { abortSignal: options.abortSignal },

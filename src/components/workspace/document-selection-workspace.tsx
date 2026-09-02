@@ -170,8 +170,10 @@ type DocumentsPanelProps = {
   onRemove: (index: number) => void;
   onReplace: (index: number, document: DocumentSummary) => void;
   onRetry: (document: DocumentSummary) => void;
+  onToggleChatDocument: (documentId: string) => void;
   processingDocuments: ProcessingDocuments;
   result: SelectionResult;
+  selectedChatDocumentIds: readonly string[];
   uploadUpdates: UploadUpdates;
 };
 
@@ -266,6 +268,9 @@ type ProcessingStateProps = {
   onDelete: () => void;
   onReplace: () => void;
   onRetry: () => void;
+  onToggleChatDocument: () => void;
+  selectedForChat: boolean;
+  selectedForChatCount: number;
 };
 
 function ProcessingState({
@@ -276,6 +281,9 @@ function ProcessingState({
   onDelete,
   onReplace,
   onRetry,
+  onToggleChatDocument,
+  selectedForChat,
+  selectedForChatCount,
 }: ProcessingStateProps) {
   if (document.status === "ready") {
     return (
@@ -289,20 +297,33 @@ function ProcessingState({
             <CheckCircle2 size={13} aria-hidden="true" />
             Ready
           </p>
-          <button
-            type="button"
-            onClick={onDelete}
-            disabled={actionsDisabled}
-            className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-wait disabled:opacity-50"
-            aria-label={`Delete ${document.filename}`}
-          >
-            {action === "deleting" ? (
-              <Trash2 className="document-delete-once" size={13} aria-hidden="true" />
-            ) : (
-              <Trash2 size={13} aria-hidden="true" />
-            )}
-            {action === "deleting" ? "Deleting" : "Delete"}
-          </button>
+          <div className="flex items-center gap-1">
+            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 has-disabled:cursor-not-allowed has-disabled:opacity-50">
+              <input
+                type="checkbox"
+                checked={selectedForChat}
+                onChange={onToggleChatDocument}
+                disabled={selectedForChat && selectedForChatCount === 1}
+                className="size-3.5 accent-slate-900"
+                aria-label={`Use ${document.filename} in chat`}
+              />
+              Use in chat
+            </label>
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={actionsDisabled}
+              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-wait disabled:opacity-50"
+              aria-label={`Delete ${document.filename}`}
+            >
+              {action === "deleting" ? (
+                <Trash2 className="document-delete-once" size={13} aria-hidden="true" />
+              ) : (
+                <Trash2 size={13} aria-hidden="true" />
+              )}
+              {action === "deleting" ? "Deleting" : "Delete"}
+            </button>
+          </div>
         </div>
         {actionError ? (
           <p className="mt-2 text-xs leading-5 text-red-700" role="alert">
@@ -399,12 +420,15 @@ function DocumentsPanel({
   onRemove,
   onReplace,
   onRetry,
+  onToggleChatDocument,
   processingDocuments,
   result,
+  selectedChatDocumentIds,
   uploadUpdates,
 }: DocumentsPanelProps) {
   const hasFiles = result.files.length > 0;
   const actionsDisabled = Object.keys(actions).length > 0;
+  const selectedChatDocumentIdSet = new Set(selectedChatDocumentIds);
 
   return (
     <aside
@@ -535,6 +559,13 @@ function DocumentsPanel({
                       onDelete={() => onDelete(index, processingDocument)}
                       onReplace={() => onReplace(index, processingDocument)}
                       onRetry={() => onRetry(processingDocument)}
+                      onToggleChatDocument={() =>
+                        onToggleChatDocument(processingDocument.id)
+                      }
+                      selectedForChat={selectedChatDocumentIdSet.has(
+                        processingDocument.id,
+                      )}
+                      selectedForChatCount={selectedChatDocumentIds.length}
                     />
                   ) : uploadUpdate ? (
                     <UploadState update={uploadUpdate} />
@@ -813,6 +844,9 @@ export function DocumentSelectionWorkspace() {
   const [documentActions, setDocumentActions] = useState<DocumentActions>({});
   const [documentActionErrors, setDocumentActionErrors] =
     useState<DocumentActionErrors>({});
+  const [excludedChatDocumentIds, setExcludedChatDocumentIds] = useState<
+    string[]
+  >([]);
   const [uploadUpdates, setUploadUpdates] = useState<UploadUpdates>({});
   const validationResult = useMemo(
     () => validateBatchFiles(selectedFiles),
@@ -845,6 +879,10 @@ export function DocumentSelectionWorkspace() {
     [batch],
   );
   const canChat = batch !== null && readyDocumentIds.length > 0;
+  const excludedChatDocumentIdSet = new Set(excludedChatDocumentIds);
+  const chatDocumentIds = readyDocumentIds.filter(
+    (id) => !excludedChatDocumentIdSet.has(id),
+  );
 
   useEffect(
     () => () => {
@@ -898,6 +936,7 @@ export function DocumentSelectionWorkspace() {
     setBatch(null);
     setDocumentIdsByIndex({});
     setDocumentActionErrors({});
+    setExcludedChatDocumentIds([]);
   }
 
   function handleInputChange(event: ChangeEvent<HTMLInputElement>): void {
@@ -967,6 +1006,21 @@ export function DocumentSelectionWorkspace() {
     setBatch(null);
     setDocumentIdsByIndex({});
     setDocumentActionErrors({});
+    setExcludedChatDocumentIds([]);
+  }
+
+  function handleToggleChatDocument(documentId: string): void {
+    setExcludedChatDocumentIds((current) => {
+      if (current.includes(documentId)) {
+        return current.filter((id) => id !== documentId);
+      }
+
+      const selectedCount = readyDocumentIds.filter(
+        (id) => !current.includes(id),
+      ).length;
+
+      return selectedCount === 1 ? current : [...current, documentId];
+    });
   }
 
   function openReplacementPicker(
@@ -1236,6 +1290,8 @@ export function DocumentSelectionWorkspace() {
         onRemove={handleRemove}
         onReplace={openReplacementPicker}
         onRetry={handleRetryDocument}
+        onToggleChatDocument={handleToggleChatDocument}
+        selectedChatDocumentIds={chatDocumentIds}
       />
       <section
         className="flex min-h-0 min-w-0 flex-col bg-slate-50/30"
@@ -1243,9 +1299,9 @@ export function DocumentSelectionWorkspace() {
       >
         {canChat ? (
           <ChatWorkspace
-            key={batch.id}
+            key={`${batch.id}:${chatDocumentIds.join(",")}`}
             batchId={batch.id}
-            documentIds={readyDocumentIds}
+            documentIds={chatDocumentIds}
           />
         ) : (
           <>
