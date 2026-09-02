@@ -5,7 +5,6 @@ import {
   ArrowUp,
   FileText,
   LoaderCircle,
-  MessageSquareText,
   Square,
 } from "lucide-react";
 import {
@@ -22,6 +21,7 @@ import {
   getUIMessageText,
 } from "@/lib/chat/client";
 import type { ChatSource, DocChatUIMessage } from "@/types/api";
+import { RagPipelineVisualizer } from "./rag-pipeline-visualizer";
 
 type ChatWorkspaceProps = {
   batchId: string;
@@ -222,19 +222,14 @@ function ActiveChat({
         className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-8 sm:py-8"
         aria-live="polite"
       >
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
+        <div
+          className={`mx-auto flex w-full flex-col gap-5 ${
+            messages.length === 0 ? "max-w-6xl" : "max-w-3xl"
+          }`}
+        >
           {messages.length === 0 ? (
-            <div className="flex min-h-[45vh] flex-col items-center justify-center text-center">
-              <span className="grid size-12 place-items-center rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-400">
-                <MessageSquareText size={22} strokeWidth={1.8} aria-hidden="true" />
-              </span>
-              <h1 className="mt-5 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
-                Your documents are ready
-              </h1>
-              <p className="mt-2 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-400">
-                Ask a question and DocChat will answer from the processed
-                documents only.
-              </p>
+            <div className="flex min-h-[55vh] items-center justify-center py-2 sm:py-4">
+              <RagPipelineVisualizer documentCount={documentIds.length} />
             </div>
           ) : (
             messages.map((message) => (

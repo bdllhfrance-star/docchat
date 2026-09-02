@@ -56,13 +56,27 @@ beforeEach(() => {
 afterEach(cleanup);
 
 test("enables the composer and sends a trimmed question", async () => {
-  render(
+  const { container } = render(
     <ChatWorkspace batchId="batch-1" documentIds={["document-1"]} />,
   );
 
   expect(
     await screen.findByRole("heading", { name: "Your documents are ready" }),
   ).toBeDefined();
+  expect(screen.getByTestId("rag-pipeline-visualizer")).toBeDefined();
+  expect(container.querySelectorAll("[data-rag-stage]")).toHaveLength(6);
+  expect(container.querySelectorAll("[data-vector-value]")).toHaveLength(12);
+  expect(container.querySelectorAll("[data-vector-point]")).toHaveLength(6);
+  for (const stage of [
+    "Upload",
+    "Validate",
+    "Extract",
+    "Chunk",
+    "Embed",
+    "Index",
+  ]) {
+    expect(screen.getByText(stage)).toBeDefined();
+  }
   const composer = screen.getByRole("textbox", { name: "Message DocChat" });
 
   fireEvent.change(composer, { target: { value: "  What is required?  " } });
@@ -89,6 +103,7 @@ test("renders progressive text and allows the request to be stopped", async () =
   );
 
   expect(await screen.findByText("Partial answer")).toBeDefined();
+  expect(screen.queryByTestId("rag-pipeline-visualizer")).toBeNull();
   expect(screen.getByText("Writing the answer…")).toBeDefined();
   expect(screen.getByRole("textbox", { name: "Message DocChat" })).toHaveProperty(
     "disabled",

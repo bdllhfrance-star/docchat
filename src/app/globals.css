@@ -326,6 +326,553 @@ textarea {
   transform-origin: center;
 }
 
+@keyframes rag-stage-focus {
+  0%,
+  17% {
+    border-color: rgb(59 130 246 / 0.72);
+    box-shadow:
+      0 0 0 1px rgb(59 130 246 / 0.12),
+      0 18px 35px -24px rgb(37 99 235 / 0.9);
+    transform: translateY(-5px);
+  }
+  25%,
+  100% {
+    border-color: rgb(203 213 225 / 0.9);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+    transform: translateY(0);
+  }
+}
+
+@keyframes rag-status-focus {
+  0%,
+  17% {
+    background: #3b82f6;
+    box-shadow: 0 0 0 5px rgb(59 130 246 / 0.13);
+    transform: scale(1);
+  }
+  25%,
+  100% {
+    background: #cbd5e1;
+    box-shadow: none;
+    transform: scale(0.82);
+  }
+}
+
+@keyframes rag-flow {
+  0% {
+    left: 0;
+    opacity: 0;
+  }
+  8%,
+  88% {
+    opacity: 1;
+  }
+  100% {
+    left: 100%;
+    opacity: 0;
+  }
+}
+
+@keyframes rag-ambient-drift {
+  50% {
+    opacity: 0.78;
+    transform: translate3d(22px, -12px, 0) scale(1.08);
+  }
+}
+
+@keyframes rag-upload-float {
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes rag-upload-arrow {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(3px);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes rag-validation-scan {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(-22px);
+  }
+  50% {
+    opacity: 0.9;
+    transform: translateY(22px);
+  }
+}
+
+@keyframes rag-validation-check {
+  0%,
+  35% {
+    opacity: 0.3;
+    transform: scale(0.72) rotate(-8deg);
+  }
+  55%,
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+
+@keyframes rag-text-read {
+  0%,
+  20% {
+    opacity: 0.22;
+    transform: scaleX(0.3);
+  }
+  55%,
+  100% {
+    opacity: 0.9;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes rag-extract-cursor {
+  0%,
+  100% {
+    left: 10%;
+  }
+  50% {
+    left: 82%;
+  }
+}
+
+@keyframes rag-chunk-breathe {
+  0%,
+  100% {
+    opacity: 0.42;
+    transform: translate(0, 0) scale(0.92);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(var(--rag-chunk-x), var(--rag-chunk-y)) scale(1);
+  }
+}
+
+@keyframes rag-vector-wave {
+  0%,
+  100% {
+    opacity: 0.28;
+    transform: scaleY(0.45);
+  }
+  50% {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+@keyframes rag-orbit-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes rag-point-pulse {
+  50% {
+    opacity: 0.3;
+    box-shadow: 0 0 0 4px rgb(59 130 246 / 0.09);
+  }
+}
+
+@keyframes rag-soft-pulse {
+  50% {
+    opacity: 0.42;
+    transform: scale(0.72);
+  }
+}
+
+.rag-pipeline-shell {
+  isolation: isolate;
+}
+
+.rag-pipeline-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgb(148 163 184 / 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(148 163 184 / 0.08) 1px, transparent 1px);
+  background-size: 26px 26px;
+  mask-image: radial-gradient(circle at center, black 25%, transparent 82%);
+}
+
+.rag-ambient-orb {
+  position: absolute;
+  width: 12rem;
+  height: 12rem;
+  border-radius: 999px;
+  opacity: 0.5;
+  filter: blur(55px);
+  animation: rag-ambient-drift 7s ease-in-out infinite;
+}
+
+.rag-ambient-orb-left {
+  top: 15%;
+  left: -5rem;
+  background: rgb(59 130 246 / 0.34);
+}
+
+.rag-ambient-orb-right {
+  right: -4rem;
+  bottom: 2%;
+  background: rgb(16 185 129 / 0.24);
+  animation-delay: -3.5s;
+}
+
+.rag-pipeline-stage {
+  animation: rag-stage-focus 13.2s ease-in-out infinite;
+  animation-delay: calc(var(--rag-step) * 2.2s);
+  transition: border-color 180ms ease, box-shadow 180ms ease;
+}
+
+.rag-stage-status {
+  animation: rag-status-focus 13.2s ease-in-out infinite;
+  animation-delay: calc(var(--rag-step) * 2.2s);
+}
+
+.rag-stage-visual {
+  filter: drop-shadow(0 7px 14px rgb(37 99 235 / 0.12));
+}
+
+.rag-flow-track {
+  position: absolute;
+  z-index: 0;
+  top: 49%;
+  right: 6%;
+  left: 6%;
+  height: 1px;
+  overflow: visible;
+  background: linear-gradient(90deg, transparent, #93c5fd 12%, #60a5fa 88%, transparent);
+}
+
+.rag-flow-particle {
+  position: absolute;
+  top: -3px;
+  left: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #2563eb;
+  box-shadow: 0 0 12px 3px rgb(59 130 246 / 0.38);
+  animation: rag-flow 6.6s linear infinite;
+}
+
+.rag-flow-particle-two {
+  animation-delay: -2.2s;
+}
+
+.rag-flow-particle-three {
+  animation-delay: -4.4s;
+}
+
+.rag-upload-visual {
+  position: relative;
+  width: 68px;
+  height: 62px;
+  animation: rag-upload-float 2.4s ease-in-out infinite;
+}
+
+.rag-upload-sheet {
+  position: absolute;
+  width: 38px;
+  height: 46px;
+  border: 1.5px solid currentColor;
+  border-radius: 7px;
+  background: color-mix(in srgb, currentColor 7%, transparent);
+}
+
+.rag-upload-sheet-back {
+  top: 9px;
+  left: 5px;
+  opacity: 0.25;
+  transform: rotate(-9deg);
+}
+
+.rag-upload-sheet-middle {
+  top: 5px;
+  left: 12px;
+  opacity: 0.5;
+  transform: rotate(-3deg);
+}
+
+.rag-upload-sheet-front {
+  top: 1px;
+  left: 19px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 11px 8px;
+  background: #eff6ff;
+}
+
+.dark .rag-upload-sheet-front {
+  background: #0f172a;
+}
+
+.rag-upload-sheet-front span {
+  width: 100%;
+  height: 2px;
+  border-radius: 99px;
+  background: currentColor;
+  opacity: 0.44;
+}
+
+.rag-upload-sheet-front span:last-child {
+  width: 60%;
+}
+
+.rag-upload-arrow {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  width: 25px;
+  height: 25px;
+  place-items: center;
+  border-radius: 999px;
+  background: #2563eb;
+  color: white;
+  font-size: 16px;
+  font-weight: 700;
+  animation: rag-upload-arrow 1.35s ease-in-out infinite;
+}
+
+.rag-validate-visual {
+  position: relative;
+  display: grid;
+  width: 62px;
+  height: 62px;
+  place-items: center;
+  overflow: hidden;
+}
+
+.rag-validate-ring {
+  position: absolute;
+  inset: 7px;
+  border: 1.5px solid currentColor;
+  border-radius: 15px;
+  opacity: 0.48;
+}
+
+.rag-validate-check {
+  font-size: 28px;
+  font-weight: 700;
+  animation: rag-validation-check 2.2s ease-in-out infinite;
+}
+
+.rag-validate-scan {
+  position: absolute;
+  right: 8px;
+  left: 8px;
+  height: 1px;
+  background: #34d399;
+  box-shadow: 0 0 8px 2px rgb(52 211 153 / 0.45);
+  animation: rag-validation-scan 2s ease-in-out infinite;
+}
+
+.rag-extract-visual {
+  position: relative;
+  display: flex;
+  width: 67px;
+  height: 58px;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px;
+  border: 1.5px solid currentColor;
+  border-radius: 10px;
+}
+
+.rag-extract-line {
+  width: 100%;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.75;
+  transform-origin: left;
+  animation: rag-text-read 2.4s ease-out infinite;
+  animation-delay: calc(var(--rag-line) * 150ms);
+}
+
+.rag-extract-line:nth-child(2),
+.rag-extract-line:nth-child(5) {
+  width: 70%;
+}
+
+.rag-extract-cursor {
+  position: absolute;
+  right: auto;
+  bottom: 4px;
+  left: 10%;
+  width: 10px;
+  height: 2px;
+  border-radius: 99px;
+  background: #34d399;
+  box-shadow: 0 0 6px rgb(52 211 153 / 0.7);
+  animation: rag-extract-cursor 2.4s ease-in-out infinite;
+}
+
+.rag-chunk-visual {
+  display: grid;
+  width: 68px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+}
+
+.rag-chunk-block {
+  --rag-chunk-x: 0;
+  --rag-chunk-y: 0;
+  height: 24px;
+  border: 1.5px solid currentColor;
+  border-radius: 6px;
+  background: color-mix(in srgb, currentColor 9%, transparent);
+  animation: rag-chunk-breathe 2s ease-in-out infinite;
+  animation-delay: calc(var(--rag-cell) * 100ms);
+}
+
+.rag-chunk-block:nth-child(1),
+.rag-chunk-block:nth-child(4) {
+  --rag-chunk-x: -3px;
+}
+
+.rag-chunk-block:nth-child(3),
+.rag-chunk-block:nth-child(6) {
+  --rag-chunk-x: 3px;
+}
+
+.rag-chunk-block:nth-child(-n + 3) {
+  --rag-chunk-y: -2px;
+}
+
+.rag-chunk-block:nth-child(n + 4) {
+  --rag-chunk-y: 2px;
+}
+
+.rag-embed-visual {
+  display: grid;
+  width: 72px;
+  height: 56px;
+  grid-template-columns: repeat(12, 1fr);
+  align-items: center;
+  gap: 2px;
+}
+
+.rag-embed-value {
+  height: 28px;
+  max-height: 42px;
+  border-radius: 999px;
+  background: linear-gradient(to top, #2563eb, #34d399);
+  transform-origin: bottom;
+  animation: rag-vector-wave 1.7s ease-in-out infinite;
+  animation-delay: calc(var(--rag-value) * 80ms);
+}
+
+.rag-embed-value:nth-child(3n + 1) {
+  height: 17px;
+}
+
+.rag-embed-value:nth-child(3n + 2) {
+  height: 40px;
+}
+
+.rag-index-visual {
+  position: relative;
+  width: 72px;
+  height: 72px;
+}
+
+.rag-index-orbit {
+  position: absolute;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  opacity: 0.35;
+}
+
+.rag-index-orbit-outer {
+  inset: 3px;
+  border-style: dashed;
+  animation: rag-orbit-spin 9s linear infinite;
+}
+
+.rag-index-orbit-inner {
+  inset: 14px;
+  animation: rag-orbit-spin 5s linear infinite reverse;
+}
+
+.rag-index-core {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 13px;
+  height: 13px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, #2563eb, #34d399);
+  box-shadow: 0 0 15px rgb(59 130 246 / 0.45);
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.rag-index-point {
+  position: absolute;
+  top: calc(50% - 3px);
+  left: calc(50% - 3px);
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #3b82f6;
+  transform: rotate(calc(var(--rag-point) * 60deg)) translateX(30px);
+  transform-origin: 3px 3px;
+  animation: rag-point-pulse 1.8s ease-in-out infinite;
+  animation-delay: calc(var(--rag-point) * 140ms);
+}
+
+.rag-replay-dot,
+.rag-ready-pulse {
+  animation: rag-soft-pulse 1.7s ease-in-out infinite;
+}
+
+.rag-ready-pulse::after {
+  position: absolute;
+  inset: -4px;
+  border: 1px solid rgb(16 185 129 / 0.45);
+  border-radius: inherit;
+  content: "";
+}
+
+.dark .rag-pipeline-grid {
+  background-image:
+    linear-gradient(rgb(71 85 105 / 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(71 85 105 / 0.15) 1px, transparent 1px);
+}
+
+.dark .rag-pipeline-stage {
+  animation-name: rag-stage-focus-dark;
+}
+
+@keyframes rag-stage-focus-dark {
+  0%,
+  17% {
+    border-color: rgb(59 130 246 / 0.78);
+    box-shadow:
+      0 0 0 1px rgb(59 130 246 / 0.16),
+      0 18px 38px -22px rgb(37 99 235 / 0.72);
+    transform: translateY(-5px);
+  }
+  25%,
+  100% {
+    border-color: rgb(51 65 85 / 0.8);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.18);
+    transform: translateY(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .document-row-enter,
   .document-row-deleting,
@@ -353,5 +900,11 @@ textarea {
   .document-row-deleting {
     opacity: 0.65;
     transform: none;
+  }
+
+  [class^="rag-"],
+  [class*=" rag-"] {
+    animation: none !important;
+    transition: none !important;
   }
 }

@@ -264,8 +264,10 @@ de son traitement.
   erreur locale éventuelle et action de retrait.
 - **Traitement** : une ligne stable par fichier avec animation, libellé de
   l'étape réelle et actions disponibles.
-- **Chat prêt** : panneau de documents compact à gauche et conversation au
-  centre ; le panneau devient un tiroir sur mobile.
+- **Chat prêt** : panneau de documents compact à gauche et grande visualisation
+  pédagogique du pipeline au centre tant qu'aucun message n'existe ; elle est
+  remplacée par la conversation dès le premier échange. Le panneau devient un
+  tiroir sur mobile.
 - **Composer** : fixé au bas de la zone de conversation, désactivé avec une
   raison visible tant que `canSendMessage` vaut `false`.
 - **Sources** : présentées sous la réponse dans une liste compacte et
@@ -291,12 +293,15 @@ correspond à l'opération qu'elle représente :
 | Échec | L'icône rouge apparaît avec un seul mouvement horizontal court ; aucune animation répétitive. |
 | Réessayer | La flèche SVG effectue une rotation unique puis l'étape active reprend. |
 | Supprimer | La ligne s'estompe puis se replie proprement sans déplacer brutalement la liste. |
+| Replay pédagogique du pipeline | Tant que le chat est vide, six scènes rejouent en boucle `Upload → Validate → Extract → Chunk → Embed → Index`. Chaque étape reste mise en avant environ 2,2 secondes et contient plusieurs éléments animés représentant l'opération. Le badge `Process replay` évite de présenter cette démonstration comme une progression réelle. |
 | Streaming du chat | Le texte se complète naturellement ; aucun faux curseur animé si aucun nouveau delta n'arrive. |
 
 Règles d'implémentation des animations :
 
 - Durée habituelle de 150 à 300 ms pour les transitions d'interface.
 - Animations d'attente lentes, discrètes et limitées à la ligne concernée.
+- Le replay central est la seule animation pédagogique persistante ; il disparaît
+  dès que la conversation contient un message.
 - `transform` et `opacity` privilégiés pour préserver les performances.
 - Progression réelle pour l'upload ; aucune fausse valeur en pourcentage pour
   l'extraction, le chunking, les embeddings ou l'indexation.
@@ -840,6 +845,7 @@ intégrés par l'agent principal avant le lancement d'une nouvelle vague.
 | [~] | CHAT-01 | RAG-03 | Backend/RAG | `POST /api/chat`, validations avant stream, contexte dynamique, prompt fondé uniquement sur les documents, refus sans contexte et UI message stream sourcé sont implémentés et testés localement. Une génération réelle `gemini-3.7-flash` a réussi ; le seuil et le parcours complet attendent Atlas. |
 | [~] | UI-05 | UI-04, CHAT-01 | UI | Chat relié à `/api/chat` avec `useChat`, historique `sessionStorage` isolé par batch, annulation et affichage progressif. Le composer ne s'active que lorsque tous les documents sont `ready` ; le parcours réel attend le smoke test Vercel. |
 | [~] | UI-06 | UI-05 | UI | Sources dépliables affichées sous chaque réponse avec numéro de citation, fichier, emplacement, extrait et score : `Similarity` pour le cosinus seul ou `Hybrid score` pour RRF. Le contrôle natif est utilisable au clavier et responsive ; le flux réel Atlas/Gemini reste à valider dans `GATE-01`. |
+| [x] | UI-07 | UI-05 | UI | L'état de chat vide présente un replay central du pipeline complet avec six scènes SVG/CSS personnalisées, séquence lisible, thèmes clair/sombre et repli `prefers-reduced-motion`. La visualisation disparaît dès le premier message. |
 | [x] | SEC-01 | UPL-03, CHAT-01 | Backend/QA | Extension, MIME, signature PDF, limites de fichiers et requêtes, noms, sessions, propriété des ressources, prompt injection, rendu HTML inerte, headers et absence de logs sensibles sont vérifiés localement avec cas négatifs. |
 | [x] | TST-01 | SEC-01, UI-06 | QA | Les tests unitaires et d'intégration P0 couvrent contrats, upload, parser, chunker, statuts, retrieval, refus, streaming, sources, sécurité et erreurs. `lint`, `typecheck`, tests et build réussissent localement. |
 | [~] | GATE-01 | TST-01 | Principal | Le code et le parcours déterministe sont verts ; Gemini, Upstash, Atlas et Blob sont joignables. Le parcours PDF applicatif complet — callback, ingestion, streaming, source, refus, retry et suppression — doit maintenant être validé sur l'URL Vercel ; aucune simulation n'est présentée comme un E2E réel. |
