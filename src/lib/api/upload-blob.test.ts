@@ -159,6 +159,12 @@ describe("private Blob upload handler", () => {
 
   test("accepts a signed callback without requiring the browser cookie", async () => {
     const deps = dependencies();
+    const checkRateLimit = vi.fn().mockResolvedValue({
+      success: false,
+      limit: 30,
+      remaining: 0,
+      reset: Date.now() + 60_000,
+    });
     const blob: PutBlobResult = {
       url: "https://private.example.invalid/document.pdf",
       downloadUrl: "https://private.example.invalid/document.pdf?download=1",
@@ -183,10 +189,12 @@ describe("private Blob upload handler", () => {
 
     const response = await handleBlobUpload(request({}), {
       ...deps,
+      checkRateLimit,
       handleUpload,
     });
 
     expect(response.status).toBe(200);
+    expect(checkRateLimit).not.toHaveBeenCalled();
     expect(deps.requireSession).not.toHaveBeenCalled();
     expect(deps.completeDocumentUpload).toHaveBeenCalledWith({
       sessionId,
@@ -234,6 +242,24 @@ describe("private Blob upload handler", () => {
         message: "The browser upload did not complete.",
       },
     });
+    expect(deps.issueSignedToken).not.toHaveBeenCalled();
+  });
+
+  test("stops a rate-limited browser upload before session work", async () => {
+    const deps = dependencies();
+    const response = await handleBlobUpload(request({}), {
+      ...deps,
+      checkRateLimit: vi.fn().mockResolvedValue({
+        success: false,
+        limit: 30,
+        remaining: 0,
+        reset: Date.now() + 60_000,
+      }),
+      handleUpload: issuanceHandler(),
+    });
+
+    expect(response.status).toBe(429);
+    expect(deps.requireSession).not.toHaveBeenCalled();
     expect(deps.issueSignedToken).not.toHaveBeenCalled();
   });
 

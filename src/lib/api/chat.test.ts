@@ -155,6 +155,25 @@ describe("chat API", () => {
     expect(deps.requireSession).not.toHaveBeenCalled();
   });
 
+  test("stops a rate-limited request before reading session data", async () => {
+    const deps = dependencies({
+      checkRateLimit: vi.fn().mockResolvedValue({
+        success: false,
+        limit: 10,
+        remaining: 0,
+        reset: Date.now() + 60_000,
+      }),
+    });
+
+    const response = await handleChatRequest(request(), deps);
+
+    expect(response.status).toBe(429);
+    expect(response.headers.get("retry-after")).toBeTruthy();
+    expect(deps.requireSession).not.toHaveBeenCalled();
+    expect(deps.retrieveChunks).not.toHaveBeenCalled();
+    expect(deps.streamResponse).not.toHaveBeenCalled();
+  });
+
   test("requires a valid session and owned batch", async () => {
     const missingSession = dependencies({
       requireSession: vi.fn().mockResolvedValue(null),

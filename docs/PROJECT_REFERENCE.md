@@ -626,8 +626,20 @@ Paramètres initiaux :
 - Headers globaux `nosniff`, `no-referrer`, anti-framing et désactivation des
   capteurs inutilisés. Une CSP sera définie avec le déploiement réel afin de ne
   pas inventer les origines Blob/Vercel avant `SET-07`.
-- Aucun log de production ne contient de document, vecteur ou secret. Les logs
-  structurés et le rate limiting partagé restent les bonus `BON-04` et `BON-03`.
+- Aucun log de production ne contient de document, vecteur, question, réponse,
+  secret, IP brute ou identifiant de session. Chaque route API écrit sur
+  `stdout` une ligne JSON limitée à : horodatage, niveau, événement,
+  `requestId`, méthode, route générique, opération, statut, durée et code
+  d'erreur. Ces lignes apparaissent dans le terminal local et dans les Runtime
+  Logs Vercel après déploiement.
+- Le rate limiting partagé Upstash utilise trois compteurs par adresse client
+  anonymisée par HMAC : upload/remplacement `30/min`, retry `5/min` et chat
+  `10/min`. La création du batch, les autorisations et échecs d'upload navigateur
+  sont comptés ; le callback Blob signé ne l'est pas.
+- Les réponses bloquées utilisent `429`, `Retry-After` et les en-têtes
+  `X-RateLimit-*`. Analytics Upstash est désactivé, un cache éphémère évite des
+  appels Redis répétés pour une adresse déjà bloquée et le timeout est de 1 s
+  avec le comportement fail-open du SDK.
 - Suppression automatique par TTL et suppression manuelle cohérente.
 
 ## 16. Performance et comportement serverless
@@ -828,8 +840,8 @@ intégrés par l'agent principal avant le lancement d'une nouvelle vague.
 | --- | --- | --- | --- | --- |
 | [~] | BON-01 | GATE-01 | Principal/UI | Multi-PDF, réussite indépendante, sélection de tous les documents par défaut et exclusion contrôlée sont implémentés. Les tests prouvent que le backend applique les identifiants choisis ; le batch réel reste bloqué par `SET-07`. |
 | [~] | BON-02 | GATE-01 | Backend/RAG | Atlas Search full-text, filtres exacts et fusion RRF côté application avec la recherche vectorielle sont implémentés et testés sans fuite entre sessions/documents. Les deux index Atlas réels restent à créer et tester avec `SET-07`. |
-| [ ] | BON-03 | GATE-01, SET-02 | Backend | Ajouter le rate limiting partagé Upstash sur upload, retry et chat. Les réponses `429` sont structurées et testées. |
-| [ ] | BON-04 | GATE-01 | Backend/QA | Ajouter des logs JSON avec `requestId`, durée, étape et codes d'erreur, sans texte documentaire, vecteur ni secret. |
+| [~] | BON-03 | GATE-01, SET-02 | Backend | Rate limiting partagé Upstash implémenté et testé localement sur upload/remplacement `30/min`, retry `5/min` et chat `10/min`, avec réponses `429` structurées. Le callback Blob signé est exempté. La validation réelle Upstash reste bloquée par `SET-07`. |
+| [x] | BON-04 | GATE-01 | Backend/QA | Chaque route API produit une ligne JSON avec `requestId`, durée, opération et code d'erreur sur `stdout`, sans contenu documentaire, question, réponse, vecteur, secret, IP brute ni session. Les cas succès, rejet et exception sont testés. |
 | [ ] | BON-05 | GATE-01, SET-05 | QA | Vérifier le parcours complet sur PDF français et arabe, affichage RTL du contenu arabe compris. Les résultats et défauts sont enregistrés. |
 | [ ] | BON-06 | BON-02, BON-05 | QA/RAG | Exécuter les cinq questions d'évaluation, dont une absente, et mesurer présence de la source dans le top-K, refus et citation. Ajuster seulement sur preuve. |
 | [ ] | BON-07 | BON-01, BON-03, BON-04 | QA | Ajouter les tests d'intégration des bonus et le parcours end-to-end multi-PDF. Tous les tests sont déterministes. |
@@ -1020,8 +1032,12 @@ limites de démonstration resteront en dessous de ces quotas.
   dépendre de `$rankFusion` ou d'une version de cluster particulière.
 - Blob : store privé et upload direct signé depuis le navigateur, limité par
   fichier à 10 Mo. Le callback de fin d'upload est idempotent.
-- Upstash : Redis régional et sliding window initial de 10 chats par minute,
-  ajusté uniquement après observation des quotas réels.
+- Upstash : Redis régional avec sliding windows indépendantes : upload et
+  remplacement `30/min`, retry `5/min`, chat `10/min`. L'adresse transmise par
+  Vercel est transformée en identifiant HMAC avec `APP_SECRET` avant tout accès
+  Redis. Analytics est désactivé pour économiser les commandes. L'offre gratuite
+  observée le 2026-09-02 annonce 500 000 commandes par mois et 256 Mo ; elle doit
+  être revérifiée lors de `SET-07`, sans activer de dépassement payant.
 - Runtime : Node.js 22 minimum en local et Node.js 24 sélectionné sur Vercel.
 
 Les packages sont installés et compilent. Les appels réels restent bloqués tant
@@ -1087,3 +1103,5 @@ Le projet est terminé uniquement lorsque :
 | 2026-09-02 | Générer les vecteurs documentaires avec `gemini-embedding-2`, `RETRIEVAL_DOCUMENT`, 768 dimensions et deux appels simultanés maximum. |
 | 2026-09-02 | Utiliser exclusivement les offres gratuites des services externes et refuser toute dépendance obligatoire à une capacité payante. |
 | 2026-09-02 | Exécuter Vector Search et Search lexical en parallèle puis fusionner leurs rangs par RRF dans l'application avec une constante de 60. |
+| 2026-09-02 | Conserver Upstash pour le rate limiting serverless partagé, avec trois limites simples, IP anonymisée, analytics désactivé et usage compatible avec l'offre gratuite. |
+| 2026-09-02 | Envoyer les logs JSON vers la sortie standard : terminal en local et Runtime Logs Vercel en production, sans contenu utilisateur ni identifiant sensible. |

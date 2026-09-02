@@ -139,6 +139,23 @@ describe("retry document API", () => {
     expect(deps.findDocument).toHaveBeenCalledWith(sessionId, documentId);
     expect(deps.restartFailedDocument).not.toHaveBeenCalled();
   });
+
+  test("stops a rate-limited retry before reading session data", async () => {
+    const deps = retryDependencies({
+      checkRateLimit: vi.fn().mockResolvedValue({
+        success: false,
+        limit: 5,
+        remaining: 0,
+        reset: Date.now() + 60_000,
+      }),
+    });
+
+    const response = await handleRetryDocument(documentId, deps);
+
+    expect(response.status).toBe(429);
+    expect(deps.requireSession).not.toHaveBeenCalled();
+    expect(deps.restartFailedDocument).not.toHaveBeenCalled();
+  });
 });
 
 describe("delete document API", () => {

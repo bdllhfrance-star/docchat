@@ -13,6 +13,9 @@ describe("API errors", () => {
     );
 
     expect(response.status).toBe(400);
+    expect(response.headers.get("cache-control")).toBe("no-store");
+    expect(response.headers.get("x-error-code")).toBe("INVALID_REQUEST");
+    expect(response.headers.get("x-request-id")).toBe("request-123");
     await expect(response.json()).resolves.toEqual({
       error: {
         code: "INVALID_REQUEST",

@@ -25,6 +25,12 @@ import {
   getAllowedMimeTypes,
   MAX_FILE_SIZE_BYTES,
 } from "@/lib/uploads/validation";
+import {
+  assertRateLimit,
+  type RateLimitCheck,
+  RateLimitExceededError,
+  rateLimitErrorResponse,
+} from "@/lib/rate-limit";
 import type { ApiErrorCode } from "@/types/api";
 import type { DocumentRecord } from "@/types/persistence";
 
@@ -79,6 +85,7 @@ export type BlobUploadDependencies = {
   ingestDocument: (document: DocumentRecord) => Promise<void>;
   now?: () => number;
   requestId?: () => string;
+  checkRateLimit?: RateLimitCheck;
 };
 
 class UploadRequestError extends Error {
@@ -191,6 +198,7 @@ export async function handleBlobUpload(
     }
 
     if (uploadFailure) {
+      await assertRateLimit(dependencies.checkRateLimit);
       const sessionId = await dependencies.requireSession();
 
       if (!sessionId) {
@@ -237,6 +245,8 @@ export async function handleBlobUpload(
             "Multipart upload is not supported for these file sizes.",
           );
         }
+
+        await assertRateLimit(dependencies.checkRateLimit);
 
         const sessionId = await dependencies.requireSession();
 
@@ -350,6 +360,10 @@ export async function handleBlobUpload(
 
     return Response.json(response);
   } catch (error) {
+    if (error instanceof RateLimitExceededError) {
+      return rateLimitErrorResponse(error, requestId);
+    }
+
     if (error instanceof UploadRequestError) {
       return apiErrorResponse(
         error.status,

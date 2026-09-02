@@ -19,6 +19,12 @@ import {
   VectorRetrievalError,
 } from "@/lib/rag/vector-search";
 import { MAX_FILES_PER_BATCH } from "@/lib/uploads/validation";
+import {
+  assertRateLimit,
+  type RateLimitCheck,
+  RateLimitExceededError,
+  rateLimitErrorResponse,
+} from "@/lib/rate-limit";
 import type { ChatRequest } from "@/types/api";
 import type { BatchRecord, DocumentRecord } from "@/types/persistence";
 
@@ -72,6 +78,7 @@ export type ChatApiDependencies = {
   }) => Promise<RetrievedChunk[]>;
   streamResponse: (input: ChatStreamInput) => Response;
   requestId?: () => string;
+  checkRateLimit?: RateLimitCheck;
 };
 
 function invalidBodyResponse(error: ZodError, requestId: string): Response {
@@ -183,6 +190,8 @@ export async function handleChatRequest(
       return parsed;
     }
 
+    await assertRateLimit(dependencies.checkRateLimit);
+
     const sessionId = await dependencies.requireSession();
 
     if (!sessionId) {
@@ -263,6 +272,10 @@ export async function handleChatRequest(
       question: parsed.message,
     });
   } catch (error) {
+    if (error instanceof RateLimitExceededError) {
+      return rateLimitErrorResponse(error, requestId);
+    }
+
     return retrievalErrorResponse(error, requestId);
   }
 }

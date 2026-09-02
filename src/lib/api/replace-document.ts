@@ -14,6 +14,12 @@ import type {
 import { createBlobPathname } from "@/lib/uploads/blob-contract";
 import { parseBatchManifest } from "@/lib/uploads/manifest";
 import { MAX_BATCH_SIZE_BYTES } from "@/lib/uploads/validation";
+import {
+  assertRateLimit,
+  type RateLimitCheck,
+  RateLimitExceededError,
+  rateLimitErrorResponse,
+} from "@/lib/rate-limit";
 import type {
   ApiErrorCode,
   ReplaceDocumentResponse,
@@ -42,6 +48,7 @@ export type ReplaceDocumentDependencies = {
     restoration: RestoreDocumentReplacement,
   ) => Promise<DocumentRecord | null>;
   requestId?: () => string;
+  checkRateLimit?: RateLimitCheck;
 };
 
 function toDocumentSummary(document: DocumentRecord): DocumentSummary {
@@ -126,6 +133,7 @@ export async function handleReplaceDocument(
     }
 
     const replacement = parseBatchManifest({ files: [input] }).files[0];
+    await assertRateLimit(dependencies.checkRateLimit);
     const sessionId = await dependencies.requireSession();
 
     if (!sessionId) {
@@ -225,6 +233,10 @@ export async function handleReplaceDocument(
 
     return Response.json(body);
   } catch (error) {
+    if (error instanceof RateLimitExceededError) {
+      return rateLimitErrorResponse(error, requestId);
+    }
+
     if (error instanceof RequestBodyTooLargeError) {
       return apiErrorResponse(
         413,

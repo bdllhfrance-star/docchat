@@ -8,6 +8,12 @@ import {
   RequestBodyTooLargeError,
 } from "@/lib/api/request-body";
 import { SESSION_TTL_SECONDS } from "@/lib/session";
+import {
+  assertRateLimit,
+  type RateLimitCheck,
+  RateLimitExceededError,
+  rateLimitErrorResponse,
+} from "@/lib/rate-limit";
 import { createBlobPathname } from "@/lib/uploads/blob-contract";
 import { parseBatchManifest } from "@/lib/uploads/manifest";
 import type { RequestSession } from "@/lib/session-request";
@@ -25,6 +31,7 @@ export type CreateBatchDependencies = {
   createBatch: (batch: CreatedBatch) => Promise<CreatedBatch>;
   ensureSession: () => Promise<RequestSession>;
   createId?: () => string;
+  checkRateLimit?: RateLimitCheck;
   now?: () => Date;
   requestId?: () => string;
 };
@@ -147,6 +154,7 @@ export async function handleCreateBatch(
     }
 
     const manifest = parseBatchManifest(input);
+    await assertRateLimit(dependencies.checkRateLimit);
     const session = await dependencies.ensureSession();
     const created = createRecords(
       session.sessionId,
@@ -166,6 +174,10 @@ export async function handleCreateBatch(
 
     return Response.json(response, { status: 201 });
   } catch (error) {
+    if (error instanceof RateLimitExceededError) {
+      return rateLimitErrorResponse(error, requestId);
+    }
+
     if (error instanceof RequestBodyTooLargeError) {
       return apiErrorResponse(
         413,

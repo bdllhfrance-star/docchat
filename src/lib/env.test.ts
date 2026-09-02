@@ -3,6 +3,7 @@ import { describe, expect, test } from "vitest";
 import {
   getBlobEnv,
   getDatabaseEnv,
+  getRateLimitEnv,
   getServerEnv,
   getSessionEnv,
 } from "./env";
@@ -60,6 +61,14 @@ describe("server environment", () => {
       BLOB_STORE_ID: validEnv.BLOB_STORE_ID,
       BLOB_WEBHOOK_PUBLIC_KEY: validEnv.BLOB_WEBHOOK_PUBLIC_KEY,
       VERCEL_OIDC_TOKEN: validEnv.VERCEL_OIDC_TOKEN,
+    });
+  });
+
+  test("validates rate limiting variables independently", () => {
+    expect(getRateLimitEnv(validEnv)).toEqual({
+      APP_SECRET: validEnv.APP_SECRET,
+      UPSTASH_REDIS_REST_TOKEN: validEnv.UPSTASH_REDIS_REST_TOKEN,
+      UPSTASH_REDIS_REST_URL: validEnv.UPSTASH_REDIS_REST_URL,
     });
   });
 });

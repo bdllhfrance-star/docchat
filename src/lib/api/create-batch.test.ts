@@ -184,4 +184,33 @@ describe("create batch handler", () => {
     expect(body).not.toContain("mongodb://");
     expect(body).not.toContain("secret");
   });
+
+  test("stops a rate-limited batch before session and persistence work", async () => {
+    const deps = {
+      ...dependencies(),
+      checkRateLimit: vi.fn().mockResolvedValue({
+        success: false as const,
+        limit: 30,
+        remaining: 0,
+        reset: Date.now() + 60_000,
+      }),
+    };
+    const response = await handleCreateBatch(
+      request({
+        files: [
+          {
+            clientId,
+            filename: "guide.pdf",
+            size: 1024,
+            mimeType: "application/pdf",
+          },
+        ],
+      }),
+      deps,
+    );
+
+    expect(response.status).toBe(429);
+    expect(deps.ensureSession).not.toHaveBeenCalled();
+    expect(deps.createBatch).not.toHaveBeenCalled();
+  });
 });

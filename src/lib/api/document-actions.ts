@@ -4,6 +4,12 @@ import { z } from "zod";
 
 import { apiErrorResponse } from "@/lib/api/errors";
 import type { DeleteDocumentResult } from "@/lib/db/batch-repository";
+import {
+  assertRateLimit,
+  type RateLimitCheck,
+  RateLimitExceededError,
+  rateLimitErrorResponse,
+} from "@/lib/rate-limit";
 import type { RetryDocumentResponse } from "@/types/api";
 import type { DocumentStatus, DocumentSummary } from "@/types/documents";
 import type { DocumentRecord } from "@/types/persistence";
@@ -29,6 +35,7 @@ type BaseDocumentActionDependencies = {
 };
 
 export type RetryDocumentDependencies = BaseDocumentActionDependencies & {
+  checkRateLimit?: RateLimitCheck;
   ingestDocument: (document: DocumentRecord) => Promise<void>;
   restartFailedDocument: (
     ownership: DocumentOwnership,
@@ -115,6 +122,7 @@ export async function handleRetryDocument(
   }
 
   try {
+    await assertRateLimit(dependencies.checkRateLimit);
     const found = await requireDocument(documentId, dependencies, requestId);
 
     if (found instanceof Response) {
@@ -171,7 +179,11 @@ export async function handleRetryDocument(
     return processed
       ? retryResponse(processed)
       : apiErrorResponse(404, requestId, "NOT_FOUND", "Document not found.");
-  } catch {
+  } catch (error) {
+    if (error instanceof RateLimitExceededError) {
+      return rateLimitErrorResponse(error, requestId);
+    }
+
     return apiErrorResponse(
       500,
       requestId,
