@@ -736,9 +736,9 @@ function DisabledComposer({
   }
 
   return (
-    <footer className="shrink-0 border-t border-slate-200 bg-white px-3 py-3 dark:border-slate-800 dark:bg-slate-950 sm:px-6 sm:py-4">
+    <footer className="shrink-0 bg-transparent px-3 pt-2 pb-3 sm:px-6 sm:pt-3 sm:pb-4">
       <div className="mx-auto w-full max-w-3xl">
-        <div className="relative rounded-2xl border border-slate-200 bg-slate-50 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="relative rounded-2xl border border-white/80 bg-white/80 shadow-[0_12px_35px_-20px_rgba(15,23,42,0.45)] backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/80">
           <label htmlFor="message" className="sr-only">
             Message DocChat
           </label>
@@ -1223,7 +1223,7 @@ export function DocumentSelectionWorkspace() {
         selectedChatDocumentIds={chatDocumentIds}
       />
       <section
-        className="flex min-h-0 min-w-0 flex-col bg-slate-50/30 dark:bg-slate-950"
+        className="conversation-surface flex min-h-0 min-w-0 flex-col overflow-hidden"
         aria-label="Conversation workspace"
       >
         {canChat ? (

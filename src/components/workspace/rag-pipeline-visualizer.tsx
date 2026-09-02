@@ -146,7 +146,6 @@ export function RagPipelineVisualizer({
       aria-labelledby="rag-pipeline-heading"
       data-testid="rag-pipeline-visualizer"
     >
-      <div className="rag-pipeline-grid" aria-hidden="true" />
       <div className="rag-ambient-orb rag-ambient-orb-left" aria-hidden="true" />
       <div className="rag-ambient-orb rag-ambient-orb-right" aria-hidden="true" />
 

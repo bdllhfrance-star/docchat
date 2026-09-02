@@ -490,29 +490,29 @@ textarea {
   }
 }
 
-.rag-pipeline-shell {
-  isolation: isolate;
+.conversation-surface {
   background:
+    linear-gradient(rgb(148 163 184 / 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(148 163 184 / 0.08) 1px, transparent 1px),
     radial-gradient(circle at 8% 48%, rgb(59 130 246 / 0.12), transparent 31%),
     radial-gradient(circle at 94% 62%, rgb(16 185 129 / 0.1), transparent 28%),
     linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  background-size: 26px 26px, 26px 26px, auto, auto, auto;
 }
 
-.dark .rag-pipeline-shell {
+.dark .conversation-surface {
   background:
+    linear-gradient(rgb(71 85 105 / 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(71 85 105 / 0.15) 1px, transparent 1px),
     radial-gradient(circle at 8% 48%, rgb(37 99 235 / 0.2), transparent 32%),
     radial-gradient(circle at 94% 62%, rgb(5 150 105 / 0.14), transparent 29%),
     linear-gradient(180deg, #020617 0%, #07101f 100%);
+  background-size: 26px 26px, 26px 26px, auto, auto, auto;
 }
 
-.rag-pipeline-grid {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgb(148 163 184 / 0.08) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(148 163 184 / 0.08) 1px, transparent 1px);
-  background-size: 26px 26px;
-  mask-image: radial-gradient(circle at center, black 25%, transparent 82%);
+.rag-pipeline-shell {
+  isolation: isolate;
+  background: transparent;
 }
 
 .rag-ambient-orb {
@@ -855,12 +855,6 @@ textarea {
   border: 1px solid rgb(16 185 129 / 0.45);
   border-radius: inherit;
   content: "";
-}
-
-.dark .rag-pipeline-grid {
-  background-image:
-    linear-gradient(rgb(71 85 105 / 0.15) 1px, transparent 1px),
-    linear-gradient(90deg, rgb(71 85 105 / 0.15) 1px, transparent 1px);
 }
 
 .dark .rag-pipeline-stage {

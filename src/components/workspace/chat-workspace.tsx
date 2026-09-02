@@ -220,7 +220,7 @@ function ActiveChat({
   }
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col bg-transparent">
       <div
         className={`min-h-0 flex-1 overflow-y-auto ${
           messages.length === 0 ? "flex" : "px-4 py-6 sm:px-8 sm:py-8"
@@ -256,7 +256,7 @@ function ActiveChat({
         </div>
       </div>
 
-      <footer className="shrink-0 border-t border-slate-200 bg-white px-3 py-3 dark:border-slate-800 dark:bg-slate-950 sm:px-6 sm:py-4">
+      <footer className="shrink-0 bg-transparent px-3 pt-2 pb-3 sm:px-6 sm:pt-3 sm:pb-4">
         <form className="mx-auto w-full max-w-3xl" onSubmit={handleSubmit}>
           {error ? (
             <div
@@ -273,7 +273,7 @@ function ActiveChat({
               </button>
             </div>
           ) : null}
-          <div className="relative rounded-2xl border border-slate-300 bg-white shadow-sm focus-within:border-slate-500 focus-within:ring-2 focus-within:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:focus-within:border-blue-500 dark:focus-within:ring-blue-950">
+          <div className="relative rounded-2xl border border-white/80 bg-white/85 shadow-[0_12px_35px_-20px_rgba(15,23,42,0.5)] backdrop-blur-xl focus-within:border-slate-500 focus-within:ring-2 focus-within:ring-slate-200 dark:border-slate-700/80 dark:bg-slate-900/85 dark:focus-within:border-blue-500 dark:focus-within:ring-blue-950">
             <label htmlFor="message" className="sr-only">
               Message DocChat
             </label>

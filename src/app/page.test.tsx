@@ -119,6 +119,7 @@ test("renders the initial document workspace", () => {
   const conversation = screen.getByRole("region", {
     name: "Conversation workspace",
   });
+  expect(conversation.className).toContain("conversation-surface");
   expect(
     within(conversation).queryByRole("button", { name: "Choose documents" }),
   ).toBeNull();

@@ -272,6 +272,10 @@ de son traitement.
   pédagogique du pipeline au centre tant qu'aucun message n'existe ; elle est
   remplacée par la conversation dès le premier échange. Le panneau devient un
   tiroir sur mobile.
+- **Toile continue** : la grille et le gradient couvrent toute la surface de
+  conversation, y compris derrière le composer, sans bande blanche ni bordure
+  de séparation. Après le premier message, la conversation se pose sur cette
+  même toile au lieu de remplacer son arrière-plan.
 - **Information non répétée** : le panneau gauche ne contient pas un second
   bloc `Session limits`; les formats et limites sont affichés une seule fois
   dans la surface centrale avant la conversation.
