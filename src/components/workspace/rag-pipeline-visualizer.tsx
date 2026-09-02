@@ -1,3 +1,4 @@
+import Image from "next/image";
 import type { CSSProperties } from "react";
 
 import { GEMINI_CHAT_MODEL } from "@/lib/ai/model-config";
@@ -35,32 +36,13 @@ function GeminiPoweredBadge() {
       className="inline-flex max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-2xl border border-slate-200/90 bg-white/85 px-3.5 py-2 text-left shadow-sm backdrop-blur-md dark:border-slate-700/80 dark:bg-slate-950/75"
       aria-label={`Powered by ${GEMINI_CHAT_MODEL.displayName}. ${inputTokens} input tokens, ${outputTokens} output tokens, ${GEMINI_CHAT_MODEL.thinkingLevel} reasoning.`}
     >
-      <svg
+      <Image
+        src="/gemini-spark-logo.png"
+        alt=""
+        width={560}
+        height={560}
         className="size-7 shrink-0"
-        viewBox="0 0 32 32"
-        aria-hidden="true"
-      >
-        <defs>
-          <linearGradient
-            id="gemini-spark-gradient"
-            x1="4"
-            y1="4"
-            x2="28"
-            y2="28"
-            gradientUnits="userSpaceOnUse"
-          >
-            <stop offset="0" stopColor="#4285f4" />
-            <stop offset="0.34" stopColor="#9b72cb" />
-            <stop offset="0.62" stopColor="#d96570" />
-            <stop offset="0.82" stopColor="#f9ab55" />
-            <stop offset="1" stopColor="#34a853" />
-          </linearGradient>
-        </defs>
-        <path
-          fill="url(#gemini-spark-gradient)"
-          d="M16 2.5c1.35 7.67 5.83 12.15 13.5 13.5-7.67 1.35-12.15 5.83-13.5 13.5C14.65 21.83 10.17 17.35 2.5 16 10.17 14.65 14.65 10.17 16 2.5Z"
-        />
-      </svg>
+      />
 
       <div className="min-w-0">
         <p className="text-[9px] font-bold tracking-[0.16em] text-slate-500 uppercase dark:text-slate-400">
@@ -231,7 +213,7 @@ export function RagPipelineVisualizer({
         )}
         <h1
           id="rag-pipeline-heading"
-          className="mt-4 text-2xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-3xl"
+          className={`${mode === "waiting" ? "mt-8" : "mt-4"} text-2xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-3xl`}
         >
           {content.heading}
         </h1>

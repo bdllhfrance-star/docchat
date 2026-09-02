@@ -270,7 +270,9 @@ de son traitement.
   Elle est réservée à la visualisation pédagogique du pipeline, à son état et
   à une courte description métier. La vue initiale affiche une signature
   compacte `Powered by Gemini` avec le modèle réellement configuré et ses
-  paramètres utiles : contexte, sortie maximale et niveau de raisonnement.
+  paramètres utiles : contexte, sortie maximale et niveau de raisonnement. Le
+  symbole utilise sans modification l'asset RGB officiel Google
+  `Gemini_SparkIcon_4C` conservé localement.
 - **Préparation** : liste des fichiers sélectionnés avec nom, format, taille,
   erreur locale éventuelle et action de retrait.
 - **Traitement** : une ligne stable par fichier avec animation, libellé de
@@ -1150,3 +1152,4 @@ Le projet est terminé uniquement lorsque :
 | 2026-09-02 | Centraliser toutes les actions et explications documentaires dans le panneau gauche ; réserver la surface centrale au pipeline, à l'information compacte et au chat. Ne pas répéter le bloc des limites dans le panneau. |
 | 2026-09-03 | Utiliser l'icône Smartly.ai fournie comme marque et favicon, composer le nom en texte noir/blanc selon le thème et supprimer le sous-titre du header. |
 | 2026-09-03 | Remplacer le badge générique `Pipeline overview` par une signature Gemini professionnelle reliée à la configuration réelle du modèle. |
+| 2026-09-03 | Remplacer le symbole Gemini redessiné par l'asset RGB officiel `Gemini_SparkIcon_4C.original.png` du Press Corner Google. |

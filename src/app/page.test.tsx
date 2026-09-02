@@ -116,11 +116,13 @@ test("renders the initial document workspace", () => {
       name: "From files to searchable knowledge",
     }),
   ).toBeDefined();
+  const geminiSignature = screen.getByLabelText(
+    "Powered by Gemini 3.7 Flash. 1,048,576 input tokens, 65,536 output tokens, medium reasoning.",
+  );
+  expect(geminiSignature).toBeDefined();
   expect(
-    screen.getByLabelText(
-      "Powered by Gemini 3.7 Flash. 1,048,576 input tokens, 65,536 output tokens, medium reasoning.",
-    ),
-  ).toBeDefined();
+    geminiSignature.querySelector("img")?.getAttribute("src"),
+  ).toContain("gemini-spark-logo.png");
   expect(screen.queryByText("Pipeline overview")).toBeNull();
   expect(screen.queryByText("Session limits")).toBeNull();
 
