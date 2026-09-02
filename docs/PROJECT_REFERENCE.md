@@ -155,6 +155,7 @@ lance les tests et vérifie le pipeline localement.
 | US-13 | En tant qu'évaluateur, je peux vérifier les erreurs API. | Les codes HTTP et les corps d'erreur sont cohérents et documentés. |
 | US-14 | Je peux interroger des PDF français et arabes. | L'extraction, le retrieval et la réponse fonctionnent sur les fixtures prévues. |
 | US-15 | En tant que développeur, je peux reproduire le projet. | Le README documente l'installation, les variables, les index et les commandes de test. |
+| US-16 | Je peux utiliser l'application avec un thème sombre. | Un contrôle dans l'en-tête bascule toute l'interface entre clair et sombre. Le choix est mémorisé localement et le thème système est utilisé par défaut. |
 
 ## 7. Correspondance avec le cahier des charges
 

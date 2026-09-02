@@ -1,8 +1,15 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #0f172a;
+}
+
+.dark {
+  --background: #020617;
+  --foreground: #e2e8f0;
 }
 
 @theme inline {
@@ -28,6 +35,15 @@ body {
     sans-serif;
 }
 
+body,
+button,
+textarea {
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
+}
+
 button,
 textarea {
   font: inherit;
@@ -36,6 +52,11 @@ textarea {
 ::selection {
   background: #dbeafe;
   color: #172554;
+}
+
+.dark ::selection {
+  background: #1d4ed8;
+  color: #eff6ff;
 }
 
 @keyframes document-row-enter {

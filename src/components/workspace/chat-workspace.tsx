@@ -64,36 +64,36 @@ function MessageSources({ sources }: { sources: readonly ChatSource[] }) {
   const label = `${sources.length} ${sources.length === 1 ? "source" : "sources"}`;
 
   return (
-    <details className="group mt-2 w-full overflow-hidden rounded-xl border border-slate-200 bg-white text-left shadow-sm">
-      <summary className="cursor-pointer list-none px-3 py-2.5 text-xs font-semibold text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950">
+    <details className="group mt-2 w-full overflow-hidden rounded-xl border border-slate-200 bg-white text-left shadow-sm dark:border-slate-700 dark:bg-slate-900">
+      <summary className="cursor-pointer list-none px-3 py-2.5 text-xs font-semibold text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 dark:text-slate-200 dark:focus-visible:outline-slate-200">
         <span>{label}</span>
-        <span className="float-right font-normal text-slate-500 group-open:hidden">
+        <span className="float-right font-normal text-slate-500 group-open:hidden dark:text-slate-400">
           Show
         </span>
-        <span className="float-right hidden font-normal text-slate-500 group-open:inline">
+        <span className="float-right hidden font-normal text-slate-500 group-open:inline dark:text-slate-400">
           Hide
         </span>
       </summary>
-      <ol className="space-y-2 border-t border-slate-100 p-2">
+      <ol className="space-y-2 border-t border-slate-100 p-2 dark:border-slate-800">
         {sources.map((source, index) => (
           <li
             key={`${source.documentId}-${source.source.label}-${index}`}
-            className="rounded-lg bg-slate-50 px-3 py-2.5"
+            className="rounded-lg bg-slate-50 px-3 py-2.5 dark:bg-slate-950/70"
           >
             <div className="flex min-w-0 items-start justify-between gap-3">
-              <p className="min-w-0 break-words text-xs font-semibold text-slate-800">
+              <p className="min-w-0 break-words text-xs font-semibold text-slate-800 dark:text-slate-200">
                 [{index + 1}] {source.filename}
               </p>
-              <span className="shrink-0 text-[11px] font-medium text-slate-500">
+              <span className="shrink-0 text-[11px] font-medium text-slate-500 dark:text-slate-400">
                 {source.scoreKind === "rrf"
                   ? `Hybrid score ${source.score.toFixed(4)}`
                   : `Similarity ${Math.round(source.score * 100)}%`}
               </span>
             </div>
-            <p className="mt-1 text-[11px] font-medium text-slate-500">
+            <p className="mt-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
               {source.source.label}
             </p>
-            <p className="mt-1.5 whitespace-pre-wrap text-xs leading-5 text-slate-600">
+            <p className="mt-1.5 whitespace-pre-wrap text-xs leading-5 text-slate-600 dark:text-slate-300">
               {source.excerpt}
             </p>
           </li>
@@ -120,7 +120,7 @@ function ConversationMessage({ message }: { message: DocChatUIMessage }) {
     >
       {!isUser ? (
         <span
-          className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl bg-slate-950 text-white"
+          className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl bg-slate-950 text-white dark:bg-blue-600"
           aria-hidden="true"
         >
           <FileText size={15} strokeWidth={1.8} />
@@ -134,8 +134,8 @@ function ConversationMessage({ message }: { message: DocChatUIMessage }) {
         <div
           className={`whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-6 ${
             isUser
-              ? "rounded-br-md bg-slate-900 text-white"
-              : "rounded-bl-md border border-slate-200 bg-white text-slate-800 shadow-sm"
+              ? "rounded-br-md bg-slate-900 text-white dark:bg-blue-600"
+              : "rounded-bl-md border border-slate-200 bg-white text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
           }`}
         >
           {text}
@@ -225,13 +225,13 @@ function ActiveChat({
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-5">
           {messages.length === 0 ? (
             <div className="flex min-h-[45vh] flex-col items-center justify-center text-center">
-              <span className="grid size-12 place-items-center rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-700">
+              <span className="grid size-12 place-items-center rounded-2xl border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-400">
                 <MessageSquareText size={22} strokeWidth={1.8} aria-hidden="true" />
               </span>
-              <h1 className="mt-5 text-2xl font-semibold tracking-tight text-slate-950">
+              <h1 className="mt-5 text-2xl font-semibold tracking-tight text-slate-950 dark:text-slate-100">
                 Your documents are ready
               </h1>
-              <p className="mt-2 max-w-md text-sm leading-6 text-slate-600">
+              <p className="mt-2 max-w-md text-sm leading-6 text-slate-600 dark:text-slate-400">
                 Ask a question and DocChat will answer from the processed
                 documents only.
               </p>
@@ -243,7 +243,7 @@ function ActiveChat({
           )}
 
           {isResponding ? (
-            <div className="flex items-center gap-2 pl-11 text-sm text-slate-500">
+            <div className="flex items-center gap-2 pl-11 text-sm text-slate-500 dark:text-slate-400">
               <LoaderCircle size={15} className="animate-spin" aria-hidden="true" />
               {status === "submitted"
                 ? "Searching your documents…"
@@ -254,11 +254,11 @@ function ActiveChat({
         </div>
       </div>
 
-      <footer className="shrink-0 border-t border-slate-200 bg-white px-3 py-3 sm:px-6 sm:py-4">
+      <footer className="shrink-0 border-t border-slate-200 bg-white px-3 py-3 dark:border-slate-800 dark:bg-slate-950 sm:px-6 sm:py-4">
         <form className="mx-auto w-full max-w-3xl" onSubmit={handleSubmit}>
           {error ? (
             <div
-              className="mb-2 flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800"
+              className="mb-2 flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/60 dark:text-red-300"
               role="alert"
             >
               <span>{error.message || "The answer could not be generated."}</span>
@@ -271,7 +271,7 @@ function ActiveChat({
               </button>
             </div>
           ) : null}
-          <div className="relative rounded-2xl border border-slate-300 bg-white shadow-sm focus-within:border-slate-500 focus-within:ring-2 focus-within:ring-slate-200">
+          <div className="relative rounded-2xl border border-slate-300 bg-white shadow-sm focus-within:border-slate-500 focus-within:ring-2 focus-within:ring-slate-200 dark:border-slate-700 dark:bg-slate-900 dark:focus-within:border-blue-500 dark:focus-within:ring-blue-950">
             <label htmlFor="message" className="sr-only">
               Message DocChat
             </label>
@@ -283,14 +283,14 @@ function ActiveChat({
               onKeyDown={handleKeyDown}
               disabled={isResponding}
               placeholder="Ask a question about your documents"
-              className="block min-h-14 max-h-36 w-full resize-none overflow-y-auto bg-transparent py-4 pr-14 pl-4 text-sm text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
+              className="block min-h-14 max-h-36 w-full resize-none overflow-y-auto bg-transparent py-4 pr-14 pl-4 text-sm text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed dark:text-slate-100 dark:placeholder:text-slate-500"
             />
             {isResponding ? (
               <button
                 type="button"
                 onClick={() => void stop()}
                 aria-label="Stop response"
-                className="absolute right-2.5 bottom-2.5 grid size-9 place-items-center rounded-xl bg-slate-900 text-white hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950"
+                className="absolute right-2.5 bottom-2.5 grid size-9 place-items-center rounded-xl bg-slate-900 text-white hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 dark:bg-blue-600 dark:hover:bg-blue-500 dark:focus-visible:outline-slate-200"
               >
                 <Square size={13} fill="currentColor" aria-hidden="true" />
               </button>
@@ -299,13 +299,13 @@ function ActiveChat({
                 type="submit"
                 disabled={!canSend}
                 aria-label="Send message"
-                className="absolute right-2.5 bottom-2.5 grid size-9 place-items-center rounded-xl bg-slate-950 text-white hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400"
+                className="absolute right-2.5 bottom-2.5 grid size-9 place-items-center rounded-xl bg-slate-950 text-white hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 dark:bg-blue-600 dark:hover:bg-blue-500 dark:focus-visible:outline-slate-200 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
               >
                 <ArrowUp size={17} strokeWidth={2} aria-hidden="true" />
               </button>
             )}
           </div>
-          <p className="mt-2 text-center text-xs leading-5 text-slate-500">
+          <p className="mt-2 text-center text-xs leading-5 text-slate-500 dark:text-slate-400">
             Answers use {documentIds.length} ready {documentIds.length === 1 ? "document" : "documents"}. Shift + Enter adds a line.
           </p>
         </form>

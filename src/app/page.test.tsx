@@ -41,6 +41,9 @@ const deleteDocumentMock = vi.mocked(deleteDocument);
 const retryDocumentMock = vi.mocked(retryDocument);
 
 beforeEach(() => {
+  document.documentElement.classList.remove("dark");
+  document.documentElement.style.colorScheme = "";
+  localStorage.clear();
   sessionStorage.clear();
   addAndUploadDocumentsMock.mockReset();
   createAndUploadBatchMock.mockReset();
@@ -104,6 +107,36 @@ test("renders the initial document workspace", () => {
   expect(screen.getByText("No documents yet")).toBeDefined();
   expect(
     screen.getByRole("button", { name: "Choose documents" }),
+  ).toBeDefined();
+});
+
+test("switches and persists the dark theme", async () => {
+  render(<Home />);
+
+  const darkThemeButton = await screen.findByRole("button", {
+    name: "Use dark theme",
+  });
+  fireEvent.click(darkThemeButton);
+
+  expect(document.documentElement.classList.contains("dark")).toBe(true);
+  expect(document.documentElement.style.colorScheme).toBe("dark");
+  expect(localStorage.getItem("docchat-theme")).toBe("dark");
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "Use light theme" }),
+  );
+  expect(document.documentElement.classList.contains("dark")).toBe(false);
+  expect(localStorage.getItem("docchat-theme")).toBe("light");
+});
+
+test("reflects a dark theme restored before hydration", async () => {
+  document.documentElement.classList.add("dark");
+  localStorage.setItem("docchat-theme", "dark");
+
+  render(<Home />);
+
+  expect(
+    await screen.findByRole("button", { name: "Use light theme" }),
   ).toBeDefined();
 });
 

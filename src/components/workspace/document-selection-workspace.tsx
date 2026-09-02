@@ -191,7 +191,7 @@ function UploadState({ update }: { update: ClientUploadUpdate }) {
   ) {
     return (
       <p
-        className="mt-2 flex items-center gap-1.5 border-t border-slate-100 pt-2 text-xs text-slate-600"
+        className="mt-2 flex items-center gap-1.5 border-t border-slate-100 pt-2 text-xs text-slate-600 dark:border-slate-800 dark:text-slate-300"
         role="status"
         aria-live="polite"
       >
@@ -211,13 +211,13 @@ function UploadState({ update }: { update: ClientUploadUpdate }) {
     );
 
     return (
-      <div className="mt-2 border-t border-slate-100 pt-2">
-        <div className="flex items-center justify-between gap-3 text-xs text-slate-600">
+      <div className="mt-2 border-t border-slate-100 pt-2 dark:border-slate-800">
+        <div className="flex items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-300">
           <span>Uploading</span>
           <span className="font-medium tabular-nums">{progress}%</span>
         </div>
         <div
-          className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100"
+          className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
           role="progressbar"
           aria-label={`Uploading ${progress}%`}
           aria-valuemin={0}
@@ -225,7 +225,7 @@ function UploadState({ update }: { update: ClientUploadUpdate }) {
           aria-valuenow={progress}
         >
           <div
-            className="h-full rounded-full bg-slate-700"
+            className="h-full rounded-full bg-slate-700 dark:bg-blue-500"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -236,7 +236,7 @@ function UploadState({ update }: { update: ClientUploadUpdate }) {
   if (update.status === "uploaded") {
     return (
       <p
-        className="mt-2 flex items-center gap-1.5 border-t border-slate-100 pt-2 text-xs text-blue-800"
+        className="mt-2 flex items-center gap-1.5 border-t border-slate-100 pt-2 text-xs text-blue-800 dark:border-slate-800 dark:text-blue-300"
         role="status"
         aria-live="polite"
       >
@@ -248,7 +248,7 @@ function UploadState({ update }: { update: ClientUploadUpdate }) {
 
   return (
     <div
-      className="mt-2 border-t border-red-100 pt-2 text-xs leading-5 text-red-700"
+      className="mt-2 border-t border-red-100 pt-2 text-xs leading-5 text-red-700 dark:border-red-950 dark:text-red-300"
       role="alert"
     >
       <p className="font-medium">Upload failed</p>
@@ -294,10 +294,10 @@ function ProcessingState({
 }: ProcessingStateProps) {
   if (document.status === "ready") {
     return (
-      <div className="mt-2 border-t border-emerald-100 pt-2">
+      <div className="mt-2 border-t border-emerald-100 pt-2 dark:border-emerald-950">
         <div className="flex items-center justify-between gap-3">
           <p
-            className="flex items-center gap-1.5 text-xs font-medium text-emerald-700"
+            className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400"
             role="status"
             aria-live="polite"
           >
@@ -305,7 +305,7 @@ function ProcessingState({
             Ready
           </p>
           <div className="flex items-center gap-1">
-            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 has-disabled:cursor-not-allowed has-disabled:opacity-50">
+            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 has-disabled:cursor-not-allowed has-disabled:opacity-50 dark:text-slate-300 dark:hover:bg-slate-800">
               <input
                 type="checkbox"
                 checked={selectedForChat}
@@ -320,7 +320,7 @@ function ProcessingState({
               type="button"
               onClick={onDelete}
               disabled={actionsDisabled}
-              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-wait disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-wait disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-red-300 dark:focus-visible:outline-slate-200"
               aria-label={`Delete ${document.filename}`}
             >
               {action === "deleting" ? (
@@ -333,7 +333,7 @@ function ProcessingState({
           </div>
         </div>
         {actionError ? (
-          <p className="mt-2 text-xs leading-5 text-red-700" role="alert">
+          <p className="mt-2 text-xs leading-5 text-red-700 dark:text-red-300" role="alert">
             {actionError}
           </p>
         ) : null}
@@ -344,7 +344,7 @@ function ProcessingState({
   if (document.status === "failed") {
     return (
       <div
-        className="mt-2 border-t border-red-100 pt-2 text-xs leading-5 text-red-700"
+        className="mt-2 border-t border-red-100 pt-2 text-xs leading-5 text-red-700 dark:border-red-950 dark:text-red-300"
         role="alert"
       >
         <p className="font-medium">Processing failed</p>
@@ -355,7 +355,7 @@ function ProcessingState({
               type="button"
               onClick={onRetry}
               disabled={actionsDisabled}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-wait disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-wait disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus-visible:outline-slate-200"
               aria-label={`Retry ${document.filename}`}
             >
               {action === "retrying" ? (
@@ -370,7 +370,7 @@ function ProcessingState({
             type="button"
             onClick={onDelete}
             disabled={actionsDisabled}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:cursor-wait disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:cursor-wait disabled:opacity-50 dark:border-red-900 dark:bg-slate-900 dark:text-red-300 dark:hover:bg-red-950/60"
             aria-label={`Delete ${document.filename}`}
           >
             {action === "deleting" ? (
@@ -382,7 +382,7 @@ function ProcessingState({
           </button>
         </div>
         {actionError ? (
-          <p className="mt-2 text-xs leading-5 text-red-700" role="alert">
+          <p className="mt-2 text-xs leading-5 text-red-700 dark:text-red-300" role="alert">
             {actionError}
           </p>
         ) : null}
@@ -392,7 +392,7 @@ function ProcessingState({
 
   return (
     <p
-      className="mt-2 flex items-center gap-1.5 border-t border-slate-100 pt-2 text-xs text-blue-800"
+      className="mt-2 flex items-center gap-1.5 border-t border-slate-100 pt-2 text-xs text-blue-800 dark:border-slate-800 dark:text-blue-300"
       role="status"
       aria-live="polite"
     >
@@ -432,21 +432,21 @@ function DocumentsPanel({
 
   return (
     <aside
-      className="min-w-0 border-b border-slate-200 bg-slate-50/70 lg:flex lg:min-h-0 lg:flex-col lg:overflow-hidden lg:border-r lg:border-b-0"
+      className="min-w-0 border-b border-slate-200 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/70 lg:flex lg:min-h-0 lg:flex-col lg:overflow-hidden lg:border-r lg:border-b-0"
       aria-labelledby="documents-heading"
     >
       <div className="flex shrink-0 items-center justify-between px-4 py-4 sm:px-5 lg:py-5">
         <div className="flex items-center gap-2.5">
-          <Files size={17} className="text-slate-500" aria-hidden="true" />
+          <Files size={17} className="text-slate-500 dark:text-slate-400" aria-hidden="true" />
           <h2
             id="documents-heading"
-            className="text-sm font-semibold text-slate-900"
+            className="text-sm font-semibold text-slate-900 dark:text-slate-100"
           >
             Documents
           </h2>
         </div>
         <span
-          className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium tabular-nums text-slate-500"
+          className="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-xs font-medium tabular-nums text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300"
           aria-label={`${result.files.length} documents`}
         >
           {result.files.length}
@@ -455,7 +455,7 @@ function DocumentsPanel({
 
       {result.errors.length > 0 ? (
         <div
-          className="mx-4 mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs leading-5 text-red-800 sm:mx-5"
+          className="mx-4 mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs leading-5 text-red-800 dark:border-red-900 dark:bg-red-950/60 dark:text-red-300 sm:mx-5"
           role="alert"
         >
           {result.errors.map((error) => (
@@ -466,11 +466,11 @@ function DocumentsPanel({
 
       <div className="px-4 pb-4 sm:px-5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
         {!hasFiles ? (
-          <div className="rounded-xl border border-dashed border-slate-200 bg-white/70 px-4 py-4 lg:py-6">
-            <p className="text-sm font-medium text-slate-700">
+          <div className="rounded-xl border border-dashed border-slate-200 bg-white/70 px-4 py-4 dark:border-slate-700 dark:bg-slate-950/40 lg:py-6">
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
               No documents yet
             </p>
-            <p className="mt-1 text-xs leading-5 text-slate-500">
+            <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
               Your selected files and validation results will appear here.
             </p>
           </div>
@@ -496,22 +496,24 @@ function DocumentsPanel({
               return (
                 <li
                   key={`${file.name}-${file.size}-${file.lastModified}-${index}`}
-                  className={`document-row-enter rounded-xl border bg-white p-3 ${
+                  className={`document-row-enter rounded-xl border bg-white p-3 dark:bg-slate-950/70 ${
                     action === "deleting" ? "document-row-deleting" : ""
                   } ${
-                    hasError ? "border-red-200" : "border-slate-200"
+                    hasError
+                      ? "border-red-200 dark:border-red-900"
+                      : "border-slate-200 dark:border-slate-800"
                   }`}
                 >
                   <div className="flex min-w-0 items-start gap-3">
                     <span
                       className={`grid size-9 shrink-0 place-items-center rounded-lg ${
                         operationState === "ready"
-                          ? "bg-emerald-50 text-emerald-700"
+                          ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400"
                           : hasError
-                          ? "bg-red-50 text-red-700"
+                          ? "bg-red-50 text-red-700 dark:bg-red-950/60 dark:text-red-300"
                           : operationState === "selected"
-                            ? "bg-slate-100 text-slate-600"
-                            : "bg-blue-50 text-blue-700"
+                            ? "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                            : "bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300"
                       }`}
                       aria-hidden="true"
                     >
@@ -519,12 +521,12 @@ function DocumentsPanel({
                     </span>
                     <div className="min-w-0 flex-1">
                       <p
-                        className="truncate text-sm font-medium text-slate-800"
+                        className="truncate text-sm font-medium text-slate-800 dark:text-slate-100"
                         title={file.name}
                       >
                         {file.name}
                       </p>
-                      <p className="mt-0.5 text-xs text-slate-500">
+                      <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                         {fileType?.toUpperCase() ?? "Unsupported"} ·{" "}
                         {formatFileSize(file.size)}
                       </p>
@@ -534,7 +536,7 @@ function DocumentsPanel({
                         type="button"
                         onClick={() => onRemove(index)}
                         disabled={isSelectionLocked}
-                        className="grid size-8 shrink-0 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                        className="grid size-8 shrink-0 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200 dark:focus-visible:outline-slate-200"
                         aria-label={`Remove ${file.name}`}
                       >
                         <Trash2 size={15} aria-hidden="true" />
@@ -543,7 +545,7 @@ function DocumentsPanel({
                   </div>
 
                   {errors.length > 0 ? (
-                    <div className="mt-2 border-t border-red-100 pt-2 text-xs leading-5 text-red-700">
+                    <div className="mt-2 border-t border-red-100 pt-2 text-xs leading-5 text-red-700 dark:border-red-950 dark:text-red-300">
                       {errors.map((error) => (
                         <p key={error}>{fileErrorMessages[error]}</p>
                       ))}
@@ -571,7 +573,7 @@ function DocumentsPanel({
                   ) : uploadUpdate ? (
                     <UploadState update={uploadUpdate} />
                   ) : (
-                    <p className="mt-2 border-t border-slate-100 pt-2 text-xs text-slate-500">
+                    <p className="mt-2 border-t border-slate-100 pt-2 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
                       Selected · not uploaded
                     </p>
                   )}
@@ -583,10 +585,10 @@ function DocumentsPanel({
       </div>
 
       {hasFiles ? (
-        <div className="shrink-0 border-t border-slate-200 bg-white/80 px-4 py-4 sm:px-5">
+        <div className="shrink-0 border-t border-slate-200 bg-white/80 px-4 py-4 dark:border-slate-800 dark:bg-slate-900/90 sm:px-5">
           {creationError ? (
             <p
-              className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs leading-5 text-red-800"
+              className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs leading-5 text-red-800 dark:border-red-900 dark:bg-red-950/60 dark:text-red-300"
               role="alert"
             >
               {creationError}
@@ -597,7 +599,7 @@ function DocumentsPanel({
               type="button"
               onClick={onSubmitChanges}
               disabled={!canSubmitChanges}
-              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600"
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600 dark:bg-blue-600 dark:hover:bg-blue-500 dark:focus-visible:outline-slate-200 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
             >
               <Upload size={16} aria-hidden="true" />
               {isUploading
@@ -613,13 +615,13 @@ function DocumentsPanel({
               type="button"
               onClick={onOpenPicker}
               disabled={isSelectionLocked}
-              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus-visible:outline-slate-200"
             >
               <Plus size={16} aria-hidden="true" />
               Add documents
             </button>
           ) : null}
-          <p className="mt-2 text-center text-xs leading-5 text-slate-500">
+          <p className="mt-2 text-center text-xs leading-5 text-slate-500 dark:text-slate-400">
             {pendingFileCount > 0
               ? `${pendingFileCount} new ${pendingFileCount === 1 ? "document" : "documents"} waiting to be sent.`
               : canAddFromSidebar
@@ -629,20 +631,20 @@ function DocumentsPanel({
         </div>
       ) : null}
 
-      <div className="hidden shrink-0 border-t border-slate-200 px-5 py-5 lg:block">
-        <p className="text-xs font-medium text-slate-700">Session limits</p>
-        <dl className="mt-3 space-y-2 text-xs text-slate-500">
+      <div className="hidden shrink-0 border-t border-slate-200 px-5 py-5 dark:border-slate-800 lg:block">
+        <p className="text-xs font-medium text-slate-700 dark:text-slate-200">Session limits</p>
+        <dl className="mt-3 space-y-2 text-xs text-slate-500 dark:text-slate-400">
           <div className="flex justify-between gap-3">
             <dt>Files</dt>
-            <dd className="font-medium text-slate-700">Up to 10</dd>
+            <dd className="font-medium text-slate-700 dark:text-slate-200">Up to 10</dd>
           </div>
           <div className="flex justify-between gap-3">
             <dt>Per file</dt>
-            <dd className="font-medium text-slate-700">10 MiB</dd>
+            <dd className="font-medium text-slate-700 dark:text-slate-200">10 MiB</dd>
           </div>
           <div className="flex justify-between gap-3">
             <dt>Batch</dt>
-            <dd className="font-medium text-slate-700">50 MiB</dd>
+            <dd className="font-medium text-slate-700 dark:text-slate-200">50 MiB</dd>
           </div>
         </dl>
       </div>
@@ -679,24 +681,26 @@ function DocumentSelector({
       aria-labelledby="workspace-title"
     >
       <div className="mx-auto flex w-full max-w-3xl flex-col items-center justify-center">
-        <div className="grid size-12 place-items-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm">
+        <div className="grid size-12 place-items-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
           <MessageSquareText size={22} strokeWidth={1.7} aria-hidden="true" />
         </div>
         <h1
           id="workspace-title"
-          className="mt-5 text-balance text-2xl font-semibold tracking-[-0.025em] text-slate-950 sm:text-3xl"
+          className="mt-5 text-balance text-2xl font-semibold tracking-[-0.025em] text-slate-950 dark:text-slate-100 sm:text-3xl"
         >
           {hasFiles ? "Review your documents" : "Start with your documents"}
         </h1>
-        <p className="mt-3 max-w-xl text-pretty text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">
+        <p className="mt-3 max-w-xl text-pretty text-sm leading-6 text-slate-600 dark:text-slate-400 sm:text-base sm:leading-7">
           {hasFiles
             ? "Add more documents if needed, then use the action under the document list. Existing files stay in your context."
             : "Add the files you want to explore. Chat becomes available only after every document is processed and indexed."}
         </p>
 
         <div
-          className={`mt-7 w-full rounded-2xl border border-dashed bg-white px-5 py-7 shadow-[0_1px_2px_rgba(15,23,42,0.03)] sm:px-8 sm:py-9 ${
-            isDragging ? "border-slate-700 bg-slate-50" : "border-slate-300"
+          className={`mt-7 w-full rounded-2xl border border-dashed bg-white px-5 py-7 shadow-[0_1px_2px_rgba(15,23,42,0.03)] dark:bg-slate-900 sm:px-8 sm:py-9 ${
+            isDragging
+              ? "border-slate-700 bg-slate-50 dark:border-blue-400 dark:bg-slate-800"
+              : "border-slate-300 dark:border-slate-700"
           }`}
           onDragEnter={onDragEnter}
           onDragLeave={onDragLeave}
@@ -706,17 +710,17 @@ function DocumentSelector({
           aria-label="Document drop zone"
           aria-disabled={isSelectionLocked}
         >
-          <div className="mx-auto grid size-11 place-items-center rounded-full bg-slate-100 text-slate-700">
+          <div className="mx-auto grid size-11 place-items-center rounded-full bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
             <Upload size={20} strokeWidth={1.8} aria-hidden="true" />
           </div>
-          <p className="mt-4 text-sm font-semibold text-slate-900">
+          <p className="mt-4 text-sm font-semibold text-slate-900 dark:text-slate-100">
             {isDragging
               ? "Drop to add documents"
               : hasFiles
                 ? "Add more documents"
                 : "Add up to 10 documents at once"}
           </p>
-          <p className="mx-auto mt-1.5 max-w-md text-xs leading-5 text-slate-500 sm:text-sm">
+          <p className="mx-auto mt-1.5 max-w-md text-xs leading-5 text-slate-500 dark:text-slate-400 sm:text-sm">
             {hasFiles
               ? "New files are added to the current list. Nothing is replaced."
               : "Drag and drop your files here, or select them from your device."}
@@ -725,12 +729,12 @@ function DocumentSelector({
             type="button"
             onClick={onOpenPicker}
             disabled={isSelectionLocked}
-            className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:bg-slate-300"
+            className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:bg-slate-300 dark:bg-blue-600 dark:hover:bg-blue-500 dark:focus-visible:outline-slate-200 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
           >
             <Plus size={16} aria-hidden="true" />
             {hasFiles ? "Add documents" : "Choose documents"}
           </button>
-          <p className="mt-4 text-xs leading-5 text-slate-400">
+          <p className="mt-4 text-xs leading-5 text-slate-400 dark:text-slate-500">
             {supportedFormats} · 10 MiB per file · 50 MiB per session
           </p>
         </div>
@@ -782,9 +786,9 @@ function DisabledComposer({
   }
 
   return (
-    <footer className="shrink-0 border-t border-slate-200 bg-white px-3 py-3 sm:px-6 sm:py-4">
+    <footer className="shrink-0 border-t border-slate-200 bg-white px-3 py-3 dark:border-slate-800 dark:bg-slate-950 sm:px-6 sm:py-4">
       <div className="mx-auto w-full max-w-3xl">
-        <div className="relative rounded-2xl border border-slate-200 bg-slate-50 shadow-sm">
+        <div className="relative rounded-2xl border border-slate-200 bg-slate-50 shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <label htmlFor="message" className="sr-only">
             Message DocChat
           </label>
@@ -794,20 +798,20 @@ function DisabledComposer({
             disabled
             aria-describedby="composer-reason"
             placeholder="Ask a question about your documents"
-            className="block min-h-14 w-full resize-none overflow-hidden bg-transparent py-4 pr-14 pl-4 text-sm text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed"
+            className="block min-h-14 w-full resize-none overflow-hidden bg-transparent py-4 pr-14 pl-4 text-sm text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed dark:text-slate-100 dark:placeholder:text-slate-500"
           />
           <button
             type="button"
             disabled
             aria-label="Send message"
-            className="absolute right-2.5 bottom-2.5 grid size-9 cursor-not-allowed place-items-center rounded-xl bg-slate-200 text-slate-400"
+            className="absolute right-2.5 bottom-2.5 grid size-9 cursor-not-allowed place-items-center rounded-xl bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-500"
           >
             <ArrowUp size={17} strokeWidth={2} aria-hidden="true" />
           </button>
         </div>
         <p
           id="composer-reason"
-          className="mt-2 flex items-center justify-center gap-1.5 text-center text-xs leading-5 text-slate-500"
+          className="mt-2 flex items-center justify-center gap-1.5 text-center text-xs leading-5 text-slate-500 dark:text-slate-400"
         >
           <LockKeyhole size={13} className="shrink-0" aria-hidden="true" />
           {reason}
@@ -1220,7 +1224,7 @@ export function DocumentSelectionWorkspace() {
         selectedChatDocumentIds={chatDocumentIds}
       />
       <section
-        className="flex min-h-0 min-w-0 flex-col bg-slate-50/30"
+        className="flex min-h-0 min-w-0 flex-col bg-slate-50/30 dark:bg-slate-950"
         aria-label="Conversation workspace"
       >
         {canChat ? (
