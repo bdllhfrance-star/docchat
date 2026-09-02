@@ -524,8 +524,8 @@ Document marqué ready ou failed
 
 Paramètres initiaux à évaluer :
 
-- Environ 600 tokens par chunk.
-- Environ 100 tokens d'overlap.
+- Environ 600 tokens par chunk, estimés simplement à 450 mots.
+- Environ 100 tokens d'overlap, estimés à 75 mots.
 - Aucun chunk ne mélange deux documents.
 - Les limites de page, slide, section ou feuille restent traçables.
 - Les embeddings sont envoyés par lots contrôlés.
@@ -762,7 +762,7 @@ intégrés par l'agent principal avant le lancement d'une nouvelle vague.
 | [~] | UPL-03 | UPL-02, SET-02 | Backend | Implémenter `POST /api/upload` et l'upload Blob privé sans exposer de secret. Code et tests locaux terminés ; l'upload réel d'une fixture reste bloqué par l'absence du store et des secrets Vercel. |
 | [x] | DB-01 | SET-02, SET-04 | Backend | Créer l'accès MongoDB, les repositories minimaux et les définitions d'index classiques, TTL et Vector Search. Connexion réutilisée et filtres de session testés. |
 | [x] | PAR-01 | SET-04, SET-05 | Ingestion | Extraire un PDF natif page par page vers `DocumentBlock[]`, avec numéro de page et erreurs explicites pour PDF vide, chiffré ou non extractible. |
-| [ ] | RAG-01 | PAR-01 | Ingestion | Implémenter le chunking sourcé avec paramètres configurables, sans mélange de documents ni perte de page. Tests de taille, overlap et source réussis. |
+| [x] | RAG-01 | PAR-01 | Ingestion | Implémenter le chunking sourcé avec paramètres configurables, sans mélange de documents ni perte de page. Tests de taille, overlap et source réussis. |
 | [ ] | RAG-02 | SET-02, RAG-01 | Backend/RAG | Générer les embeddings Gemini par lots avec la dimension confirmée. Les erreurs, timeouts et réponses de taille invalide sont gérés. |
 | [ ] | ING-01 | UPL-03, DB-01, RAG-02 | Principal | Orchestrer `uploading → validating → extracting → chunking → embedding → indexing → ready/failed`. `ready` est écrit seulement après persistance complète et vérification d'interrogeabilité. |
 | [ ] | UPL-04 | ING-01 | Backend | Implémenter `GET /api/batches/:batchId` avec les états et erreurs de chaque fichier, filtrés par session. Le contrat est testé avant son utilisation par l'UI. |
@@ -1032,3 +1032,4 @@ Le projet est terminé uniquement lorsque :
 | 2026-09-02 | Conserver trois limites indépendantes : 10 fichiers, 10 MiB par fichier et 50 MiB par batch. |
 | 2026-09-02 | Envoyer les fichiers directement vers Blob privé avec une seule action utilisateur et une concurrence navigateur limitée à trois. |
 | 2026-09-02 | Limiter le parcours PDF initial au texte natif avec `pdf-parse` 2.4.5 ; les PDF scannés sont refusés explicitement sans OCR. |
+| 2026-09-02 | Conserver provisoirement un PDF partiellement extractible si au moins une page contient du texte ; les pages sans texte sont ignorées jusqu'à la révision de cette règle. |
