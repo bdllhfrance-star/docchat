@@ -79,6 +79,12 @@ function getExtension(filename: string): string {
   return dotIndex === -1 ? "" : filename.slice(dotIndex + 1).toLowerCase();
 }
 
+export function getAllowedMimeTypes(
+  fileType: SupportedFileType,
+): readonly string[] {
+  return fileTypesByExtension[fileType].mimeTypes;
+}
+
 export function validateBatchFiles<TFile extends FileLike>(
   files: readonly TFile[],
 ): BatchValidationResult<TFile> {

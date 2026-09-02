@@ -72,6 +72,7 @@ export type BatchSummary = {
 
 export type ChunkRecord = {
   id: string;
+  sessionId: string;
   batchId: string;
   documentId: string;
   filename: string;

@@ -372,11 +372,13 @@ type Batch = {
 ```ts
 type Document = {
   id: string;
+  clientId: string;
   batchId: string;
   sessionId: string;
   filename: string;
   fileType: "pdf" | "docx" | "pptx" | "xlsx" | "txt" | "md" | "csv";
-  blobUrl: string;
+  blobPathname: string;
+  blobUrl?: string;
   size: number;
   status:
     | "queued"
@@ -399,6 +401,7 @@ type Document = {
 ```ts
 type Chunk = {
   id: string;
+  sessionId: string;
   batchId: string;
   documentId: string;
   filename: string;
@@ -752,11 +755,11 @@ intégrés par l'agent principal avant le lancement d'une nouvelle vague.
 | État | ID | Dépend de | Responsable | Tâche et condition de fin |
 | --- | --- | --- | --- | --- |
 | [x] | UI-01 | SET-04 | UI | Construire le shell responsive : état vide, zone d'upload, panneau de documents, zone de chat et composer désactivé. Tests de rendu et navigation clavier réussis. |
-| [~] | API-01 | SET-03, SET-04 | Backend | Créer la session anonyme par cookie HTTP-only signé et appliquer `sessionId` à toutes les opérations. Un accès croisé est refusé par test. |
+| [x] | API-01 | SET-03, SET-04 | Backend | Créer la session anonyme par cookie HTTP-only signé et appliquer `sessionId` à toutes les opérations. Un accès croisé est refusé par test. |
 | [x] | UPL-01 | SET-04, UI-01 | UI | Implémenter sélection multiple, drag-and-drop et vérification locale du nombre, type et poids. Les erreurs sont affichées fichier par fichier avant l'envoi. |
-| [~] | UPL-02 | API-01 | Backend | Implémenter `POST /api/batches` avec manifeste validé, limites serveur, identifiants et statuts initiaux. Les erreurs suivent `ApiError`. |
-| [ ] | UPL-03 | UPL-02, SET-02 | Backend | Implémenter `POST /api/upload` et l'upload Blob privé sans exposer de secret. L'upload réel d'une fixture respecte taille, type et propriété de session. |
-| [ ] | DB-01 | SET-02, SET-04 | Backend | Créer l'accès MongoDB, les repositories minimaux et les définitions d'index classiques, TTL et Vector Search. Connexion réutilisée et filtres de session testés. |
+| [x] | UPL-02 | API-01 | Backend | Implémenter `POST /api/batches` avec manifeste validé, limites serveur, identifiants et statuts initiaux. Les erreurs suivent `ApiError`. |
+| [~] | UPL-03 | UPL-02, SET-02 | Backend | Implémenter `POST /api/upload` et l'upload Blob privé sans exposer de secret. Code et tests locaux terminés ; l'upload réel d'une fixture reste bloqué par l'absence du store et des secrets Vercel. |
+| [x] | DB-01 | SET-02, SET-04 | Backend | Créer l'accès MongoDB, les repositories minimaux et les définitions d'index classiques, TTL et Vector Search. Connexion réutilisée et filtres de session testés. |
 | [ ] | PAR-01 | SET-04, SET-05 | Ingestion | Extraire un PDF natif page par page vers `DocumentBlock[]`, avec numéro de page et erreurs explicites pour PDF vide, chiffré ou non extractible. |
 | [ ] | RAG-01 | PAR-01 | Ingestion | Implémenter le chunking sourcé avec paramètres configurables, sans mélange de documents ni perte de page. Tests de taille, overlap et source réussis. |
 | [ ] | RAG-02 | SET-02, RAG-01 | Backend/RAG | Générer les embeddings Gemini par lots avec la dimension confirmée. Les erreurs, timeouts et réponses de taille invalide sont gérés. |
@@ -1025,3 +1028,5 @@ Le projet est terminé uniquement lorsque :
 | 2026-09-02 | Définir `ready` comme la réussite complète de l'upload, de l'extraction, du chunking, des embeddings et de leur persistance. |
 | 2026-09-02 | Bloquer le chat jusqu'à ce que chaque fichier conservé soit `ready`. |
 | 2026-09-02 | Utiliser une UI sobre avec des animations CSS/SVG manuelles et spécifiques à chaque opération. |
+| 2026-09-02 | Conserver trois limites indépendantes : 10 fichiers, 10 MiB par fichier et 50 MiB par batch. |
+| 2026-09-02 | Envoyer les fichiers directement vers Blob privé avec une seule action utilisateur et une concurrence navigateur limitée à trois. |

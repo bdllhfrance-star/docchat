@@ -3,6 +3,8 @@
 import {
   AlertCircle,
   ArrowUp,
+  CircleEllipsis,
+  Clock3,
   FileText,
   Files,
   LockKeyhole,
@@ -19,6 +21,10 @@ import {
   useState,
 } from "react";
 
+import {
+  createAndUploadBatch,
+  type ClientUploadUpdate,
+} from "@/lib/uploads/client";
 import {
   validateBatchFiles,
   type BatchValidationErrorCode,
@@ -53,18 +59,90 @@ function formatFileSize(bytes: number): string {
 }
 
 type SelectionResult = ReturnType<typeof validateBatchFiles<File>>;
+type UploadUpdates = Partial<Record<number, ClientUploadUpdate>>;
 
 type DocumentsPanelProps = {
+  isSelectionLocked: boolean;
   onRemove: (index: number) => void;
   result: SelectionResult;
+  uploadUpdates: UploadUpdates;
 };
 
-function DocumentsPanel({ onRemove, result }: DocumentsPanelProps) {
+function UploadState({ update }: { update: ClientUploadUpdate }) {
+  if (update.status === "creating-batch") {
+    return (
+      <p
+        className="mt-2 flex items-center gap-1.5 border-t border-slate-100 pt-2 text-xs text-slate-600"
+        role="status"
+      >
+        <CircleEllipsis size={13} aria-hidden="true" />
+        Creating batch
+      </p>
+    );
+  }
+
+  if (update.status === "uploading") {
+    const progress = Math.round(
+      Math.min(100, Math.max(0, update.progress ?? 0)),
+    );
+
+    return (
+      <div className="mt-2 border-t border-slate-100 pt-2">
+        <div className="flex items-center justify-between gap-3 text-xs text-slate-600">
+          <span>Uploading</span>
+          <span className="font-medium tabular-nums">{progress}%</span>
+        </div>
+        <div
+          className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100"
+          role="progressbar"
+          aria-label={`Uploading ${progress}%`}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={progress}
+        >
+          <div
+            className="h-full rounded-full bg-slate-700"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  if (update.status === "uploaded") {
+    return (
+      <p
+        className="mt-2 flex items-center gap-1.5 border-t border-slate-100 pt-2 text-xs text-blue-800"
+        role="status"
+      >
+        <Clock3 size={13} aria-hidden="true" />
+        Uploaded · waiting for processing
+      </p>
+    );
+  }
+
+  return (
+    <div
+      className="mt-2 border-t border-red-100 pt-2 text-xs leading-5 text-red-700"
+      role="alert"
+    >
+      <p className="font-medium">Upload failed</p>
+      <p>{update.error ?? "The file could not be uploaded."}</p>
+    </div>
+  );
+}
+
+function DocumentsPanel({
+  isSelectionLocked,
+  onRemove,
+  result,
+  uploadUpdates,
+}: DocumentsPanelProps) {
   const hasFiles = result.files.length > 0;
 
   return (
     <aside
-      className="border-b border-slate-200 bg-slate-50/70 lg:flex lg:min-h-0 lg:flex-col lg:overflow-hidden lg:border-r lg:border-b-0"
+      className="min-w-0 border-b border-slate-200 bg-slate-50/70 lg:flex lg:min-h-0 lg:flex-col lg:overflow-hidden lg:border-r lg:border-b-0"
       aria-labelledby="documents-heading"
     >
       <div className="flex shrink-0 items-center justify-between px-4 py-4 sm:px-5 lg:py-5">
@@ -109,7 +187,9 @@ function DocumentsPanel({ onRemove, result }: DocumentsPanelProps) {
         ) : (
           <ul className="space-y-2" aria-label="Selected documents">
             {result.files.map(({ errors, file, fileType }, index) => {
-              const hasError = errors.length > 0;
+              const uploadUpdate = uploadUpdates[index];
+              const hasError =
+                errors.length > 0 || uploadUpdate?.status === "failed";
 
               return (
                 <li
@@ -148,19 +228,22 @@ function DocumentsPanel({ onRemove, result }: DocumentsPanelProps) {
                     <button
                       type="button"
                       onClick={() => onRemove(index)}
-                      className="grid size-8 shrink-0 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950"
+                      disabled={isSelectionLocked}
+                      className="grid size-8 shrink-0 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
                       aria-label={`Remove ${file.name}`}
                     >
                       <Trash2 size={15} aria-hidden="true" />
                     </button>
                   </div>
 
-                  {hasError ? (
+                  {errors.length > 0 ? (
                     <div className="mt-2 border-t border-red-100 pt-2 text-xs leading-5 text-red-700">
                       {errors.map((error) => (
                         <p key={error}>{fileErrorMessages[error]}</p>
                       ))}
                     </div>
+                  ) : uploadUpdate ? (
+                    <UploadState update={uploadUpdate} />
                   ) : (
                     <p className="mt-2 border-t border-slate-100 pt-2 text-xs text-slate-500">
                       Selected · not uploaded
@@ -195,29 +278,42 @@ function DocumentsPanel({ onRemove, result }: DocumentsPanelProps) {
 }
 
 type DocumentSelectorProps = {
+  creationError: string | null;
   fileCount: number;
+  hasUploadStarted: boolean;
   inputRef: React.RefObject<HTMLInputElement | null>;
   isDragging: boolean;
+  isSelectionLocked: boolean;
+  isUploading: boolean;
+  isValid: boolean;
   onChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onDragEnter: (event: DragEvent<HTMLDivElement>) => void;
   onDragLeave: (event: DragEvent<HTMLDivElement>) => void;
   onDragOver: (event: DragEvent<HTMLDivElement>) => void;
   onDrop: (event: DragEvent<HTMLDivElement>) => void;
   onOpenPicker: () => void;
+  onUpload: () => void;
 };
 
 function DocumentSelector({
+  creationError,
   fileCount,
+  hasUploadStarted,
   inputRef,
   isDragging,
+  isSelectionLocked,
+  isUploading,
+  isValid,
   onChange,
   onDragEnter,
   onDragLeave,
   onDragOver,
   onDrop,
   onOpenPicker,
+  onUpload,
 }: DocumentSelectorProps) {
   const hasFiles = fileCount > 0;
+  const canUpload = isValid && !isUploading && !hasUploadStarted;
 
   return (
     <section
@@ -251,6 +347,7 @@ function DocumentSelector({
         onDrop={onDrop}
         role="group"
         aria-label="Document drop zone"
+        aria-disabled={isSelectionLocked}
       >
         <div className="mx-auto grid size-11 place-items-center rounded-full bg-slate-100 text-slate-700">
           <Upload size={20} strokeWidth={1.8} aria-hidden="true" />
@@ -273,13 +370,15 @@ function DocumentSelector({
           multiple
           accept={acceptedFileTypes}
           onChange={onChange}
+          disabled={isSelectionLocked}
           className="sr-only"
           aria-label="Select documents from device"
         />
         <button
           type="button"
           onClick={onOpenPicker}
-          className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950"
+          disabled={isSelectionLocked}
+          className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:bg-slate-300"
         >
           <Plus size={16} aria-hidden="true" />
           {hasFiles ? "Replace selection" : "Choose documents"}
@@ -290,21 +389,69 @@ function DocumentSelector({
       </div>
 
       {hasFiles ? (
-        <p
-          className="mt-4 text-xs leading-5 text-slate-500"
-          aria-live="polite"
-        >
-          Files are selected locally and have not been uploaded.
-        </p>
+        <div className="mt-4 w-full" aria-live="polite">
+          {creationError ? (
+            <p
+              className="mx-auto mb-3 max-w-lg rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm leading-5 text-red-800"
+              role="alert"
+            >
+              {creationError}
+            </p>
+          ) : null}
+          <button
+            type="button"
+            onClick={onUpload}
+            disabled={!canUpload}
+            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600"
+          >
+            <Upload size={16} aria-hidden="true" />
+            {isUploading
+              ? "Uploading documents"
+              : hasUploadStarted
+                ? "Upload attempt finished"
+                : "Upload and process"}
+          </button>
+          <p className="mt-2 text-xs leading-5 text-slate-500">
+            {isUploading
+              ? "Upload in progress. Keep this page open."
+              : hasUploadStarted
+                ? "The file list shows the latest real upload result."
+                : "Files are selected locally and have not been uploaded."}
+          </p>
+        </div>
       ) : null}
     </section>
   );
 }
 
-function DisabledComposer({ hasFiles }: { hasFiles: boolean }) {
-  const reason = hasFiles
-    ? "Selected documents must be uploaded and fully processed before chatting."
-    : "Add and process at least one document to start chatting.";
+type DisabledComposerProps = {
+  hasFiles: boolean;
+  isUploading: boolean;
+  uploadUpdates: UploadUpdates;
+};
+
+function DisabledComposer({
+  hasFiles,
+  isUploading,
+  uploadUpdates,
+}: DisabledComposerProps) {
+  const updates = Object.values(uploadUpdates);
+  const hasFailedUpload = updates.some((update) => update?.status === "failed");
+  const hasUploadedFile = updates.some(
+    (update) => update?.status === "uploaded",
+  );
+  let reason = "Add and process at least one document to start chatting.";
+
+  if (isUploading) {
+    reason = "Documents are uploading. Chat remains unavailable.";
+  } else if (hasFailedUpload) {
+    reason = "A file upload failed. Chat remains unavailable.";
+  } else if (hasUploadedFile) {
+    reason = "Uploaded documents are waiting for full processing.";
+  } else if (hasFiles) {
+    reason =
+      "Selected documents must be uploaded and fully processed before chatting.";
+  }
 
   return (
     <footer className="shrink-0 border-t border-slate-200 bg-white px-3 py-3 sm:px-6 sm:py-4">
@@ -344,15 +491,27 @@ function DisabledComposer({ hasFiles }: { hasFiles: boolean }) {
 
 export function DocumentSelectionWorkspace() {
   const inputRef = useRef<HTMLInputElement>(null);
+  const uploadInFlightRef = useRef(false);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [creationError, setCreationError] = useState<string | null>(null);
+  const [uploadUpdates, setUploadUpdates] = useState<UploadUpdates>({});
   const validationResult = useMemo(
     () => validateBatchFiles(selectedFiles),
     [selectedFiles],
   );
+  const hasUploadStarted = Object.keys(uploadUpdates).length > 0;
+  const isSelectionLocked = isUploading || hasUploadStarted;
 
   function replaceSelection(files: FileList | readonly File[]): void {
+    if (uploadInFlightRef.current || hasUploadStarted) {
+      return;
+    }
+
     setSelectedFiles(Array.from(files));
+    setCreationError(null);
+    setUploadUpdates({});
   }
 
   function handleInputChange(event: ChangeEvent<HTMLInputElement>): void {
@@ -362,12 +521,23 @@ export function DocumentSelectionWorkspace() {
 
   function handleDragOver(event: DragEvent<HTMLDivElement>): void {
     event.preventDefault();
+
+    if (uploadInFlightRef.current || hasUploadStarted) {
+      event.dataTransfer.dropEffect = "none";
+      return;
+    }
+
     event.dataTransfer.dropEffect = "copy";
     setIsDragging(true);
   }
 
   function handleDragEnter(event: DragEvent<HTMLDivElement>): void {
     event.preventDefault();
+
+    if (uploadInFlightRef.current || hasUploadStarted) {
+      return;
+    }
+
     setIsDragging(true);
   }
 
@@ -384,6 +554,11 @@ export function DocumentSelectionWorkspace() {
 
   function handleDrop(event: DragEvent<HTMLDivElement>): void {
     event.preventDefault();
+
+    if (uploadInFlightRef.current || hasUploadStarted) {
+      return;
+    }
+
     setIsDragging(false);
 
     if (event.dataTransfer.files.length === 0) {
@@ -394,30 +569,82 @@ export function DocumentSelectionWorkspace() {
   }
 
   function handleRemove(indexToRemove: number): void {
+    if (uploadInFlightRef.current || hasUploadStarted) {
+      return;
+    }
+
     setSelectedFiles((files) =>
       files.filter((_, index) => index !== indexToRemove),
     );
+    setCreationError(null);
+    setUploadUpdates({});
+  }
+
+  async function handleUpload(): Promise<void> {
+    if (!validationResult.isValid || uploadInFlightRef.current) {
+      return;
+    }
+
+    uploadInFlightRef.current = true;
+    setIsUploading(true);
+    setCreationError(null);
+    setUploadUpdates({});
+
+    try {
+      await createAndUploadBatch(selectedFiles, (update) => {
+        setUploadUpdates((current) => ({
+          ...current,
+          [update.index]: update,
+        }));
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "The batch could not be created.";
+
+      setUploadUpdates({});
+      setCreationError(`Batch creation failed: ${message}`);
+    } finally {
+      uploadInFlightRef.current = false;
+      setIsUploading(false);
+    }
   }
 
   return (
-    <main className="grid min-h-0 flex-1 grid-rows-[auto_1fr] lg:grid-cols-[280px_minmax(0,1fr)] lg:grid-rows-1 lg:overflow-hidden">
-      <DocumentsPanel result={validationResult} onRemove={handleRemove} />
+    <main className="grid min-h-0 min-w-0 w-full flex-1 grid-rows-[auto_1fr] lg:grid-cols-[280px_minmax(0,1fr)] lg:grid-rows-1 lg:overflow-hidden">
+      <DocumentsPanel
+        isSelectionLocked={isSelectionLocked}
+        result={validationResult}
+        uploadUpdates={uploadUpdates}
+        onRemove={handleRemove}
+      />
       <section
         className="flex min-h-0 min-w-0 flex-col bg-slate-50/30"
         aria-label="Conversation workspace"
       >
         <DocumentSelector
+          creationError={creationError}
           fileCount={validationResult.files.length}
+          hasUploadStarted={hasUploadStarted}
           inputRef={inputRef}
           isDragging={isDragging}
+          isSelectionLocked={isSelectionLocked}
+          isUploading={isUploading}
+          isValid={validationResult.isValid}
           onChange={handleInputChange}
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
           onDragOver={handleDragOver}
           onDrop={handleDrop}
           onOpenPicker={() => inputRef.current?.click()}
+          onUpload={handleUpload}
         />
-        <DisabledComposer hasFiles={validationResult.files.length > 0} />
+        <DisabledComposer
+          hasFiles={validationResult.files.length > 0}
+          isUploading={isUploading}
+          uploadUpdates={uploadUpdates}
+        />
       </section>
     </main>
   );

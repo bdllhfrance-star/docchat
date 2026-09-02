@@ -1,6 +1,11 @@
 import { describe, expect, test } from "vitest";
 
-import { getServerEnv, getSessionEnv } from "./env";
+import {
+  getBlobEnv,
+  getDatabaseEnv,
+  getServerEnv,
+  getSessionEnv,
+} from "./env";
 
 const validEnv = {
   MONGODB_URI: "mongodb+srv://example.invalid/docchat",
@@ -40,6 +45,21 @@ describe("server environment", () => {
   test("validates the session secret without requiring external services", () => {
     expect(getSessionEnv({ APP_SECRET: validEnv.APP_SECRET })).toEqual({
       APP_SECRET: validEnv.APP_SECRET,
+    });
+  });
+
+  test("validates database variables independently", () => {
+    expect(getDatabaseEnv(validEnv)).toEqual({
+      MONGODB_DATABASE: validEnv.MONGODB_DATABASE,
+      MONGODB_URI: validEnv.MONGODB_URI,
+    });
+  });
+
+  test("validates private Blob variables independently", () => {
+    expect(getBlobEnv(validEnv)).toEqual({
+      BLOB_STORE_ID: validEnv.BLOB_STORE_ID,
+      BLOB_WEBHOOK_PUBLIC_KEY: validEnv.BLOB_WEBHOOK_PUBLIC_KEY,
+      VERCEL_OIDC_TOKEN: validEnv.VERCEL_OIDC_TOKEN,
     });
   });
 });

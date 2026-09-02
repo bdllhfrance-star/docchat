@@ -16,8 +16,21 @@ const sessionEnvSchema = z.object({
   APP_SECRET: z.string().min(32),
 });
 
+const databaseEnvSchema = z.object({
+  MONGODB_URI: z.string().min(1),
+  MONGODB_DATABASE: z.string().min(1),
+});
+
+const blobEnvSchema = z.object({
+  BLOB_STORE_ID: z.string().min(1),
+  VERCEL_OIDC_TOKEN: z.string().min(1),
+  BLOB_WEBHOOK_PUBLIC_KEY: z.string().min(1),
+});
+
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
 export type SessionEnv = z.infer<typeof sessionEnvSchema>;
+export type DatabaseEnv = z.infer<typeof databaseEnvSchema>;
+export type BlobEnv = z.infer<typeof blobEnvSchema>;
 
 function formatEnvError(error: z.ZodError): Error {
   const variableNames = [
@@ -45,6 +58,30 @@ export function getSessionEnv(
   values: Record<string, string | undefined> = process.env,
 ): SessionEnv {
   const result = sessionEnvSchema.safeParse(values);
+
+  if (!result.success) {
+    throw formatEnvError(result.error);
+  }
+
+  return result.data;
+}
+
+export function getDatabaseEnv(
+  values: Record<string, string | undefined> = process.env,
+): DatabaseEnv {
+  const result = databaseEnvSchema.safeParse(values);
+
+  if (!result.success) {
+    throw formatEnvError(result.error);
+  }
+
+  return result.data;
+}
+
+export function getBlobEnv(
+  values: Record<string, string | undefined> = process.env,
+): BlobEnv {
+  const result = blobEnvSchema.safeParse(values);
 
   if (!result.success) {
     throw formatEnvError(result.error);

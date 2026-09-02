@@ -46,6 +46,26 @@ export type CreateBatchRequest = {
   files: BatchManifestFile[];
 };
 
+export type CreateBatchFile = {
+  clientId: string;
+  documentId: string;
+  uploadPathname: string;
+};
+
+export type CreateBatchResponse = BatchStatusResponse & {
+  files: CreateBatchFile[];
+};
+
+export type BlobUploadClientPayload = {
+  batchId: string;
+  documentId: string;
+};
+
+export type ReportUploadFailureRequest = {
+  type: "docchat.upload-failed";
+  payload: BlobUploadClientPayload;
+};
+
 export type ChatRequest = {
   batchId: string;
   documentIds: string[];
