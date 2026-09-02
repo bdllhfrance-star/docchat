@@ -296,7 +296,7 @@ correspond à l'opération qu'elle représente :
 | Échec | L'icône rouge apparaît avec un seul mouvement horizontal court ; aucune animation répétitive. |
 | Réessayer | La flèche SVG effectue une rotation unique puis l'étape active reprend. |
 | Supprimer | La ligne s'estompe puis se replie proprement sans déplacer brutalement la liste. |
-| Replay pédagogique du pipeline | Tant que le chat est vide, six scènes rejouent en boucle `Upload → Validate → Extract → Chunk → Embed → Index`. Chaque étape reste mise en avant environ 2,2 secondes et contient plusieurs éléments animés représentant l'opération. Le badge `Process replay` évite de présenter cette démonstration comme une progression réelle. |
+| Replay pédagogique du pipeline | Tant que le chat est vide, six scènes rejouent en boucle `Upload → Validate → Extract → Chunk → Embed → Index`. Chaque étape reste mise en avant environ 2,2 secondes et contient plusieurs éléments animés représentant l'opération. La grille, le gradient et les halos couvrent toute la zone de conversation sans carte extérieure. Le badge `Process replay` évite de présenter cette démonstration comme une progression réelle. |
 | Streaming du chat | Le texte se complète naturellement ; aucun faux curseur animé si aucun nouveau delta n'arrive. |
 
 Règles d'implémentation des animations :

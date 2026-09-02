@@ -222,16 +222,20 @@ function ActiveChat({
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div
-        className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-8 sm:py-8"
+        className={`min-h-0 flex-1 overflow-y-auto ${
+          messages.length === 0 ? "flex" : "px-4 py-6 sm:px-8 sm:py-8"
+        }`}
         aria-live="polite"
       >
         <div
-          className={`mx-auto flex w-full flex-col gap-5 ${
-            messages.length === 0 ? "max-w-6xl" : "max-w-3xl"
+          className={`flex w-full flex-col gap-5 ${
+            messages.length === 0
+              ? "min-h-full flex-1"
+              : "mx-auto max-w-3xl"
           }`}
         >
           {messages.length === 0 ? (
-            <div className="flex min-h-[55vh] items-center justify-center py-2 sm:py-4">
+            <div className="flex min-h-[55vh] flex-1 items-stretch">
               <RagPipelineVisualizer documentCount={documentIds.length} />
             </div>
           ) : (

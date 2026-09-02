@@ -110,7 +110,7 @@ export function RagPipelineVisualizer({
 }) {
   return (
     <section
-      className="rag-pipeline-shell relative w-full overflow-hidden rounded-[2rem] border border-slate-200 bg-white/90 px-4 py-6 text-center shadow-[0_24px_80px_-48px_rgba(15,23,42,0.45)] dark:border-slate-800 dark:bg-slate-900/70 sm:px-6 sm:py-8 lg:px-8"
+      className="rag-pipeline-shell relative flex min-h-full w-full flex-1 items-center justify-center overflow-hidden px-4 py-8 text-center sm:px-6 sm:py-10 lg:px-8"
       aria-labelledby="rag-pipeline-heading"
       data-testid="rag-pipeline-visualizer"
     >
@@ -118,7 +118,7 @@ export function RagPipelineVisualizer({
       <div className="rag-ambient-orb rag-ambient-orb-left" aria-hidden="true" />
       <div className="rag-ambient-orb rag-ambient-orb-right" aria-hidden="true" />
 
-      <div className="relative z-10">
+      <div className="relative z-10 w-full max-w-6xl">
         <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50/90 px-3 py-1 text-[10px] font-bold tracking-[0.2em] text-blue-700 uppercase dark:border-blue-900 dark:bg-blue-950/70 dark:text-blue-300">
           <span className="rag-replay-dot size-1.5 rounded-full bg-blue-500" aria-hidden="true" />
           Process replay
