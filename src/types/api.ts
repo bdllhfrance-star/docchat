@@ -1,4 +1,8 @@
-import type { BatchSummary, DocumentSource } from "@/types/documents";
+import type {
+  BatchSummary,
+  DocumentSource,
+  SupportedFileType,
+} from "@/types/documents";
 
 export const apiErrorCodes = [
   "INVALID_REQUEST",
@@ -25,6 +29,21 @@ export type ApiError = {
 
 export type BatchStatusResponse = {
   batch: BatchSummary;
+};
+
+export type BatchManifestFile = {
+  clientId: string;
+  filename: string;
+  size: number;
+  mimeType: string;
+};
+
+export type ValidatedBatchManifestFile = BatchManifestFile & {
+  fileType: SupportedFileType;
+};
+
+export type CreateBatchRequest = {
+  files: BatchManifestFile[];
 };
 
 export type ChatRequest = {

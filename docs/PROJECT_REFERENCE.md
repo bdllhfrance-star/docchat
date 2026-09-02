@@ -751,10 +751,10 @@ intégrés par l'agent principal avant le lancement d'une nouvelle vague.
 
 | État | ID | Dépend de | Responsable | Tâche et condition de fin |
 | --- | --- | --- | --- | --- |
-| [ ] | UI-01 | SET-04 | UI | Construire le shell responsive : état vide, zone d'upload, panneau de documents, zone de chat et composer désactivé. Tests de rendu et navigation clavier réussis. |
-| [ ] | API-01 | SET-03, SET-04 | Backend | Créer la session anonyme par cookie HTTP-only signé et appliquer `sessionId` à toutes les opérations. Un accès croisé est refusé par test. |
-| [ ] | UPL-01 | SET-04, UI-01 | UI | Implémenter sélection multiple, drag-and-drop et vérification locale du nombre, type et poids. Les erreurs sont affichées fichier par fichier avant l'envoi. |
-| [ ] | UPL-02 | API-01 | Backend | Implémenter `POST /api/batches` avec manifeste validé, limites serveur, identifiants et statuts initiaux. Les erreurs suivent `ApiError`. |
+| [x] | UI-01 | SET-04 | UI | Construire le shell responsive : état vide, zone d'upload, panneau de documents, zone de chat et composer désactivé. Tests de rendu et navigation clavier réussis. |
+| [~] | API-01 | SET-03, SET-04 | Backend | Créer la session anonyme par cookie HTTP-only signé et appliquer `sessionId` à toutes les opérations. Un accès croisé est refusé par test. |
+| [x] | UPL-01 | SET-04, UI-01 | UI | Implémenter sélection multiple, drag-and-drop et vérification locale du nombre, type et poids. Les erreurs sont affichées fichier par fichier avant l'envoi. |
+| [~] | UPL-02 | API-01 | Backend | Implémenter `POST /api/batches` avec manifeste validé, limites serveur, identifiants et statuts initiaux. Les erreurs suivent `ApiError`. |
 | [ ] | UPL-03 | UPL-02, SET-02 | Backend | Implémenter `POST /api/upload` et l'upload Blob privé sans exposer de secret. L'upload réel d'une fixture respecte taille, type et propriété de session. |
 | [ ] | DB-01 | SET-02, SET-04 | Backend | Créer l'accès MongoDB, les repositories minimaux et les définitions d'index classiques, TTL et Vector Search. Connexion réutilisée et filtres de session testés. |
 | [ ] | PAR-01 | SET-04, SET-05 | Ingestion | Extraire un PDF natif page par page vers `DocumentBlock[]`, avec numéro de page et erreurs explicites pour PDF vide, chiffré ou non extractible. |

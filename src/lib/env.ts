@@ -12,7 +12,22 @@ const serverEnvSchema = z.object({
   APP_SECRET: z.string().min(32),
 });
 
+const sessionEnvSchema = z.object({
+  APP_SECRET: z.string().min(32),
+});
+
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
+export type SessionEnv = z.infer<typeof sessionEnvSchema>;
+
+function formatEnvError(error: z.ZodError): Error {
+  const variableNames = [
+    ...new Set(error.issues.map((issue) => String(issue.path[0]))),
+  ];
+
+  return new Error(
+    `Invalid server environment variables: ${variableNames.join(", ")}`,
+  );
+}
 
 export function getServerEnv(
   values: Record<string, string | undefined> = process.env,
@@ -20,13 +35,19 @@ export function getServerEnv(
   const result = serverEnvSchema.safeParse(values);
 
   if (!result.success) {
-    const variableNames = [
-      ...new Set(result.error.issues.map((issue) => String(issue.path[0]))),
-    ];
+    throw formatEnvError(result.error);
+  }
 
-    throw new Error(
-      `Invalid server environment variables: ${variableNames.join(", ")}`,
-    );
+  return result.data;
+}
+
+export function getSessionEnv(
+  values: Record<string, string | undefined> = process.env,
+): SessionEnv {
+  const result = sessionEnvSchema.safeParse(values);
+
+  if (!result.success) {
+    throw formatEnvError(result.error);
   }
 
   return result.data;

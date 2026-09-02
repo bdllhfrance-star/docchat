@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import { getServerEnv } from "./env";
+import { getServerEnv, getSessionEnv } from "./env";
 
 const validEnv = {
   MONGODB_URI: "mongodb+srv://example.invalid/docchat",
@@ -35,5 +35,11 @@ describe("server environment", () => {
     } catch (error) {
       expect(String(error)).not.toContain("short-and-sensitive");
     }
+  });
+
+  test("validates the session secret without requiring external services", () => {
+    expect(getSessionEnv({ APP_SECRET: validEnv.APP_SECRET })).toEqual({
+      APP_SECRET: validEnv.APP_SECRET,
+    });
   });
 });
