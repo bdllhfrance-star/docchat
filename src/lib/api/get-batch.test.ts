@@ -62,6 +62,7 @@ describe("get batch API", () => {
             fileType: "pdf",
             size: 1024,
             status: "extracting",
+            canRetry: false,
           },
         ],
         createdAt: createdAt.toISOString(),

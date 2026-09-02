@@ -57,6 +57,7 @@ export type DocumentSummary = {
   fileType: SupportedFileType;
   size: number;
   status: DocumentStatus;
+  canRetry?: boolean;
   error?: DocumentFailure;
 };
 

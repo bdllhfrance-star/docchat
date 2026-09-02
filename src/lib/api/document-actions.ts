@@ -56,6 +56,7 @@ function toDocumentSummary(document: DocumentRecord): DocumentSummary {
     fileType: document.fileType,
     size: document.size,
     status: document.status,
+    canRetry: document.status === "failed" && Boolean(document.blobUrl),
     ...(document.error ? { error: document.error } : {}),
   };
 }

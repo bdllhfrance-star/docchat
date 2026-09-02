@@ -14,6 +14,10 @@ import {
   type ClientUploadUpdate,
 } from "@/lib/uploads/client";
 import { pollBatchStatus } from "@/lib/batches/client";
+import {
+  deleteDocument,
+  retryDocument,
+} from "@/lib/documents/client";
 import type { BatchSummary } from "@/types/documents";
 import Home from "./page";
 
@@ -23,9 +27,15 @@ vi.mock("@/lib/uploads/client", () => ({
 vi.mock("@/lib/batches/client", () => ({
   pollBatchStatus: vi.fn(),
 }));
+vi.mock("@/lib/documents/client", () => ({
+  deleteDocument: vi.fn(),
+  retryDocument: vi.fn(),
+}));
 
 const createAndUploadBatchMock = vi.mocked(createAndUploadBatch);
 const pollBatchStatusMock = vi.mocked(pollBatchStatus);
+const deleteDocumentMock = vi.mocked(deleteDocument);
+const retryDocumentMock = vi.mocked(retryDocument);
 
 beforeEach(() => {
   createAndUploadBatchMock.mockReset();
@@ -33,6 +43,8 @@ beforeEach(() => {
   pollBatchStatusMock.mockImplementation(
     () => new Promise<BatchSummary>(() => undefined),
   );
+  deleteDocumentMock.mockReset();
+  retryDocumentMock.mockReset();
 });
 
 afterEach(cleanup);
@@ -358,4 +370,168 @@ test("keeps each file row stable while showing real processing states", async ()
       "All documents are ready. Chat will be enabled in the next phase.",
     ),
   ).toBeDefined();
+});
+
+test("retries a failed document and resumes status polling", async () => {
+  let finishRetry!: () => void;
+  const failedDocument = {
+    id: "document-1",
+    batchId: "batch-1",
+    filename: "guide.pdf",
+    fileType: "pdf",
+    size: 1024,
+    status: "failed",
+    canRetry: true,
+    error: { code: "PROVIDER_ERROR", message: "Embedding failed." },
+  } as const;
+  const failedBatch: BatchSummary = {
+    ...uploadResult().batch,
+    status: "failed",
+    documents: [failedDocument],
+  };
+  const readyDocument = {
+    ...failedDocument,
+    status: "ready",
+    canRetry: false,
+    error: undefined,
+  } as const;
+  const readyBatch: BatchSummary = {
+    ...failedBatch,
+    status: "ready",
+    documents: [readyDocument],
+  };
+
+  createAndUploadBatchMock.mockImplementation(async (_, onUpdate) => {
+    onUpdate({ index: 0, status: "uploaded", progress: 100 });
+    return uploadResult();
+  });
+  pollBatchStatusMock
+    .mockImplementationOnce(async (_, onUpdate) => {
+      onUpdate(failedBatch);
+      return failedBatch;
+    })
+    .mockImplementationOnce(async (_, onUpdate) => {
+      onUpdate(readyBatch);
+      return readyBatch;
+    });
+  retryDocumentMock.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finishRetry = () => resolve(readyDocument);
+      }),
+  );
+
+  render(<Home />);
+  fireEvent.change(screen.getByLabelText("Select documents from device"), {
+    target: { files: [file()] },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Upload and process" }));
+
+  const retryButton = await screen.findByRole("button", {
+    name: "Retry guide.pdf",
+  });
+  fireEvent.click(retryButton);
+
+  expect(screen.getByText("Retrying")).toBeDefined();
+  expect(deleteDocumentMock).not.toHaveBeenCalled();
+
+  await act(async () => finishRetry());
+
+  expect(retryDocumentMock).toHaveBeenCalledWith("document-1");
+  expect(await screen.findByText("Ready")).toBeDefined();
+  expect(pollBatchStatusMock).toHaveBeenCalledTimes(2);
+});
+
+test("deletes the last ready document and returns to the initial workspace", async () => {
+  let finishDeletion!: () => void;
+  const readyBatch: BatchSummary = {
+    ...uploadResult().batch,
+    status: "ready",
+    documents: [
+      {
+        id: "document-1",
+        batchId: "batch-1",
+        filename: "guide.pdf",
+        fileType: "pdf",
+        size: 1024,
+        status: "ready",
+        canRetry: false,
+      },
+    ],
+  };
+
+  createAndUploadBatchMock.mockImplementation(async (_, onUpdate) => {
+    onUpdate({ index: 0, status: "uploaded", progress: 100 });
+    return uploadResult();
+  });
+  pollBatchStatusMock.mockImplementationOnce(async (_, onUpdate) => {
+    onUpdate(readyBatch);
+    return readyBatch;
+  });
+  deleteDocumentMock.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finishDeletion = resolve;
+      }),
+  );
+
+  render(<Home />);
+  fireEvent.change(screen.getByLabelText("Select documents from device"), {
+    target: { files: [file()] },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Upload and process" }));
+
+  const deleteButton = await screen.findByRole("button", {
+    name: "Delete guide.pdf",
+  });
+  fireEvent.click(deleteButton);
+
+  expect(screen.getByText("Deleting")).toBeDefined();
+  await act(async () => finishDeletion());
+
+  expect(deleteDocumentMock).toHaveBeenCalledWith("document-1");
+  expect(
+    screen.getByRole("heading", { name: "Start with your documents" }),
+  ).toBeDefined();
+  expect(screen.getByText("No documents yet")).toBeDefined();
+});
+
+test("keeps a document visible when its deletion fails", async () => {
+  const readyBatch: BatchSummary = {
+    ...uploadResult().batch,
+    status: "ready",
+    documents: [
+      {
+        id: "document-1",
+        batchId: "batch-1",
+        filename: "guide.pdf",
+        fileType: "pdf",
+        size: 1024,
+        status: "ready",
+      },
+    ],
+  };
+
+  createAndUploadBatchMock.mockResolvedValue(uploadResult());
+  pollBatchStatusMock.mockImplementationOnce(async (_, onUpdate) => {
+    onUpdate(readyBatch);
+    return readyBatch;
+  });
+  deleteDocumentMock.mockRejectedValue(
+    new Error("The stored file could not be removed."),
+  );
+
+  render(<Home />);
+  fireEvent.change(screen.getByLabelText("Select documents from device"), {
+    target: { files: [file()] },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Upload and process" }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Delete guide.pdf" }),
+  );
+
+  expect(
+    await screen.findByText("The stored file could not be removed."),
+  ).toBeDefined();
+  expect(screen.getByText("guide.pdf")).toBeDefined();
 });

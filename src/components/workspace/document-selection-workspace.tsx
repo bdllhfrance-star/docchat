@@ -12,6 +12,7 @@ import {
   LoaderCircle,
   MessageSquareText,
   Plus,
+  RotateCcw,
   Trash2,
   Upload,
 } from "lucide-react";
@@ -25,6 +26,10 @@ import {
 } from "react";
 
 import { pollBatchStatus } from "@/lib/batches/client";
+import {
+  deleteDocument,
+  retryDocument,
+} from "@/lib/documents/client";
 import {
   createAndUploadBatch,
   type ClientUploadUpdate,
@@ -67,13 +72,60 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
 }
 
+function getBatchStatusFromDocuments(
+  documents: readonly DocumentSummary[],
+): BatchSummary["status"] {
+  if (
+    documents.some(
+      (document) =>
+        document.status !== "ready" && document.status !== "failed",
+    )
+  ) {
+    return "processing";
+  }
+
+  const readyFiles = documents.filter(
+    (document) => document.status === "ready",
+  ).length;
+
+  if (readyFiles === documents.length) {
+    return "ready";
+  }
+
+  return readyFiles > 0 ? "partial" : "failed";
+}
+
+function removeIndexedValue<T>(
+  values: Partial<Record<number, T>>,
+  removedIndex: number,
+): Partial<Record<number, T>> {
+  const next: Partial<Record<number, T>> = {};
+
+  for (const [rawIndex, value] of Object.entries(values)) {
+    const index = Number(rawIndex);
+
+    if (value !== undefined && index !== removedIndex) {
+      next[index > removedIndex ? index - 1 : index] = value;
+    }
+  }
+
+  return next;
+}
+
 type SelectionResult = ReturnType<typeof validateBatchFiles<File>>;
 type UploadUpdates = Partial<Record<number, ClientUploadUpdate>>;
 type ProcessingDocuments = Partial<Record<number, DocumentSummary>>;
+type DocumentAction = "deleting" | "retrying";
+type DocumentActions = Partial<Record<string, DocumentAction>>;
+type DocumentActionErrors = Partial<Record<string, string>>;
 
 type DocumentsPanelProps = {
   isSelectionLocked: boolean;
+  actionErrors: DocumentActionErrors;
+  actions: DocumentActions;
+  onDelete: (index: number, document: DocumentSummary) => void;
   onRemove: (index: number) => void;
+  onRetry: (document: DocumentSummary) => void;
   processingDocuments: ProcessingDocuments;
   result: SelectionResult;
   uploadUpdates: UploadUpdates;
@@ -155,16 +207,55 @@ const processingLabels: Record<DocumentStatus, string> = {
   failed: "Processing failed",
 };
 
-function ProcessingState({ document }: { document: DocumentSummary }) {
+type ProcessingStateProps = {
+  action?: DocumentAction;
+  actionError?: string;
+  actionsDisabled: boolean;
+  document: DocumentSummary;
+  onDelete: () => void;
+  onRetry: () => void;
+};
+
+function ProcessingState({
+  action,
+  actionError,
+  actionsDisabled,
+  document,
+  onDelete,
+  onRetry,
+}: ProcessingStateProps) {
   if (document.status === "ready") {
     return (
-      <p
-        className="mt-2 flex items-center gap-1.5 border-t border-emerald-100 pt-2 text-xs font-medium text-emerald-700"
-        role="status"
-      >
-        <CheckCircle2 size={13} aria-hidden="true" />
-        Ready
-      </p>
+      <div className="mt-2 border-t border-emerald-100 pt-2">
+        <div className="flex items-center justify-between gap-3">
+          <p
+            className="flex items-center gap-1.5 text-xs font-medium text-emerald-700"
+            role="status"
+          >
+            <CheckCircle2 size={13} aria-hidden="true" />
+            Ready
+          </p>
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={actionsDisabled}
+            className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-wait disabled:opacity-50"
+            aria-label={`Delete ${document.filename}`}
+          >
+            {action === "deleting" ? (
+              <LoaderCircle className="animate-spin" size={13} aria-hidden="true" />
+            ) : (
+              <Trash2 size={13} aria-hidden="true" />
+            )}
+            {action === "deleting" ? "Deleting" : "Delete"}
+          </button>
+        </div>
+        {actionError ? (
+          <p className="mt-2 text-xs leading-5 text-red-700" role="alert">
+            {actionError}
+          </p>
+        ) : null}
+      </div>
     );
   }
 
@@ -176,6 +267,43 @@ function ProcessingState({ document }: { document: DocumentSummary }) {
       >
         <p className="font-medium">Processing failed</p>
         <p>{document.error?.message ?? "The document could not be processed."}</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {document.canRetry ? (
+            <button
+              type="button"
+              onClick={onRetry}
+              disabled={actionsDisabled}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-wait disabled:opacity-50"
+              aria-label={`Retry ${document.filename}`}
+            >
+              {action === "retrying" ? (
+                <LoaderCircle className="animate-spin" size={13} aria-hidden="true" />
+              ) : (
+                <RotateCcw size={13} aria-hidden="true" />
+              )}
+              {action === "retrying" ? "Retrying" : "Retry"}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={actionsDisabled}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:cursor-wait disabled:opacity-50"
+            aria-label={`Delete ${document.filename}`}
+          >
+            {action === "deleting" ? (
+              <LoaderCircle className="animate-spin" size={13} aria-hidden="true" />
+            ) : (
+              <Trash2 size={13} aria-hidden="true" />
+            )}
+            {action === "deleting" ? "Deleting" : "Delete"}
+          </button>
+        </div>
+        {actionError ? (
+          <p className="mt-2 text-xs leading-5 text-red-700" role="alert">
+            {actionError}
+          </p>
+        ) : null}
       </div>
     );
   }
@@ -192,13 +320,18 @@ function ProcessingState({ document }: { document: DocumentSummary }) {
 }
 
 function DocumentsPanel({
+  actionErrors,
+  actions,
   isSelectionLocked,
+  onDelete,
   onRemove,
+  onRetry,
   processingDocuments,
   result,
   uploadUpdates,
 }: DocumentsPanelProps) {
   const hasFiles = result.files.length > 0;
+  const actionsDisabled = Object.keys(actions).length > 0;
 
   return (
     <aside
@@ -305,10 +438,19 @@ function DocumentsPanel({
                         <p key={error}>{fileErrorMessages[error]}</p>
                       ))}
                     </div>
-                  ) : uploadUpdate && uploadUpdate.status !== "uploaded" ? (
+                  ) : uploadUpdate &&
+                    (uploadUpdate.status === "creating-batch" ||
+                      uploadUpdate.status === "uploading") ? (
                     <UploadState update={uploadUpdate} />
                   ) : processingDocument ? (
-                    <ProcessingState document={processingDocument} />
+                    <ProcessingState
+                      action={actions[processingDocument.id]}
+                      actionError={actionErrors[processingDocument.id]}
+                      actionsDisabled={actionsDisabled}
+                      document={processingDocument}
+                      onDelete={() => onDelete(index, processingDocument)}
+                      onRetry={() => onRetry(processingDocument)}
+                    />
                   ) : uploadUpdate ? (
                     <UploadState update={uploadUpdate} />
                   ) : (
@@ -568,6 +710,7 @@ function DisabledComposer({
 export function DocumentSelectionWorkspace() {
   const inputRef = useRef<HTMLInputElement>(null);
   const uploadInFlightRef = useRef(false);
+  const documentActionInFlightRef = useRef(false);
   const pollingAbortRef = useRef<AbortController | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [batch, setBatch] = useState<BatchSummary | null>(null);
@@ -577,6 +720,9 @@ export function DocumentSelectionWorkspace() {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [creationError, setCreationError] = useState<string | null>(null);
+  const [documentActions, setDocumentActions] = useState<DocumentActions>({});
+  const [documentActionErrors, setDocumentActionErrors] =
+    useState<DocumentActionErrors>({});
   const [uploadUpdates, setUploadUpdates] = useState<UploadUpdates>({});
   const validationResult = useMemo(
     () => validateBatchFiles(selectedFiles),
@@ -607,6 +753,40 @@ export function DocumentSelectionWorkspace() {
     [],
   );
 
+  function startBatchPolling(batchId: string): void {
+    const controller = new AbortController();
+    pollingAbortRef.current?.abort();
+    pollingAbortRef.current = controller;
+    void pollBatchStatus(batchId, (nextBatch) => setBatch(nextBatch), {
+      signal: controller.signal,
+    }).catch((error) => {
+      if (!controller.signal.aborted) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "The batch status could not be loaded.";
+        setCreationError(`Status update failed: ${message}`);
+      }
+    });
+  }
+
+  function setDocumentActionError(
+    documentId: string,
+    error?: string,
+  ): void {
+    setDocumentActionErrors((current) => {
+      const next = { ...current };
+
+      if (error) {
+        next[documentId] = error;
+      } else {
+        delete next[documentId];
+      }
+
+      return next;
+    });
+  }
+
   function replaceSelection(files: FileList | readonly File[]): void {
     if (uploadInFlightRef.current || hasUploadStarted) {
       return;
@@ -617,6 +797,7 @@ export function DocumentSelectionWorkspace() {
     setUploadUpdates({});
     setBatch(null);
     setDocumentIdsByIndex({});
+    setDocumentActionErrors({});
   }
 
   function handleInputChange(event: ChangeEvent<HTMLInputElement>): void {
@@ -685,6 +866,107 @@ export function DocumentSelectionWorkspace() {
     setUploadUpdates({});
     setBatch(null);
     setDocumentIdsByIndex({});
+    setDocumentActionErrors({});
+  }
+
+  async function handleRetryDocument(
+    document: DocumentSummary,
+  ): Promise<void> {
+    if (documentActionInFlightRef.current || !batch) {
+      return;
+    }
+
+    documentActionInFlightRef.current = true;
+    setDocumentActionError(document.id);
+    setDocumentActions({ [document.id]: "retrying" });
+
+    try {
+      const retried = await retryDocument(document.id);
+      setBatch((current) => {
+        if (!current) {
+          return current;
+        }
+
+        const documents = current.documents.map((currentDocument) =>
+          currentDocument.id === retried.id ? retried : currentDocument,
+        );
+
+        return {
+          ...current,
+          documents,
+          status: getBatchStatusFromDocuments(documents),
+        };
+      });
+      startBatchPolling(batch.id);
+    } catch (error) {
+      setDocumentActionError(
+        document.id,
+        error instanceof Error ? error.message : "The retry failed.",
+      );
+    } finally {
+      documentActionInFlightRef.current = false;
+      setDocumentActions({});
+    }
+  }
+
+  async function handleDeleteDocument(
+    index: number,
+    document: DocumentSummary,
+  ): Promise<void> {
+    if (documentActionInFlightRef.current) {
+      return;
+    }
+
+    documentActionInFlightRef.current = true;
+    setDocumentActionError(document.id);
+    setDocumentActions({ [document.id]: "deleting" });
+
+    try {
+      await deleteDocument(document.id);
+      const remainingFiles = selectedFiles.filter(
+        (_, fileIndex) => fileIndex !== index,
+      );
+      setSelectedFiles(remainingFiles);
+      setUploadUpdates((current) => removeIndexedValue(current, index));
+      setDocumentIdsByIndex((current) => removeIndexedValue(current, index));
+      setDocumentActionErrors((current) => {
+        const next = { ...current };
+        delete next[document.id];
+        return next;
+      });
+      setBatch((current) => {
+        if (!current) {
+          return current;
+        }
+
+        const documents = current.documents.filter(
+          (currentDocument) => currentDocument.id !== document.id,
+        );
+
+        return documents.length === 0
+          ? null
+          : {
+              ...current,
+              documents,
+              status: getBatchStatusFromDocuments(documents),
+            };
+      });
+
+      if (remainingFiles.length === 0) {
+        pollingAbortRef.current?.abort();
+        setUploadUpdates({});
+        setDocumentIdsByIndex({});
+        setCreationError(null);
+      }
+    } catch (error) {
+      setDocumentActionError(
+        document.id,
+        error instanceof Error ? error.message : "The deletion failed.",
+      );
+    } finally {
+      documentActionInFlightRef.current = false;
+      setDocumentActions({});
+    }
   }
 
   async function handleUpload(): Promise<void> {
@@ -713,22 +995,7 @@ export function DocumentSelectionWorkspace() {
         ),
       );
 
-      const controller = new AbortController();
-      pollingAbortRef.current?.abort();
-      pollingAbortRef.current = controller;
-      void pollBatchStatus(
-        result.batch.id,
-        (nextBatch) => setBatch(nextBatch),
-        { signal: controller.signal },
-      ).catch((error) => {
-        if (!controller.signal.aborted) {
-          const message =
-            error instanceof Error
-              ? error.message
-              : "The batch status could not be loaded.";
-          setCreationError(`Status update failed: ${message}`);
-        }
-      });
+      startBatchPolling(result.batch.id);
     } catch (error) {
       const message =
         error instanceof Error
@@ -746,11 +1013,15 @@ export function DocumentSelectionWorkspace() {
   return (
     <main className="grid min-h-0 min-w-0 w-full flex-1 grid-rows-[auto_1fr] lg:grid-cols-[280px_minmax(0,1fr)] lg:grid-rows-1 lg:overflow-hidden">
       <DocumentsPanel
+        actionErrors={documentActionErrors}
+        actions={documentActions}
         isSelectionLocked={isSelectionLocked}
+        onDelete={handleDeleteDocument}
         processingDocuments={processingDocuments}
         result={validationResult}
         uploadUpdates={uploadUpdates}
         onRemove={handleRemove}
+        onRetry={handleRetryDocument}
       />
       <section
         className="flex min-h-0 min-w-0 flex-col bg-slate-50/30"
