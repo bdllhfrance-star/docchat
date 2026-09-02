@@ -1,16 +1,13 @@
 "use client";
 
 import {
-  AlertCircle,
   ArrowUp,
   CheckCircle2,
   CircleEllipsis,
   Clock3,
-  FileText,
   FileUp,
   Files,
   LockKeyhole,
-  LoaderCircle,
   MessageSquareText,
   Plus,
   RotateCcw,
@@ -48,6 +45,10 @@ import type {
 } from "@/types/documents";
 
 import { ChatWorkspace } from "./chat-workspace";
+import {
+  DocumentOperationIcon,
+  type DocumentOperationState,
+} from "./document-operation-icon";
 
 const acceptedFileTypes = ".pdf,.docx,.pptx,.xlsx,.txt,.md,.csv";
 const supportedFormats = "PDF, DOCX, PPTX, XLSX, TXT, MD and CSV";
@@ -123,6 +124,43 @@ type DocumentAction = "deleting" | "replacing" | "retrying";
 type DocumentActions = Partial<Record<string, DocumentAction>>;
 type DocumentActionErrors = Partial<Record<string, string>>;
 
+function getDocumentOperationState(input: {
+  action?: DocumentAction;
+  hasLocalError: boolean;
+  processingDocument?: DocumentSummary;
+  uploadUpdate?: ClientUploadUpdate;
+}): DocumentOperationState {
+  if (input.action) {
+    return input.action;
+  }
+
+  if (
+    input.hasLocalError ||
+    input.uploadUpdate?.status === "failed" ||
+    input.processingDocument?.status === "failed"
+  ) {
+    return "failed";
+  }
+
+  if (input.uploadUpdate?.status === "uploading") {
+    return "upload-transfer";
+  }
+
+  if (input.processingDocument) {
+    return input.processingDocument.status;
+  }
+
+  if (input.uploadUpdate?.status === "preparing-replacement") {
+    return "replacing";
+  }
+
+  if (input.uploadUpdate) {
+    return "queued";
+  }
+
+  return "selected";
+}
+
 type DocumentsPanelProps = {
   isSelectionLocked: boolean;
   actionErrors: DocumentActionErrors;
@@ -145,6 +183,7 @@ function UploadState({ update }: { update: ClientUploadUpdate }) {
       <p
         className="mt-2 flex items-center gap-1.5 border-t border-slate-100 pt-2 text-xs text-slate-600"
         role="status"
+        aria-live="polite"
       >
         <CircleEllipsis size={13} aria-hidden="true" />
         {update.status === "creating-batch"
@@ -187,6 +226,7 @@ function UploadState({ update }: { update: ClientUploadUpdate }) {
       <p
         className="mt-2 flex items-center gap-1.5 border-t border-slate-100 pt-2 text-xs text-blue-800"
         role="status"
+        aria-live="polite"
       >
         <Clock3 size={13} aria-hidden="true" />
         Uploaded · waiting for processing
@@ -243,6 +283,7 @@ function ProcessingState({
           <p
             className="flex items-center gap-1.5 text-xs font-medium text-emerald-700"
             role="status"
+            aria-live="polite"
           >
             <CheckCircle2 size={13} aria-hidden="true" />
             Ready
@@ -255,7 +296,7 @@ function ProcessingState({
             aria-label={`Delete ${document.filename}`}
           >
             {action === "deleting" ? (
-              <LoaderCircle className="animate-spin" size={13} aria-hidden="true" />
+              <Trash2 className="document-delete-once" size={13} aria-hidden="true" />
             ) : (
               <Trash2 size={13} aria-hidden="true" />
             )}
@@ -288,7 +329,7 @@ function ProcessingState({
             aria-label={`Replace ${document.filename}`}
           >
             {action === "replacing" ? (
-              <LoaderCircle className="animate-spin" size={13} aria-hidden="true" />
+              <FileUp className="document-replace-once" size={13} aria-hidden="true" />
             ) : (
               <FileUp size={13} aria-hidden="true" />
             )}
@@ -303,7 +344,7 @@ function ProcessingState({
               aria-label={`Retry ${document.filename}`}
             >
               {action === "retrying" ? (
-                <LoaderCircle className="animate-spin" size={13} aria-hidden="true" />
+                <RotateCcw className="document-retry-once" size={13} aria-hidden="true" />
               ) : (
                 <RotateCcw size={13} aria-hidden="true" />
               )}
@@ -318,7 +359,7 @@ function ProcessingState({
             aria-label={`Delete ${document.filename}`}
           >
             {action === "deleting" ? (
-              <LoaderCircle className="animate-spin" size={13} aria-hidden="true" />
+              <Trash2 className="document-delete-once" size={13} aria-hidden="true" />
             ) : (
               <Trash2 size={13} aria-hidden="true" />
             )}
@@ -338,8 +379,12 @@ function ProcessingState({
     <p
       className="mt-2 flex items-center gap-1.5 border-t border-slate-100 pt-2 text-xs text-blue-800"
       role="status"
+      aria-live="polite"
     >
-      <LoaderCircle className="animate-spin" size={13} aria-hidden="true" />
+      <span
+        className="document-stage-pulse size-1.5 rounded-full bg-blue-600"
+        aria-hidden="true"
+      />
       {processingLabels[document.status]}
     </p>
   );
@@ -409,32 +454,43 @@ function DocumentsPanel({
             {result.files.map(({ errors, file, fileType }, index) => {
               const uploadUpdate = uploadUpdates[index];
               const processingDocument = processingDocuments[index];
+              const action = processingDocument
+                ? actions[processingDocument.id]
+                : undefined;
               const hasError =
                 errors.length > 0 ||
                 uploadUpdate?.status === "failed" ||
                 processingDocument?.status === "failed";
+              const operationState = getDocumentOperationState({
+                action,
+                hasLocalError: errors.length > 0,
+                processingDocument,
+                uploadUpdate,
+              });
 
               return (
                 <li
                   key={`${file.name}-${file.size}-${file.lastModified}-${index}`}
-                  className={`rounded-xl border bg-white p-3 ${
+                  className={`document-row-enter rounded-xl border bg-white p-3 ${
+                    action === "deleting" ? "document-row-deleting" : ""
+                  } ${
                     hasError ? "border-red-200" : "border-slate-200"
                   }`}
                 >
                   <div className="flex min-w-0 items-start gap-3">
                     <span
                       className={`grid size-9 shrink-0 place-items-center rounded-lg ${
-                        hasError
+                        operationState === "ready"
+                          ? "bg-emerald-50 text-emerald-700"
+                          : hasError
                           ? "bg-red-50 text-red-700"
-                          : "bg-slate-100 text-slate-600"
+                          : operationState === "selected"
+                            ? "bg-slate-100 text-slate-600"
+                            : "bg-blue-50 text-blue-700"
                       }`}
                       aria-hidden="true"
                     >
-                      {hasError ? (
-                        <AlertCircle size={17} />
-                      ) : (
-                        <FileText size={17} />
-                      )}
+                      <DocumentOperationIcon state={operationState} />
                     </span>
                     <div className="min-w-0 flex-1">
                       <p
@@ -471,7 +527,7 @@ function DocumentsPanel({
                     <UploadState update={uploadUpdate} />
                   ) : processingDocument ? (
                     <ProcessingState
-                      action={actions[processingDocument.id]}
+                      action={action}
                       actionError={actionErrors[processingDocument.id]}
                       actionsDisabled={actionsDisabled}
                       document={processingDocument}

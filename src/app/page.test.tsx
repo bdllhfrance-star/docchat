@@ -236,6 +236,12 @@ test("starts one batch action and shows only real upload progress", async () => 
 
   const progress = screen.getByRole("progressbar", { name: "Uploading 42%" });
   expect(progress.getAttribute("aria-valuenow")).toBe("42");
+  expect(
+    screen
+      .getByText("guide.pdf")
+      .closest("li")
+      ?.querySelector('[data-operation="upload-transfer"]'),
+  ).not.toBeNull();
   expect(screen.getByRole("textbox", { name: "Message DocChat" })).toHaveProperty(
     "disabled",
     true,
@@ -365,11 +371,26 @@ test("keeps each file row stable while showing real processing states", async ()
 
   expect(await screen.findByText("Extracting text")).toBeDefined();
   expect(screen.getByText("guide.pdf")).toBeDefined();
+  expect(
+    screen
+      .getByText("guide.pdf")
+      .closest("li")
+      ?.querySelector('[data-operation="extracting"]'),
+  ).not.toBeNull();
+  expect(
+    screen.getByRole("status").getAttribute("aria-live"),
+  ).toBe("polite");
 
   act(() => publishReady());
 
   expect(await screen.findByText("Ready")).toBeDefined();
   expect(screen.getByText("guide.pdf")).toBeDefined();
+  expect(
+    screen
+      .getByText("guide.pdf")
+      .closest("li")
+      ?.querySelector('[data-operation="ready"]'),
+  ).not.toBeNull();
   expect(
     await screen.findByRole("heading", { name: "Your documents are ready" }),
   ).toBeDefined();
@@ -440,6 +461,12 @@ test("retries a failed document and resumes status polling", async () => {
   fireEvent.click(retryButton);
 
   expect(screen.getByText("Retrying")).toBeDefined();
+  expect(
+    screen
+      .getByText("guide.pdf")
+      .closest("li")
+      ?.querySelector('[data-operation="retrying"]'),
+  ).not.toBeNull();
   expect(deleteDocumentMock).not.toHaveBeenCalled();
 
   await act(async () => finishRetry());
@@ -586,6 +613,9 @@ test("deletes the last ready document and returns to the initial workspace", asy
   fireEvent.click(deleteButton);
 
   expect(screen.getByText("Deleting")).toBeDefined();
+  expect(screen.getByText("guide.pdf").closest("li")?.className).toContain(
+    "document-row-deleting",
+  );
   await act(async () => finishDeletion());
 
   expect(deleteDocumentMock).toHaveBeenCalledWith("document-1");

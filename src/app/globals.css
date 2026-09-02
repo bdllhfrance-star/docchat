@@ -37,3 +37,300 @@ textarea {
   background: #dbeafe;
   color: #172554;
 }
+
+@keyframes document-row-enter {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes document-row-delete {
+  to {
+    opacity: 0.45;
+    transform: scale(0.98);
+  }
+}
+
+@keyframes document-stroke-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes document-scan {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: translateY(-2px);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(2px);
+  }
+}
+
+@keyframes document-upload {
+  0%,
+  100% {
+    transform: translateY(1px);
+  }
+  50% {
+    transform: translateY(-1.5px);
+  }
+}
+
+@keyframes document-line-reveal {
+  0%,
+  25% {
+    opacity: 0;
+    transform: translateX(-2px);
+  }
+  45%,
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes document-chunk-separate {
+  0%,
+  100% {
+    transform: translate(0);
+  }
+  50% {
+    transform: translate(var(--chunk-x), var(--chunk-y));
+  }
+}
+
+@keyframes document-vector-build {
+  0%,
+  30% {
+    opacity: 0.3;
+    transform: scale(0.65);
+  }
+  55%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes document-index-settle {
+  0% {
+    opacity: 0.35;
+    transform: translateY(-2px);
+  }
+  55%,
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes document-ready-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.85);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes document-failure {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  35% {
+    transform: translateX(-1.5px);
+  }
+  70% {
+    transform: translateX(1.5px);
+  }
+}
+
+@keyframes document-retry {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes document-replace {
+  0% {
+    opacity: 0.4;
+    transform: scale(0.7);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes document-delete {
+  to {
+    opacity: 0.35;
+    transform: translateY(1.5px);
+  }
+}
+
+@keyframes document-stage-pulse {
+  50% {
+    opacity: 0.35;
+    transform: scale(0.8);
+  }
+}
+
+.document-row-enter {
+  animation: document-row-enter 220ms ease-out both;
+  transform-origin: center;
+}
+
+.document-row-deleting {
+  animation: document-row-delete 220ms ease-out both;
+}
+
+.document-outline-draw,
+.document-result-draw,
+.document-ready-ring,
+.document-ready-check {
+  stroke-dasharray: 70;
+  stroke-dashoffset: 70;
+  animation: document-stroke-draw 520ms ease-out forwards;
+}
+
+.document-result-draw,
+.document-ready-check {
+  animation-delay: 180ms;
+}
+
+.document-scan-line {
+  animation: document-scan 1.35s ease-in-out infinite;
+}
+
+.document-upload-arrow {
+  animation: document-upload 1.2s ease-in-out infinite;
+}
+
+.document-extract-line {
+  animation: document-line-reveal 1.5s ease-out infinite;
+}
+
+.document-chunk-group rect {
+  animation: document-chunk-separate 1.6s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.document-chunk-group rect:nth-child(1) {
+  --chunk-x: -1px;
+  --chunk-y: -1px;
+}
+
+.document-chunk-group rect:nth-child(2) {
+  --chunk-x: 1px;
+  --chunk-y: -1px;
+}
+
+.document-chunk-group rect:nth-child(3) {
+  --chunk-x: -1px;
+  --chunk-y: 1px;
+}
+
+.document-chunk-group rect:nth-child(4) {
+  --chunk-x: 1px;
+  --chunk-y: 1px;
+}
+
+.document-vector-dot {
+  animation: document-vector-build 1.35s ease-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.document-index-stack path {
+  animation: document-index-settle 1.45s ease-out infinite;
+}
+
+.document-index-stack path:nth-child(2) {
+  animation-delay: 140ms;
+}
+
+.document-index-stack path:nth-child(3) {
+  animation-delay: 280ms;
+}
+
+.document-ready-ring,
+.document-ready-check {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.document-ready-ring {
+  animation-name: document-stroke-draw, document-ready-pop;
+  animation-duration: 520ms, 260ms;
+}
+
+.document-failure-once {
+  animation: document-failure 240ms ease-out both;
+}
+
+.document-retry-once {
+  animation: document-retry 480ms ease-out both;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.document-replace-plus,
+.document-replace-once {
+  animation: document-replace 300ms ease-out both;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.document-delete-once {
+  animation: document-delete 240ms ease-out both;
+}
+
+.document-stage-pulse,
+.document-queue-dot {
+  animation: document-stage-pulse 1.4s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .document-row-enter,
+  .document-row-deleting,
+  .document-outline-draw,
+  .document-result-draw,
+  .document-scan-line,
+  .document-upload-arrow,
+  .document-extract-line,
+  .document-chunk-group rect,
+  .document-vector-dot,
+  .document-index-stack path,
+  .document-ready-ring,
+  .document-ready-check,
+  .document-failure-once,
+  .document-retry-once,
+  .document-replace-plus,
+  .document-replace-once,
+  .document-delete-once,
+  .document-stage-pulse,
+  .document-queue-dot {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  .document-row-deleting {
+    opacity: 0.65;
+    transform: none;
+  }
+}
