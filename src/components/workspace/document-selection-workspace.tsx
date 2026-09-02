@@ -294,43 +294,47 @@ function ProcessingState({
 }: ProcessingStateProps) {
   if (document.status === "ready") {
     return (
-      <div className="mt-2 border-t border-emerald-100 pt-2 dark:border-emerald-950">
-        <div className="flex items-center justify-between gap-3">
-          <p
-            className="flex items-center gap-1.5 text-xs font-medium text-emerald-700 dark:text-emerald-400"
-            role="status"
-            aria-live="polite"
+      <div className="mt-3 border-t border-emerald-100 pt-3 dark:border-emerald-950">
+        <p
+          className="flex items-center gap-1.5 text-xs font-semibold text-emerald-700 dark:text-emerald-400"
+          role="status"
+          aria-live="polite"
+        >
+          <CheckCircle2 className="shrink-0" size={14} aria-hidden="true" />
+          Ready
+        </p>
+        <div className="mt-2.5 flex min-w-0 items-stretch gap-2">
+          <label className="inline-flex h-9 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-100 has-disabled:cursor-not-allowed has-disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800">
+            <input
+              type="checkbox"
+              checked={selectedForChat}
+              onChange={onToggleChatDocument}
+              disabled={selectedForChat && selectedForChatCount === 1}
+              className="size-3.5 shrink-0 accent-slate-900 dark:accent-blue-500"
+              aria-label={`Use ${document.filename} in chat`}
+            />
+            <span className="truncate">
+              {selectedForChat ? "Included in chat" : "Include in chat"}
+            </span>
+          </label>
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={actionsDisabled}
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-transparent px-2.5 text-xs font-medium text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-wait disabled:opacity-50 dark:text-slate-400 dark:hover:border-red-900 dark:hover:bg-red-950/60 dark:hover:text-red-300 dark:focus-visible:outline-slate-200"
+            aria-label={`Delete ${document.filename}`}
           >
-            <CheckCircle2 size={13} aria-hidden="true" />
-            Ready
-          </p>
-          <div className="flex items-center gap-1">
-            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 has-disabled:cursor-not-allowed has-disabled:opacity-50 dark:text-slate-300 dark:hover:bg-slate-800">
-              <input
-                type="checkbox"
-                checked={selectedForChat}
-                onChange={onToggleChatDocument}
-                disabled={selectedForChat && selectedForChatCount === 1}
-                className="size-3.5 accent-slate-900"
-                aria-label={`Use ${document.filename} in chat`}
+            {action === "deleting" ? (
+              <Trash2
+                className="document-delete-once shrink-0"
+                size={14}
+                aria-hidden="true"
               />
-              Use in chat
-            </label>
-            <button
-              type="button"
-              onClick={onDelete}
-              disabled={actionsDisabled}
-              className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-wait disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-red-300 dark:focus-visible:outline-slate-200"
-              aria-label={`Delete ${document.filename}`}
-            >
-              {action === "deleting" ? (
-                <Trash2 className="document-delete-once" size={13} aria-hidden="true" />
-              ) : (
-                <Trash2 size={13} aria-hidden="true" />
-              )}
-              {action === "deleting" ? "Deleting" : "Delete"}
-            </button>
-          </div>
+            ) : (
+              <Trash2 className="shrink-0" size={14} aria-hidden="true" />
+            )}
+            {action === "deleting" ? "Deleting" : "Delete"}
+          </button>
         </div>
         {actionError ? (
           <p className="mt-2 text-xs leading-5 text-red-700 dark:text-red-300" role="alert">
@@ -496,7 +500,7 @@ function DocumentsPanel({
               return (
                 <li
                   key={`${file.name}-${file.size}-${file.lastModified}-${index}`}
-                  className={`document-row-enter rounded-xl border bg-white p-3 dark:bg-slate-950/70 ${
+                  className={`document-row-enter rounded-xl border bg-white p-3.5 dark:bg-slate-950/70 ${
                     action === "deleting" ? "document-row-deleting" : ""
                   } ${
                     hasError
@@ -506,7 +510,7 @@ function DocumentsPanel({
                 >
                   <div className="flex min-w-0 items-start gap-3">
                     <span
-                      className={`grid size-9 shrink-0 place-items-center rounded-lg ${
+                      className={`grid size-10 shrink-0 place-items-center rounded-xl ${
                         operationState === "ready"
                           ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400"
                           : hasError
@@ -521,7 +525,7 @@ function DocumentsPanel({
                     </span>
                     <div className="min-w-0 flex-1">
                       <p
-                        className="truncate text-sm font-medium text-slate-800 dark:text-slate-100"
+                        className="line-clamp-2 break-words text-sm font-semibold leading-5 text-slate-800 dark:text-slate-100"
                         title={file.name}
                       >
                         {file.name}
@@ -1191,7 +1195,7 @@ export function DocumentSelectionWorkspace() {
   }
 
   return (
-    <main className="grid min-h-0 min-w-0 w-full flex-1 grid-rows-[auto_1fr] lg:grid-cols-[280px_minmax(0,1fr)] lg:grid-rows-1 lg:overflow-hidden">
+    <main className="grid min-h-0 min-w-0 w-full flex-1 grid-rows-[auto_1fr] lg:grid-cols-[320px_minmax(0,1fr)] lg:grid-rows-1 lg:overflow-hidden">
       <input
         ref={inputRef}
         type="file"
