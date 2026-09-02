@@ -136,8 +136,7 @@ export function RagPipelineVisualizer({
             heading: "From files to searchable knowledge",
             description:
               "Your documents become reliable knowledge, ready to answer your questions.",
-            footer:
-              "PDF · DOCX · PPTX · XLSX · TXT · MD · CSV · up to 10 files · 10 MiB each · 50 MiB total",
+            footer: null,
           };
 
   return (
@@ -202,21 +201,23 @@ export function RagPipelineVisualizer({
           </ol>
         </div>
 
-        <div
-          className={`mx-auto mt-6 flex w-fit max-w-full items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${
-            mode === "ready"
-              ? "border border-emerald-200 bg-emerald-50/90 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300"
-              : "border border-blue-200 bg-blue-50/90 text-blue-700 dark:border-blue-900 dark:bg-blue-950/60 dark:text-blue-300"
-          }`}
-        >
-          <span
-            className={`relative size-2 shrink-0 rounded-full ${
-              mode === "ready" ? "rag-ready-pulse bg-emerald-500" : "rag-replay-dot bg-blue-500"
+        {content.footer ? (
+          <div
+            className={`mx-auto mt-6 flex w-fit max-w-full items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${
+              mode === "ready"
+                ? "border border-emerald-200 bg-emerald-50/90 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300"
+                : "border border-blue-200 bg-blue-50/90 text-blue-700 dark:border-blue-900 dark:bg-blue-950/60 dark:text-blue-300"
             }`}
-            aria-hidden="true"
-          />
-          <span>{content.footer}</span>
-        </div>
+          >
+            <span
+              className={`relative size-2 shrink-0 rounded-full ${
+                mode === "ready" ? "rag-ready-pulse bg-emerald-500" : "rag-replay-dot bg-blue-500"
+              }`}
+              aria-hidden="true"
+            />
+            <span>{content.footer}</span>
+          </div>
+        ) : null}
       </div>
     </section>
   );

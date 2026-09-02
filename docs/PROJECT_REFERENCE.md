@@ -264,10 +264,11 @@ de son traitement.
 
 - **Panneau Documents** : toutes les actions documentaires sont centralisées à
   gauche — sélection, drag-and-drop, upload initial, ajout, retrait, retry et
-  suppression — avec les titres et explications `Start`/`Review` associés.
+  suppression — avec les titres et explications `Start`/`Review` associés. La
+  ligne compacte des formats et limites acceptés y est affichée une seule fois.
 - **Surface centrale avant le chat** : aucun bouton ni dropzone documentaire.
-  Elle est réservée à la visualisation pédagogique du pipeline, à son état et à
-  une seule ligne compacte indiquant formats et limites pris en charge.
+  Elle est réservée à la visualisation pédagogique du pipeline, à son état et
+  à une courte description métier.
 - **Préparation** : liste des fichiers sélectionnés avec nom, format, taille,
   erreur locale éventuelle et action de retrait.
 - **Traitement** : une ligne stable par fichier avec animation, libellé de

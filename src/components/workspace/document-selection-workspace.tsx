@@ -472,6 +472,9 @@ function DocumentsPanel({
           {result.files.length}
         </span>
       </div>
+      <p className="-mt-2 px-4 pb-4 text-[11px] leading-4 text-slate-500 dark:text-slate-400 sm:px-5">
+        PDF · DOCX · PPTX · XLSX · TXT · MD · CSV · up to 10 files · 10 MiB each · 50 MiB total
+      </p>
 
       {result.errors.length > 0 ? (
         <div

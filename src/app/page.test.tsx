@@ -121,6 +121,19 @@ test("renders the initial document workspace", () => {
   const conversation = screen.getByRole("region", {
     name: "Conversation workspace",
   });
+  const documentsPanel = screen.getByRole("complementary", {
+    name: "Documents",
+  });
+  expect(
+    within(documentsPanel).getByText(
+      "PDF · DOCX · PPTX · XLSX · TXT · MD · CSV · up to 10 files · 10 MiB each · 50 MiB total",
+    ),
+  ).toBeDefined();
+  expect(
+    within(conversation).queryByText(
+      "PDF · DOCX · PPTX · XLSX · TXT · MD · CSV · up to 10 files · 10 MiB each · 50 MiB total",
+    ),
+  ).toBeNull();
   expect(conversation.className).toContain("conversation-surface");
   expect(
     within(conversation).queryByRole("button", { name: "Choose documents" }),
