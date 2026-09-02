@@ -3,11 +3,13 @@
 import {
   AlertCircle,
   ArrowUp,
+  CheckCircle2,
   CircleEllipsis,
   Clock3,
   FileText,
   Files,
   LockKeyhole,
+  LoaderCircle,
   MessageSquareText,
   Plus,
   Trash2,
@@ -16,11 +18,13 @@ import {
 import {
   type ChangeEvent,
   type DragEvent,
+  useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 
+import { pollBatchStatus } from "@/lib/batches/client";
 import {
   createAndUploadBatch,
   type ClientUploadUpdate,
@@ -30,6 +34,11 @@ import {
   type BatchValidationErrorCode,
   type FileValidationErrorCode,
 } from "@/lib/uploads/validation";
+import type {
+  BatchSummary,
+  DocumentStatus,
+  DocumentSummary,
+} from "@/types/documents";
 
 const acceptedFileTypes = ".pdf,.docx,.pptx,.xlsx,.txt,.md,.csv";
 const supportedFormats = "PDF, DOCX, PPTX, XLSX, TXT, MD and CSV";
@@ -60,10 +69,12 @@ function formatFileSize(bytes: number): string {
 
 type SelectionResult = ReturnType<typeof validateBatchFiles<File>>;
 type UploadUpdates = Partial<Record<number, ClientUploadUpdate>>;
+type ProcessingDocuments = Partial<Record<number, DocumentSummary>>;
 
 type DocumentsPanelProps = {
   isSelectionLocked: boolean;
   onRemove: (index: number) => void;
+  processingDocuments: ProcessingDocuments;
   result: SelectionResult;
   uploadUpdates: UploadUpdates;
 };
@@ -132,9 +143,58 @@ function UploadState({ update }: { update: ClientUploadUpdate }) {
   );
 }
 
+const processingLabels: Record<DocumentStatus, string> = {
+  queued: "Queued for processing",
+  uploading: "Confirming upload",
+  validating: "Validating file",
+  extracting: "Extracting text",
+  chunking: "Creating chunks",
+  embedding: "Generating embeddings",
+  indexing: "Saving search index",
+  ready: "Ready",
+  failed: "Processing failed",
+};
+
+function ProcessingState({ document }: { document: DocumentSummary }) {
+  if (document.status === "ready") {
+    return (
+      <p
+        className="mt-2 flex items-center gap-1.5 border-t border-emerald-100 pt-2 text-xs font-medium text-emerald-700"
+        role="status"
+      >
+        <CheckCircle2 size={13} aria-hidden="true" />
+        Ready
+      </p>
+    );
+  }
+
+  if (document.status === "failed") {
+    return (
+      <div
+        className="mt-2 border-t border-red-100 pt-2 text-xs leading-5 text-red-700"
+        role="alert"
+      >
+        <p className="font-medium">Processing failed</p>
+        <p>{document.error?.message ?? "The document could not be processed."}</p>
+      </div>
+    );
+  }
+
+  return (
+    <p
+      className="mt-2 flex items-center gap-1.5 border-t border-slate-100 pt-2 text-xs text-blue-800"
+      role="status"
+    >
+      <LoaderCircle className="animate-spin" size={13} aria-hidden="true" />
+      {processingLabels[document.status]}
+    </p>
+  );
+}
+
 function DocumentsPanel({
   isSelectionLocked,
   onRemove,
+  processingDocuments,
   result,
   uploadUpdates,
 }: DocumentsPanelProps) {
@@ -188,8 +248,11 @@ function DocumentsPanel({
           <ul className="space-y-2" aria-label="Selected documents">
             {result.files.map(({ errors, file, fileType }, index) => {
               const uploadUpdate = uploadUpdates[index];
+              const processingDocument = processingDocuments[index];
               const hasError =
-                errors.length > 0 || uploadUpdate?.status === "failed";
+                errors.length > 0 ||
+                uploadUpdate?.status === "failed" ||
+                processingDocument?.status === "failed";
 
               return (
                 <li
@@ -242,6 +305,10 @@ function DocumentsPanel({
                         <p key={error}>{fileErrorMessages[error]}</p>
                       ))}
                     </div>
+                  ) : uploadUpdate && uploadUpdate.status !== "uploaded" ? (
+                    <UploadState update={uploadUpdate} />
+                  ) : processingDocument ? (
+                    <ProcessingState document={processingDocument} />
                   ) : uploadUpdate ? (
                     <UploadState update={uploadUpdate} />
                   ) : (
@@ -425,18 +492,23 @@ function DocumentSelector({
 }
 
 type DisabledComposerProps = {
+  batch: BatchSummary | null;
   hasFiles: boolean;
   isUploading: boolean;
   uploadUpdates: UploadUpdates;
 };
 
 function DisabledComposer({
+  batch,
   hasFiles,
   isUploading,
   uploadUpdates,
 }: DisabledComposerProps) {
   const updates = Object.values(uploadUpdates);
   const hasFailedUpload = updates.some((update) => update?.status === "failed");
+  const hasFailedProcessing = batch?.documents.some(
+    (document) => document.status === "failed",
+  );
   const hasUploadedFile = updates.some(
     (update) => update?.status === "uploaded",
   );
@@ -444,8 +516,12 @@ function DisabledComposer({
 
   if (isUploading) {
     reason = "Documents are uploading. Chat remains unavailable.";
-  } else if (hasFailedUpload) {
-    reason = "A file upload failed. Chat remains unavailable.";
+  } else if (hasFailedUpload || hasFailedProcessing) {
+    reason = "A document failed. Chat remains unavailable.";
+  } else if (batch?.status === "ready") {
+    reason = "All documents are ready. Chat will be enabled in the next phase.";
+  } else if (batch) {
+    reason = "Documents are being processed. Chat remains unavailable.";
   } else if (hasUploadedFile) {
     reason = "Uploaded documents are waiting for full processing.";
   } else if (hasFiles) {
@@ -492,7 +568,12 @@ function DisabledComposer({
 export function DocumentSelectionWorkspace() {
   const inputRef = useRef<HTMLInputElement>(null);
   const uploadInFlightRef = useRef(false);
+  const pollingAbortRef = useRef<AbortController | null>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [batch, setBatch] = useState<BatchSummary | null>(null);
+  const [documentIdsByIndex, setDocumentIdsByIndex] = useState<
+    Partial<Record<number, string>>
+  >({});
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [creationError, setCreationError] = useState<string | null>(null);
@@ -501,8 +582,30 @@ export function DocumentSelectionWorkspace() {
     () => validateBatchFiles(selectedFiles),
     [selectedFiles],
   );
+  const processingDocuments = useMemo(() => {
+    const documentsById = new Map(
+      batch?.documents.map((document) => [document.id, document]) ?? [],
+    );
+
+    return Object.fromEntries(
+      Object.entries(documentIdsByIndex).flatMap(([index, documentId]) => {
+        const document = documentId
+          ? documentsById.get(documentId)
+          : undefined;
+
+        return document ? [[Number(index), document]] : [];
+      }),
+    ) as ProcessingDocuments;
+  }, [batch, documentIdsByIndex]);
   const hasUploadStarted = Object.keys(uploadUpdates).length > 0;
   const isSelectionLocked = isUploading || hasUploadStarted;
+
+  useEffect(
+    () => () => {
+      pollingAbortRef.current?.abort();
+    },
+    [],
+  );
 
   function replaceSelection(files: FileList | readonly File[]): void {
     if (uploadInFlightRef.current || hasUploadStarted) {
@@ -512,6 +615,8 @@ export function DocumentSelectionWorkspace() {
     setSelectedFiles(Array.from(files));
     setCreationError(null);
     setUploadUpdates({});
+    setBatch(null);
+    setDocumentIdsByIndex({});
   }
 
   function handleInputChange(event: ChangeEvent<HTMLInputElement>): void {
@@ -578,6 +683,8 @@ export function DocumentSelectionWorkspace() {
     );
     setCreationError(null);
     setUploadUpdates({});
+    setBatch(null);
+    setDocumentIdsByIndex({});
   }
 
   async function handleUpload(): Promise<void> {
@@ -591,11 +698,36 @@ export function DocumentSelectionWorkspace() {
     setUploadUpdates({});
 
     try {
-      await createAndUploadBatch(selectedFiles, (update) => {
+      const result = await createAndUploadBatch(selectedFiles, (update) => {
         setUploadUpdates((current) => ({
           ...current,
           [update.index]: update,
         }));
+      });
+      setBatch(result.batch);
+      setDocumentIdsByIndex(
+        Object.fromEntries(
+          result.uploads
+            .filter((upload) => upload.documentId)
+            .map((upload) => [upload.index, upload.documentId]),
+        ),
+      );
+
+      const controller = new AbortController();
+      pollingAbortRef.current?.abort();
+      pollingAbortRef.current = controller;
+      void pollBatchStatus(
+        result.batch.id,
+        (nextBatch) => setBatch(nextBatch),
+        { signal: controller.signal },
+      ).catch((error) => {
+        if (!controller.signal.aborted) {
+          const message =
+            error instanceof Error
+              ? error.message
+              : "The batch status could not be loaded.";
+          setCreationError(`Status update failed: ${message}`);
+        }
       });
     } catch (error) {
       const message =
@@ -615,6 +747,7 @@ export function DocumentSelectionWorkspace() {
     <main className="grid min-h-0 min-w-0 w-full flex-1 grid-rows-[auto_1fr] lg:grid-cols-[280px_minmax(0,1fr)] lg:grid-rows-1 lg:overflow-hidden">
       <DocumentsPanel
         isSelectionLocked={isSelectionLocked}
+        processingDocuments={processingDocuments}
         result={validationResult}
         uploadUpdates={uploadUpdates}
         onRemove={handleRemove}
@@ -641,6 +774,7 @@ export function DocumentSelectionWorkspace() {
           onUpload={handleUpload}
         />
         <DisabledComposer
+          batch={batch}
           hasFiles={validationResult.files.length > 0}
           isUploading={isUploading}
           uploadUpdates={uploadUpdates}

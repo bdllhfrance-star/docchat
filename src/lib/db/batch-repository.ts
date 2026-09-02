@@ -25,6 +25,7 @@ import type {
 type CollectionPort<T extends object> = {
   insertOne(document: T): Promise<InsertOneResult<T>>;
   insertMany(documents: T[]): Promise<InsertManyResult<T>>;
+  find(filter: Filter<T>): { toArray(): Promise<T[]> };
   findOne(filter: Filter<T>): Promise<T | null>;
   updateOne(
     filter: Filter<T>,
@@ -220,6 +221,13 @@ export function createBatchRepository(
         batchId,
         id: documentId,
       });
+    },
+
+    findDocumentsByBatch(
+      sessionId: string,
+      batchId: string,
+    ): Promise<DocumentRecord[]> {
+      return collections.documents.find({ sessionId, batchId }).toArray();
     },
 
     async markDocumentUploading(

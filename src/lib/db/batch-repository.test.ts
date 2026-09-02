@@ -72,6 +72,13 @@ class MemoryCollection<T extends object> {
     } as never;
   }
 
+  find(filter: Filter<T>): { toArray: () => Promise<T[]> } {
+    return {
+      toArray: async () =>
+        this.records.filter((record) => matches(record, filter)),
+    };
+  }
+
   async findOne(filter: Filter<T>): Promise<T | null> {
     return this.records.find((record) => matches(record, filter)) ?? null;
   }
@@ -198,6 +205,9 @@ describe("batch repository", () => {
       repository.findDocumentBySession(sessionB, batchId, documentId),
     ).resolves.toBeNull();
     await expect(
+      repository.findDocumentsByBatch(sessionB, batchId),
+    ).resolves.toEqual([]);
+    await expect(
       repository.markDocumentUploading({
         sessionId: sessionB,
         batchId,
@@ -205,6 +215,17 @@ describe("batch repository", () => {
       }),
     ).resolves.toBeNull();
     expect(documents.records[0].status).toBe("queued");
+  });
+
+  test("lists only documents owned by the requested session and batch", async () => {
+    const { repository } = createMemoryRepository();
+    await repository.createBatch(createFixture());
+
+    await expect(
+      repository.findDocumentsByBatch(sessionA, batchId),
+    ).resolves.toEqual([
+      expect.objectContaining({ id: documentId, sessionId: sessionA, batchId }),
+    ]);
   });
 
   test("makes upload authorization and callback transitions idempotent", async () => {

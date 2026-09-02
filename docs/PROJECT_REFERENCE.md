@@ -771,8 +771,8 @@ intégrés par l'agent principal avant le lancement d'une nouvelle vague.
 | [x] | RAG-01 | PAR-01 | Ingestion | Implémenter le chunking sourcé avec paramètres configurables, sans mélange de documents ni perte de page. Tests de taille, overlap et source réussis. |
 | [~] | RAG-02 | SET-02, RAG-01 | Backend/RAG | Générer les embeddings Gemini par lots avec la dimension confirmée. Code, batching AI SDK, concurrence 2, timeout et validation 768 terminés ; l'appel réel reste bloqué par l'absence de clé Gemini. |
 | [~] | ING-01 | UPL-03, DB-01, RAG-02 | Principal | Orchestrer `uploading → validating → extracting → chunking → embedding → indexing → ready/failed`. Pipeline PDF et persistance locale terminés ; l'essai Blob, Gemini et Atlas réel reste bloqué par les accès externes. |
-| [ ] | UPL-04 | ING-01 | Backend | Implémenter `GET /api/batches/:batchId` avec les états et erreurs de chaque fichier, filtrés par session. Le contrat est testé avant son utilisation par l'UI. |
-| [ ] | UI-02 | UPL-04 | UI | Afficher la progression par polling borné, une ligne stable par fichier et le libellé réel de chaque opération. Aucun faux pourcentage n'est affiché. |
+| [x] | UPL-04 | ING-01 | Backend | Implémenter `GET /api/batches/:batchId` avec les états et erreurs de chaque fichier, filtrés par session. Le contrat est testé avant son utilisation par l'UI. |
+| [x] | UI-02 | UPL-04 | UI | Afficher la progression par polling borné, une ligne stable par fichier et le libellé réel de chaque opération. Aucun faux pourcentage n'est affiché. |
 | [ ] | UI-03 | UI-02 | UI | Réaliser manuellement les animations CSS/SVG définies en 8.4, y compris succès, échec, retry et suppression. `prefers-reduced-motion` et `aria-live` sont testés. |
 | [ ] | API-02 | ING-01 | Backend | Implémenter statut de batch, retry idempotent, remplacement et suppression cohérente du Blob, document et chunks. Les erreurs partielles ne stoppent pas les autres fichiers. |
 | [ ] | UI-04 | API-02, UI-03 | UI | Ajouter `Réessayer`, `Remplacer`, `Supprimer` et appliquer exactement `canSendMessage`. Le chat reste bloqué jusqu'à résolution de chaque échec. |

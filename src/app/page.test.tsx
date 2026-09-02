@@ -13,16 +13,26 @@ import {
   type ClientBatchUploadResult,
   type ClientUploadUpdate,
 } from "@/lib/uploads/client";
+import { pollBatchStatus } from "@/lib/batches/client";
+import type { BatchSummary } from "@/types/documents";
 import Home from "./page";
 
 vi.mock("@/lib/uploads/client", () => ({
   createAndUploadBatch: vi.fn(),
 }));
+vi.mock("@/lib/batches/client", () => ({
+  pollBatchStatus: vi.fn(),
+}));
 
 const createAndUploadBatchMock = vi.mocked(createAndUploadBatch);
+const pollBatchStatusMock = vi.mocked(pollBatchStatus);
 
 beforeEach(() => {
   createAndUploadBatchMock.mockReset();
+  pollBatchStatusMock.mockReset();
+  pollBatchStatusMock.mockImplementation(
+    () => new Promise<BatchSummary>(() => undefined),
+  );
 });
 
 afterEach(cleanup);
@@ -224,7 +234,7 @@ test("starts one batch action and shows only real upload progress", async () => 
   ).toBeDefined();
   expect(screen.queryByText("Ready")).toBeNull();
   expect(
-    screen.getByText("Uploaded documents are waiting for full processing."),
+    screen.getByText("Documents are being processed. Chat remains unavailable."),
   ).toBeDefined();
   expect(screen.getByRole("button", { name: "Replace selection" })).toHaveProperty(
     "disabled",
@@ -286,10 +296,66 @@ test("shows an isolated file upload failure without opening chat", async () => {
   });
   expect(screen.getByText("Connection interrupted.")).toBeDefined();
   expect(
-    screen.getByText("A file upload failed. Chat remains unavailable."),
+    screen.getByText("A document failed. Chat remains unavailable."),
   ).toBeDefined();
   expect(screen.getByRole("button", { name: "Send message" })).toHaveProperty(
     "disabled",
     true,
   );
+});
+
+test("keeps each file row stable while showing real processing states", async () => {
+  let publishReady!: () => void;
+  const extractingBatch: BatchSummary = {
+    ...uploadResult().batch,
+    documents: [
+      {
+        id: "document-1",
+        batchId: "batch-1",
+        filename: "guide.pdf",
+        fileType: "pdf",
+        size: 1024,
+        status: "extracting",
+      },
+    ],
+  };
+  const readyBatch: BatchSummary = {
+    ...extractingBatch,
+    status: "ready",
+    documents: [{ ...extractingBatch.documents[0], status: "ready" }],
+  };
+
+  createAndUploadBatchMock.mockImplementation(async (_, onUpdate) => {
+    onUpdate({ index: 0, status: "uploaded", progress: 100 });
+    return uploadResult();
+  });
+  pollBatchStatusMock.mockImplementation((_, onUpdate) => {
+    onUpdate(extractingBatch);
+
+    return new Promise((resolve) => {
+      publishReady = () => {
+        onUpdate(readyBatch);
+        resolve(readyBatch);
+      };
+    });
+  });
+
+  render(<Home />);
+  fireEvent.change(screen.getByLabelText("Select documents from device"), {
+    target: { files: [file()] },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Upload and process" }));
+
+  expect(await screen.findByText("Extracting text")).toBeDefined();
+  expect(screen.getByText("guide.pdf")).toBeDefined();
+
+  act(() => publishReady());
+
+  expect(await screen.findByText("Ready")).toBeDefined();
+  expect(screen.getByText("guide.pdf")).toBeDefined();
+  expect(
+    screen.getByText(
+      "All documents are ready. Chat will be enabled in the next phase.",
+    ),
+  ).toBeDefined();
 });
