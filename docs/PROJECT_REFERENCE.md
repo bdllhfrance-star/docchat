@@ -345,7 +345,7 @@ frontières claires entre composants frontend, routes HTTP et services serveur.
 | Accès MongoDB | Driver officiel `mongodb` | Pas d'ORM nécessaire pour trois collections simples. |
 | Runtime | Node.js 22 minimum, Node.js 24 sur Vercel | Compatible avec Next.js 16 et AI SDK 7 tout en préparant les déploiements Vercel actuels. |
 | Embeddings | `gemini-embedding-2`, dimension 768 | Modèle multilingue actuel ; 768 limite stockage et mémoire pour le MVP. |
-| Génération | `gemini-3.7-flash` | Modèle Flash stable actuel adapté au streaming interactif ; disponibilité à confirmer sur le compte. |
+| Génération | `gemini-3.7-flash` | Modèle stable avec 1 048 576 tokens d'entrée, 65 536 tokens de sortie et niveau de raisonnement `medium`. |
 | Streaming | AI SDK 7, `@ai-sdk/google` et `@ai-sdk/react` | Flux UI typé, annulation et custom data parts pour les sources documentaires. |
 | Rate limiting | Upstash Redis | Compteur distribué compatible serverless, ajouté au moment du hardening. |
 | Framework RAG | Pipeline TypeScript direct | Le périmètre est petit et doit rester visible, testable et explicable. |
@@ -557,8 +557,14 @@ Réponse progressive + sources
 
 Paramètres initiaux :
 
-- 20 candidats maximum avant fusion ou déduplication.
-- 5 chunks maximum dans le contexte final.
+- Aucun nombre fixe de chunks dans le contexte final.
+- Le retrieval récupère les candidats pertinents, les déduplique et les ajoute
+  tant qu'ils restent sous le budget d'entrée disponible du modèle.
+- Le budget documentaire vaut la limite d'entrée de 1 048 576 tokens moins les
+  instructions, l'historique, la question et une marge de sécurité de 16 384
+  tokens.
+- La limite de sortie configurée est 65 536 tokens ; il s'agit d'un plafond et
+  non d'une longueur de réponse imposée.
 - Seuil de pertinence déterminé par l'évaluation.
 - Aucune connaissance générale ne complète une information absente.
 - Aucun outil Google Search ou accès web n'est activé pour le modèle.
@@ -1033,3 +1039,4 @@ Le projet est terminé uniquement lorsque :
 | 2026-09-02 | Envoyer les fichiers directement vers Blob privé avec une seule action utilisateur et une concurrence navigateur limitée à trois. |
 | 2026-09-02 | Limiter le parcours PDF initial au texte natif avec `pdf-parse` 2.4.5 ; les PDF scannés sont refusés explicitement sans OCR. |
 | 2026-09-02 | Conserver provisoirement un PDF partiellement extractible si au moins une page contient du texte ; les pages sans texte sont ignorées jusqu'à la révision de cette règle. |
+| 2026-09-02 | Adapter le contexte à `gemini-3.7-flash` : 1 048 576 tokens d'entrée, 65 536 tokens de sortie, niveau `medium` et aucun plafond fixe de chunks. |
