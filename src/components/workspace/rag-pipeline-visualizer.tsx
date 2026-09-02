@@ -135,7 +135,7 @@ export function RagPipelineVisualizer({
             badge: "Pipeline overview",
             heading: "From files to searchable knowledge",
             description:
-              "Validation, extraction, chunking, embeddings and vector indexing — visualized end to end.",
+              "Your documents become reliable knowledge, ready to answer your questions.",
             footer:
               "PDF · DOCX · PPTX · XLSX · TXT · MD · CSV · up to 10 files · 10 MiB each · 50 MiB total",
           };
