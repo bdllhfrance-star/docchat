@@ -5,6 +5,7 @@ import { describe, expect, test, vi } from "vitest";
 import type { DocumentChunk } from "./chunking";
 import {
   embedDocumentChunks,
+  embedRetrievalQuery,
   GEMINI_EMBEDDING_CONFIG,
 } from "./embeddings";
 
@@ -35,6 +36,7 @@ describe("document embeddings", () => {
       dimensions: 768,
       inputTokenLimit: 8_192,
       taskType: "RETRIEVAL_DOCUMENT",
+      queryTaskType: "RETRIEVAL_QUERY",
       maxParallelCalls: 2,
     });
   });
@@ -100,5 +102,31 @@ describe("document embeddings", () => {
 
     await expect(embedDocumentChunks([], { embedTexts })).resolves.toEqual([]);
     expect(embedTexts).not.toHaveBeenCalled();
+  });
+});
+
+describe("retrieval query embeddings", () => {
+  test("embeds one query with the shared vector dimension", async () => {
+    const embedQuery = vi.fn(async () => vector(0.3));
+
+    await expect(
+      embedRetrievalQuery("What does the contract require?", { embedQuery }),
+    ).resolves.toEqual(vector(0.3));
+    expect(embedQuery).toHaveBeenCalledWith(
+      "What does the contract require?",
+      expect.any(AbortSignal),
+    );
+  });
+
+  test("rejects empty queries and malformed query vectors", async () => {
+    const embedQuery = vi.fn(async () => [1, 2, 3]);
+
+    await expect(
+      embedRetrievalQuery("   ", { embedQuery }),
+    ).rejects.toMatchObject({ code: "EMBEDDING_REQUEST_FAILED" });
+    expect(embedQuery).not.toHaveBeenCalled();
+    await expect(
+      embedRetrievalQuery("question", { embedQuery }),
+    ).rejects.toMatchObject({ code: "EMBEDDING_DIMENSION_MISMATCH" });
   });
 });

@@ -561,6 +561,12 @@ Paramètres initiaux :
 - Aucun nombre fixe de chunks dans le contexte final.
 - Le retrieval récupère les candidats pertinents, les déduplique et les ajoute
   tant qu'ils restent sous le budget d'entrée disponible du modèle.
+- La recherche Atlas reçoit une limite de candidats calculée par le chat selon
+  ce budget, plafonnée à 500 résultats. Ce plafond concerne la recherche, pas
+  un nombre imposé de chunks dans le contexte final.
+- La recherche ANN examine initialement 20 fois plus de voisins que de
+  résultats demandés, avec un maximum Atlas de 10 000 candidats. Ces valeurs
+  ne changent qu'après mesure du rappel et de la latence.
 - Le budget documentaire vaut la limite d'entrée de 1 048 576 tokens moins les
   instructions, l'historique, la question et une marge de sécurité de 16 384
   tokens.
@@ -777,7 +783,7 @@ intégrés par l'agent principal avant le lancement d'une nouvelle vague.
 | [ ] | UI-03 | UI-02 | UI | Réaliser manuellement les animations CSS/SVG définies en 8.4, y compris succès, échec, retry et suppression. `prefers-reduced-motion` et `aria-live` sont testés. |
 | [~] | API-02 | ING-01 | Backend | Statut du batch, retry idempotent, remplacement en place via le flux d'upload existant et suppression terminés et testés localement. Le remplacement conserve le `documentId`, recalcule la limite de 50 MiB et nettoie l'ancien Blob et les chunks ; les appels réels Blob, Atlas et Gemini restent bloqués par SET-07. |
 | [~] | UI-04 | API-02, UI-03 | UI | `Réessayer`, `Remplacer` et `Supprimer` sont reliés aux routes réelles avec validation locale, progression d'upload, erreurs par document et reprise du polling. L'activation exacte du composer via `canSendMessage` reste à terminer. |
-| [ ] | RAG-03 | DB-01, RAG-02 | Backend/RAG | Implémenter la recherche vectorielle cosinus filtrée par `sessionId`, batch et documents autorisés. Les sources conservent fichier, page, extrait et score. |
+| [~] | RAG-03 | DB-01, RAG-02 | Backend/RAG | Recherche vectorielle cosinus, embedding de question, filtres `sessionId`/batch/documents, déduplication et validation défensive des sources et scores terminés et testés localement. La requête réelle sur l'index Atlas reste bloquée par SET-07. |
 | [ ] | CHAT-01 | RAG-03 | Backend/RAG | Implémenter le prompt fondé uniquement sur le contexte, le seuil de refus et `POST /api/chat` en streaming. Une question absente produit un refus explicite. |
 | [ ] | UI-05 | UI-04, CHAT-01 | UI | Construire le chat, l'historique de session navigateur, l'annulation et l'affichage progressif des deltas. Le composer ne s'active que lorsque le gate est vrai. |
 | [ ] | UI-06 | UI-05 | UI | Afficher sous chaque réponse les sources dépliables : fichier, page, extrait et score. Les sources sont utilisables au clavier et sur mobile. |

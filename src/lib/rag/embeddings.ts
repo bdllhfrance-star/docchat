@@ -1,5 +1,5 @@
 import { google } from "@ai-sdk/google";
-import { embedMany } from "ai";
+import { embed, embedMany } from "ai";
 
 import type { DocumentChunk } from "@/lib/rag/chunking";
 
@@ -8,6 +8,7 @@ export const GEMINI_EMBEDDING_CONFIG = {
   dimensions: 768,
   inputTokenLimit: 8_192,
   taskType: "RETRIEVAL_DOCUMENT",
+  queryTaskType: "RETRIEVAL_QUERY",
   maxParallelCalls: 2,
   timeoutMilliseconds: 60_000,
 } as const;
@@ -38,9 +39,17 @@ type EmbedTexts = (
   signal: AbortSignal,
 ) => Promise<number[][]>;
 
+type EmbedQuery = (query: string, signal: AbortSignal) => Promise<number[]>;
+
 export type EmbedDocumentChunkOptions = {
   abortSignal?: AbortSignal;
   embedTexts?: EmbedTexts;
+  timeoutMilliseconds?: number;
+};
+
+export type EmbedRetrievalQueryOptions = {
+  abortSignal?: AbortSignal;
+  embedQuery?: EmbedQuery;
   timeoutMilliseconds?: number;
 };
 
@@ -63,6 +72,26 @@ async function embedTextsWithGemini(
   });
 
   return result.embeddings;
+}
+
+async function embedQueryWithGemini(
+  query: string,
+  signal: AbortSignal,
+): Promise<number[]> {
+  const result = await embed({
+    model: google.embedding(GEMINI_EMBEDDING_CONFIG.modelId),
+    value: query,
+    maxRetries: 2,
+    abortSignal: signal,
+    providerOptions: {
+      google: {
+        outputDimensionality: GEMINI_EMBEDDING_CONFIG.dimensions,
+        taskType: GEMINI_EMBEDDING_CONFIG.queryTaskType,
+      },
+    },
+  });
+
+  return result.embedding;
 }
 
 function validateEmbeddings(
@@ -139,6 +168,59 @@ export async function embedDocumentChunks(
     throw new EmbeddingError(
       "EMBEDDING_REQUEST_FAILED",
       "Gemini could not generate the document embeddings.",
+    );
+  }
+}
+
+export async function embedRetrievalQuery(
+  query: string,
+  options: EmbedRetrievalQueryOptions = {},
+): Promise<number[]> {
+  if (!query.trim()) {
+    throw new EmbeddingError(
+      "EMBEDDING_REQUEST_FAILED",
+      "The retrieval query cannot be empty.",
+    );
+  }
+
+  const timeoutSignal = AbortSignal.timeout(
+    options.timeoutMilliseconds ??
+      GEMINI_EMBEDDING_CONFIG.timeoutMilliseconds,
+  );
+  const signal = options.abortSignal
+    ? AbortSignal.any([options.abortSignal, timeoutSignal])
+    : timeoutSignal;
+
+  try {
+    const embedding = await (options.embedQuery ?? embedQueryWithGemini)(
+      query,
+      signal,
+    );
+    validateEmbeddings([embedding], 1);
+
+    return [...embedding];
+  } catch (error) {
+    if (error instanceof EmbeddingError) {
+      throw error;
+    }
+
+    if (options.abortSignal?.aborted) {
+      throw new EmbeddingError(
+        "EMBEDDING_ABORTED",
+        "Embedding generation was cancelled.",
+      );
+    }
+
+    if (timeoutSignal.aborted) {
+      throw new EmbeddingError(
+        "EMBEDDING_TIMEOUT",
+        "Embedding generation timed out.",
+      );
+    }
+
+    throw new EmbeddingError(
+      "EMBEDDING_REQUEST_FAILED",
+      "Gemini could not generate the query embedding.",
     );
   }
 }
