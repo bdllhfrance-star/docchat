@@ -9,6 +9,7 @@ describe("Gemini chat model configuration", () => {
   test("uses the official Gemini 3.7 Flash limits", () => {
     expect(GEMINI_CHAT_MODEL).toMatchObject({
       id: "gemini-3.7-flash",
+      displayName: "Gemini 3.7 Flash",
       inputTokenLimit: 1_048_576,
       outputTokenLimit: 65_536,
       thinkingLevel: "medium",

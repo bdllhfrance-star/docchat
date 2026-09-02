@@ -1,5 +1,7 @@
 import type { CSSProperties } from "react";
 
+import { GEMINI_CHAT_MODEL } from "@/lib/ai/model-config";
+
 type PipelineStage = {
   detail: string;
   key: "upload" | "validate" | "extract" | "chunk" | "embed" | "index";
@@ -17,6 +19,76 @@ const pipelineStages: readonly PipelineStage[] = [
 ];
 
 type RagPipelineMode = "processing" | "ready" | "waiting";
+
+const numberFormatter = new Intl.NumberFormat("en-US");
+
+function GeminiPoweredBadge() {
+  const inputTokens = numberFormatter.format(
+    GEMINI_CHAT_MODEL.inputTokenLimit,
+  );
+  const outputTokens = numberFormatter.format(
+    GEMINI_CHAT_MODEL.outputTokenLimit,
+  );
+
+  return (
+    <div
+      className="inline-flex max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-2xl border border-slate-200/90 bg-white/85 px-3.5 py-2 text-left shadow-sm backdrop-blur-md dark:border-slate-700/80 dark:bg-slate-950/75"
+      aria-label={`Powered by ${GEMINI_CHAT_MODEL.displayName}. ${inputTokens} input tokens, ${outputTokens} output tokens, ${GEMINI_CHAT_MODEL.thinkingLevel} reasoning.`}
+    >
+      <svg
+        className="size-7 shrink-0"
+        viewBox="0 0 32 32"
+        aria-hidden="true"
+      >
+        <defs>
+          <linearGradient
+            id="gemini-spark-gradient"
+            x1="4"
+            y1="4"
+            x2="28"
+            y2="28"
+            gradientUnits="userSpaceOnUse"
+          >
+            <stop offset="0" stopColor="#4285f4" />
+            <stop offset="0.34" stopColor="#9b72cb" />
+            <stop offset="0.62" stopColor="#d96570" />
+            <stop offset="0.82" stopColor="#f9ab55" />
+            <stop offset="1" stopColor="#34a853" />
+          </linearGradient>
+        </defs>
+        <path
+          fill="url(#gemini-spark-gradient)"
+          d="M16 2.5c1.35 7.67 5.83 12.15 13.5 13.5-7.67 1.35-12.15 5.83-13.5 13.5C14.65 21.83 10.17 17.35 2.5 16 10.17 14.65 14.65 10.17 16 2.5Z"
+        />
+      </svg>
+
+      <div className="min-w-0">
+        <p className="text-[9px] font-bold tracking-[0.16em] text-slate-500 uppercase dark:text-slate-400">
+          Powered by Gemini
+        </p>
+        <p className="text-xs font-semibold text-slate-900 dark:text-white">
+          {GEMINI_CHAT_MODEL.displayName}
+        </p>
+      </div>
+
+      <span
+        className="hidden h-7 w-px bg-slate-200 dark:bg-slate-700 sm:block"
+        aria-hidden="true"
+      />
+      <div className="flex flex-wrap justify-center gap-1.5 text-[10px] font-medium text-slate-600 dark:text-slate-300">
+        <span className="rounded-full bg-slate-100 px-2 py-1 dark:bg-slate-800">
+          1M context
+        </span>
+        <span className="rounded-full bg-slate-100 px-2 py-1 dark:bg-slate-800">
+          65K output
+        </span>
+        <span className="rounded-full bg-slate-100 px-2 py-1 capitalize dark:bg-slate-800">
+          {GEMINI_CHAT_MODEL.thinkingLevel} reasoning
+        </span>
+      </div>
+    </div>
+  );
+}
 
 function StageVisual({ stage }: { stage: PipelineStage["key"] }) {
   if (stage === "upload") {
@@ -149,10 +221,14 @@ export function RagPipelineVisualizer({
       <div className="rag-ambient-orb rag-ambient-orb-right" aria-hidden="true" />
 
       <div className="relative z-10 w-full max-w-6xl">
-        <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50/90 px-3 py-1 text-[10px] font-bold tracking-[0.2em] text-blue-700 uppercase dark:border-blue-900 dark:bg-blue-950/70 dark:text-blue-300">
-          <span className="rag-replay-dot size-1.5 rounded-full bg-blue-500" aria-hidden="true" />
-          {content.badge}
-        </div>
+        {mode === "waiting" ? (
+          <GeminiPoweredBadge />
+        ) : (
+          <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50/90 px-3 py-1 text-[10px] font-bold tracking-[0.2em] text-blue-700 uppercase dark:border-blue-900 dark:bg-blue-950/70 dark:text-blue-300">
+            <span className="rag-replay-dot size-1.5 rounded-full bg-blue-500" aria-hidden="true" />
+            {content.badge}
+          </div>
+        )}
         <h1
           id="rag-pipeline-heading"
           className="mt-4 text-2xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-3xl"

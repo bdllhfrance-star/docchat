@@ -1,5 +1,6 @@
 export const GEMINI_CHAT_MODEL = {
   id: "gemini-3.7-flash",
+  displayName: "Gemini 3.7 Flash",
   inputTokenLimit: 1_048_576,
   outputTokenLimit: 65_536,
   thinkingLevel: "medium",

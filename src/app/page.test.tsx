@@ -116,6 +116,12 @@ test("renders the initial document workspace", () => {
       name: "From files to searchable knowledge",
     }),
   ).toBeDefined();
+  expect(
+    screen.getByLabelText(
+      "Powered by Gemini 3.7 Flash. 1,048,576 input tokens, 65,536 output tokens, medium reasoning.",
+    ),
+  ).toBeDefined();
+  expect(screen.queryByText("Pipeline overview")).toBeNull();
   expect(screen.queryByText("Session limits")).toBeNull();
 
   const conversation = screen.getByRole("region", {
