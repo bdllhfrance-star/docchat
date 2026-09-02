@@ -344,7 +344,7 @@ frontières claires entre composants frontend, routes HTTP et services serveur.
 | Persistance | MongoDB Atlas | Une base pour données métier, chunks, vecteurs, filtres et recherche hybride. |
 | Accès MongoDB | Driver officiel `mongodb` | Pas d'ORM nécessaire pour trois collections simples. |
 | Runtime | Node.js 22 minimum, Node.js 24 sur Vercel | Compatible avec Next.js 16 et AI SDK 7 tout en préparant les déploiements Vercel actuels. |
-| Embeddings | `gemini-embedding-2`, dimension 768 | Modèle multilingue actuel ; 768 limite stockage et mémoire pour le MVP. |
+| Embeddings | `gemini-embedding-2`, dimension 768 | Limite d'entrée 8 192 tokens ; les vecteurs 768 sont recommandés et normalisés automatiquement. |
 | Génération | `gemini-3.7-flash` | Modèle stable avec 1 048 576 tokens d'entrée, 65 536 tokens de sortie et niveau de raisonnement `medium`. |
 | Streaming | AI SDK 7, `@ai-sdk/google` et `@ai-sdk/react` | Flux UI typé, annulation et custom data parts pour les sources documentaires. |
 | Rate limiting | Upstash Redis | Compteur distribué compatible serverless, ajouté au moment du hardening. |
@@ -769,7 +769,7 @@ intégrés par l'agent principal avant le lancement d'une nouvelle vague.
 | [x] | DB-01 | SET-02, SET-04 | Backend | Créer l'accès MongoDB, les repositories minimaux et les définitions d'index classiques, TTL et Vector Search. Connexion réutilisée et filtres de session testés. |
 | [x] | PAR-01 | SET-04, SET-05 | Ingestion | Extraire un PDF natif page par page vers `DocumentBlock[]`, avec numéro de page et erreurs explicites pour PDF vide, chiffré ou non extractible. |
 | [x] | RAG-01 | PAR-01 | Ingestion | Implémenter le chunking sourcé avec paramètres configurables, sans mélange de documents ni perte de page. Tests de taille, overlap et source réussis. |
-| [ ] | RAG-02 | SET-02, RAG-01 | Backend/RAG | Générer les embeddings Gemini par lots avec la dimension confirmée. Les erreurs, timeouts et réponses de taille invalide sont gérés. |
+| [~] | RAG-02 | SET-02, RAG-01 | Backend/RAG | Générer les embeddings Gemini par lots avec la dimension confirmée. Code, batching AI SDK, concurrence 2, timeout et validation 768 terminés ; l'appel réel reste bloqué par l'absence de clé Gemini. |
 | [ ] | ING-01 | UPL-03, DB-01, RAG-02 | Principal | Orchestrer `uploading → validating → extracting → chunking → embedding → indexing → ready/failed`. `ready` est écrit seulement après persistance complète et vérification d'interrogeabilité. |
 | [ ] | UPL-04 | ING-01 | Backend | Implémenter `GET /api/batches/:batchId` avec les états et erreurs de chaque fichier, filtrés par session. Le contrat est testé avant son utilisation par l'UI. |
 | [ ] | UI-02 | UPL-04 | UI | Afficher la progression par polling borné, une ligne stable par fichier et le libellé réel de chaque opération. Aucun faux pourcentage n'est affiché. |
@@ -1040,3 +1040,4 @@ Le projet est terminé uniquement lorsque :
 | 2026-09-02 | Limiter le parcours PDF initial au texte natif avec `pdf-parse` 2.4.5 ; les PDF scannés sont refusés explicitement sans OCR. |
 | 2026-09-02 | Conserver provisoirement un PDF partiellement extractible si au moins une page contient du texte ; les pages sans texte sont ignorées jusqu'à la révision de cette règle. |
 | 2026-09-02 | Adapter le contexte à `gemini-3.7-flash` : 1 048 576 tokens d'entrée, 65 536 tokens de sortie, niveau `medium` et aucun plafond fixe de chunks. |
+| 2026-09-02 | Générer les vecteurs documentaires avec `gemini-embedding-2`, `RETRIEVAL_DOCUMENT`, 768 dimensions et deux appels simultanés maximum. |
