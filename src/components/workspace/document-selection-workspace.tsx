@@ -7,6 +7,7 @@ import {
   CircleEllipsis,
   Clock3,
   FileText,
+  FileUp,
   Files,
   LockKeyhole,
   LoaderCircle,
@@ -32,6 +33,7 @@ import {
 } from "@/lib/documents/client";
 import {
   createAndUploadBatch,
+  replaceAndUploadDocument,
   type ClientUploadUpdate,
 } from "@/lib/uploads/client";
 import {
@@ -115,7 +117,7 @@ function removeIndexedValue<T>(
 type SelectionResult = ReturnType<typeof validateBatchFiles<File>>;
 type UploadUpdates = Partial<Record<number, ClientUploadUpdate>>;
 type ProcessingDocuments = Partial<Record<number, DocumentSummary>>;
-type DocumentAction = "deleting" | "retrying";
+type DocumentAction = "deleting" | "replacing" | "retrying";
 type DocumentActions = Partial<Record<string, DocumentAction>>;
 type DocumentActionErrors = Partial<Record<string, string>>;
 
@@ -125,6 +127,7 @@ type DocumentsPanelProps = {
   actions: DocumentActions;
   onDelete: (index: number, document: DocumentSummary) => void;
   onRemove: (index: number) => void;
+  onReplace: (index: number, document: DocumentSummary) => void;
   onRetry: (document: DocumentSummary) => void;
   processingDocuments: ProcessingDocuments;
   result: SelectionResult;
@@ -132,14 +135,19 @@ type DocumentsPanelProps = {
 };
 
 function UploadState({ update }: { update: ClientUploadUpdate }) {
-  if (update.status === "creating-batch") {
+  if (
+    update.status === "creating-batch" ||
+    update.status === "preparing-replacement"
+  ) {
     return (
       <p
         className="mt-2 flex items-center gap-1.5 border-t border-slate-100 pt-2 text-xs text-slate-600"
         role="status"
       >
         <CircleEllipsis size={13} aria-hidden="true" />
-        Creating batch
+        {update.status === "creating-batch"
+          ? "Creating batch"
+          : "Preparing replacement"}
       </p>
     );
   }
@@ -213,6 +221,7 @@ type ProcessingStateProps = {
   actionsDisabled: boolean;
   document: DocumentSummary;
   onDelete: () => void;
+  onReplace: () => void;
   onRetry: () => void;
 };
 
@@ -222,6 +231,7 @@ function ProcessingState({
   actionsDisabled,
   document,
   onDelete,
+  onReplace,
   onRetry,
 }: ProcessingStateProps) {
   if (document.status === "ready") {
@@ -268,6 +278,20 @@ function ProcessingState({
         <p className="font-medium">Processing failed</p>
         <p>{document.error?.message ?? "The document could not be processed."}</p>
         <div className="mt-2 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={onReplace}
+            disabled={actionsDisabled}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-wait disabled:opacity-50"
+            aria-label={`Replace ${document.filename}`}
+          >
+            {action === "replacing" ? (
+              <LoaderCircle className="animate-spin" size={13} aria-hidden="true" />
+            ) : (
+              <FileUp size={13} aria-hidden="true" />
+            )}
+            {action === "replacing" ? "Replacing" : "Replace"}
+          </button>
           {document.canRetry ? (
             <button
               type="button"
@@ -325,6 +349,7 @@ function DocumentsPanel({
   isSelectionLocked,
   onDelete,
   onRemove,
+  onReplace,
   onRetry,
   processingDocuments,
   result,
@@ -449,6 +474,7 @@ function DocumentsPanel({
                       actionsDisabled={actionsDisabled}
                       document={processingDocument}
                       onDelete={() => onDelete(index, processingDocument)}
+                      onReplace={() => onReplace(index, processingDocument)}
                       onRetry={() => onRetry(processingDocument)}
                     />
                   ) : uploadUpdate ? (
@@ -709,6 +735,11 @@ function DisabledComposer({
 
 export function DocumentSelectionWorkspace() {
   const inputRef = useRef<HTMLInputElement>(null);
+  const replacementInputRef = useRef<HTMLInputElement>(null);
+  const replacementTargetRef = useRef<{
+    document: DocumentSummary;
+    index: number;
+  } | null>(null);
   const uploadInFlightRef = useRef(false);
   const documentActionInFlightRef = useRef(false);
   const pollingAbortRef = useRef<AbortController | null>(null);
@@ -869,6 +900,111 @@ export function DocumentSelectionWorkspace() {
     setDocumentActionErrors({});
   }
 
+  function openReplacementPicker(
+    index: number,
+    document: DocumentSummary,
+  ): void {
+    if (documentActionInFlightRef.current || document.status !== "failed") {
+      return;
+    }
+
+    replacementTargetRef.current = { document, index };
+    replacementInputRef.current?.click();
+  }
+
+  async function handleReplacementChange(
+    event: ChangeEvent<HTMLInputElement>,
+  ): Promise<void> {
+    const replacementFile = event.target.files?.[0];
+    const target = replacementTargetRef.current;
+    event.target.value = "";
+    replacementTargetRef.current = null;
+
+    if (!replacementFile || !target || !batch) {
+      return;
+    }
+
+    const nextFiles = selectedFiles.map((file, index) =>
+      index === target.index ? replacementFile : file,
+    );
+    const replacementValidation = validateBatchFiles(nextFiles);
+    const validationMessages = [
+      ...replacementValidation.errors.map(
+        (error) => batchErrorMessages[error],
+      ),
+      ...(replacementValidation.files[target.index]?.errors.map(
+        (error) => fileErrorMessages[error],
+      ) ?? []),
+    ];
+
+    if (!replacementValidation.isValid) {
+      setDocumentActionError(
+        target.document.id,
+        [...new Set(validationMessages)].join(" ") ||
+          "The replacement file is invalid.",
+      );
+      return;
+    }
+
+    documentActionInFlightRef.current = true;
+    setDocumentActionError(target.document.id);
+    setDocumentActions({ [target.document.id]: "replacing" });
+
+    try {
+      const result = await replaceAndUploadDocument(
+        target.document.id,
+        batch.id,
+        replacementFile,
+        target.index,
+        (update) => {
+          setUploadUpdates((current) => ({
+            ...current,
+            [update.index]: update,
+          }));
+        },
+      );
+      setSelectedFiles(nextFiles);
+      setBatch((current) => {
+        if (!current) {
+          return current;
+        }
+
+        const documents = current.documents.map((document) =>
+          document.id === result.document.id ? result.document : document,
+        );
+
+        return {
+          ...current,
+          documents,
+          status: getBatchStatusFromDocuments(documents),
+        };
+      });
+
+      if (result.status === "failed") {
+        setUploadUpdates((current) => {
+          const next = { ...current };
+          delete next[target.index];
+          return next;
+        });
+      }
+
+      startBatchPolling(batch.id);
+    } catch (error) {
+      setUploadUpdates((current) => {
+        const next = { ...current };
+        delete next[target.index];
+        return next;
+      });
+      setDocumentActionError(
+        target.document.id,
+        error instanceof Error ? error.message : "The replacement failed.",
+      );
+    } finally {
+      documentActionInFlightRef.current = false;
+      setDocumentActions({});
+    }
+  }
+
   async function handleRetryDocument(
     document: DocumentSummary,
   ): Promise<void> {
@@ -1012,6 +1148,14 @@ export function DocumentSelectionWorkspace() {
 
   return (
     <main className="grid min-h-0 min-w-0 w-full flex-1 grid-rows-[auto_1fr] lg:grid-cols-[280px_minmax(0,1fr)] lg:grid-rows-1 lg:overflow-hidden">
+      <input
+        ref={replacementInputRef}
+        type="file"
+        accept={acceptedFileTypes}
+        onChange={handleReplacementChange}
+        className="sr-only"
+        aria-label="Select replacement document"
+      />
       <DocumentsPanel
         actionErrors={documentActionErrors}
         actions={documentActions}
@@ -1021,6 +1165,7 @@ export function DocumentSelectionWorkspace() {
         result={validationResult}
         uploadUpdates={uploadUpdates}
         onRemove={handleRemove}
+        onReplace={openReplacementPicker}
         onRetry={handleRetryDocument}
       />
       <section

@@ -10,6 +10,7 @@ import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 import {
   createAndUploadBatch,
+  replaceAndUploadDocument,
   type ClientBatchUploadResult,
   type ClientUploadUpdate,
 } from "@/lib/uploads/client";
@@ -23,6 +24,7 @@ import Home from "./page";
 
 vi.mock("@/lib/uploads/client", () => ({
   createAndUploadBatch: vi.fn(),
+  replaceAndUploadDocument: vi.fn(),
 }));
 vi.mock("@/lib/batches/client", () => ({
   pollBatchStatus: vi.fn(),
@@ -33,12 +35,14 @@ vi.mock("@/lib/documents/client", () => ({
 }));
 
 const createAndUploadBatchMock = vi.mocked(createAndUploadBatch);
+const replaceAndUploadDocumentMock = vi.mocked(replaceAndUploadDocument);
 const pollBatchStatusMock = vi.mocked(pollBatchStatus);
 const deleteDocumentMock = vi.mocked(deleteDocument);
 const retryDocumentMock = vi.mocked(retryDocument);
 
 beforeEach(() => {
   createAndUploadBatchMock.mockReset();
+  replaceAndUploadDocumentMock.mockReset();
   pollBatchStatusMock.mockReset();
   pollBatchStatusMock.mockImplementation(
     () => new Promise<BatchSummary>(() => undefined),
@@ -439,6 +443,98 @@ test("retries a failed document and resumes status polling", async () => {
 
   expect(retryDocumentMock).toHaveBeenCalledWith("document-1");
   expect(await screen.findByText("Ready")).toBeDefined();
+  expect(pollBatchStatusMock).toHaveBeenCalledTimes(2);
+});
+
+test("replaces a failed document in the same row", async () => {
+  const failedDocument = {
+    id: "document-1",
+    batchId: "batch-1",
+    filename: "guide.pdf",
+    fileType: "pdf",
+    size: 1024,
+    status: "failed",
+    canRetry: false,
+    error: { code: "UPLOAD_FAILED", message: "Upload failed." },
+  } as const;
+  const failedBatch: BatchSummary = {
+    ...uploadResult().batch,
+    status: "failed",
+    documents: [failedDocument],
+  };
+  const readyDocument = {
+    ...failedDocument,
+    filename: "replacement.xlsx",
+    fileType: "xlsx" as const,
+    status: "ready" as const,
+    error: undefined,
+  };
+  const readyBatch: BatchSummary = {
+    ...failedBatch,
+    status: "ready",
+    documents: [readyDocument],
+  };
+
+  createAndUploadBatchMock.mockImplementation(async (_, onUpdate) => {
+    onUpdate({ index: 0, status: "uploaded", progress: 100 });
+    return uploadResult();
+  });
+  pollBatchStatusMock
+    .mockImplementationOnce(async (_, onUpdate) => {
+      onUpdate(failedBatch);
+      return failedBatch;
+    })
+    .mockImplementationOnce(async (_, onUpdate) => {
+      onUpdate(readyBatch);
+      return readyBatch;
+    });
+  replaceAndUploadDocumentMock.mockImplementation(
+    async (_, __, replacementFile, index, onUpdate) => {
+      onUpdate({ index, status: "preparing-replacement" });
+      onUpdate({ index, status: "uploading", progress: 45 });
+      onUpdate({ index, status: "uploaded", progress: 100 });
+
+      return {
+        document: {
+          ...failedDocument,
+          filename: replacementFile.name,
+          fileType: "xlsx",
+          size: replacementFile.size,
+          status: "queued",
+          error: undefined,
+        },
+        status: "uploaded",
+      };
+    },
+  );
+
+  render(<Home />);
+  fireEvent.change(screen.getByLabelText("Select documents from device"), {
+    target: { files: [file()] },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Upload and process" }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Replace guide.pdf" }),
+  );
+
+  const replacementFile = file(
+    "replacement.xlsx",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  );
+  fireEvent.change(screen.getByLabelText("Select replacement document"), {
+    target: { files: [replacementFile] },
+  });
+
+  expect(await screen.findByText("replacement.xlsx")).toBeDefined();
+  expect(replaceAndUploadDocumentMock).toHaveBeenCalledWith(
+    "document-1",
+    "batch-1",
+    replacementFile,
+    0,
+    expect.any(Function),
+  );
+  expect(await screen.findByText("Ready")).toBeDefined();
+  expect(screen.queryByText("guide.pdf")).toBeNull();
   expect(pollBatchStatusMock).toHaveBeenCalledTimes(2);
 });
 

@@ -1,7 +1,7 @@
 import type { PutBlobResult } from "@vercel/blob";
 import { describe, expect, test, vi } from "vitest";
 
-import { createAndUploadBatch } from "./client";
+import { createAndUploadBatch, replaceAndUploadDocument } from "./client";
 
 const batchId = "9f92701f-4866-45e6-b21f-1be3decc8d7d";
 const clientIds = [
@@ -141,5 +141,122 @@ describe("client batch upload", () => {
       }),
     ).rejects.toThrow("must pass validation");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("client replacement upload", () => {
+  test("prepares and uploads a replacement through the existing upload route", async () => {
+    const replacementFile = new File(["replacement"], "replacement.pdf", {
+      type: "application/pdf",
+    });
+    const replacementDocument = {
+      id: documentIds[0],
+      batchId,
+      filename: replacementFile.name,
+      fileType: "pdf" as const,
+      size: replacementFile.size,
+      status: "queued" as const,
+    };
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json({
+        document: replacementDocument,
+        uploadPathname: `documents/${batchId}/${documentIds[0]}.pdf`,
+      }),
+    );
+    const upload = vi.fn(async (pathname: string) => blob(pathname));
+    const updates = vi.fn();
+
+    await expect(
+      replaceAndUploadDocument(
+        documentIds[0],
+        batchId,
+        replacementFile,
+        2,
+        updates,
+        {
+          createId: () => clientIds[0],
+          fetch: fetchMock,
+          upload,
+        },
+      ),
+    ).resolves.toEqual({
+      document: replacementDocument,
+      status: "uploaded",
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/documents/${documentIds[0]}/replace`,
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(upload).toHaveBeenCalledWith(
+      `documents/${batchId}/${documentIds[0]}.pdf`,
+      replacementFile,
+      expect.objectContaining({
+        handleUploadUrl: "/api/upload",
+        clientPayload: JSON.stringify({
+          batchId,
+          documentId: documentIds[0],
+        }),
+      }),
+    );
+    expect(updates).toHaveBeenCalledWith({
+      index: 2,
+      status: "preparing-replacement",
+    });
+    expect(updates).toHaveBeenLastCalledWith({
+      index: 2,
+      status: "uploaded",
+      progress: 100,
+    });
+  });
+
+  test("reports an isolated replacement upload failure", async () => {
+    const replacementFile = new File(["replacement"], "replacement.pdf", {
+      type: "application/pdf",
+    });
+    const replacementDocument = {
+      id: documentIds[0],
+      batchId,
+      filename: replacementFile.name,
+      fileType: "pdf" as const,
+      size: replacementFile.size,
+      status: "queued" as const,
+    };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        Response.json({
+          document: replacementDocument,
+          uploadPathname: `documents/${batchId}/${documentIds[0]}.pdf`,
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 204 }));
+
+    const result = await replaceAndUploadDocument(
+      documentIds[0],
+      batchId,
+      replacementFile,
+      0,
+      vi.fn(),
+      {
+        createId: () => clientIds[0],
+        fetch: fetchMock,
+        upload: vi.fn().mockRejectedValue(new Error("network interrupted")),
+      },
+    );
+
+    expect(result).toMatchObject({
+      status: "failed",
+      error: "network interrupted",
+      document: {
+        filename: "replacement.pdf",
+        status: "failed",
+        canRetry: false,
+        error: { code: "UPLOAD_FAILED", message: "network interrupted" },
+      },
+    });
+    expect(JSON.parse(String(fetchMock.mock.calls[1][1]?.body))).toEqual({
+      type: "docchat.upload-failed",
+      payload: { batchId, documentId: documentIds[0] },
+    });
   });
 });

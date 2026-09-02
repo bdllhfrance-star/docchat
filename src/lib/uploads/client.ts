@@ -2,12 +2,18 @@ import type { PutBlobResult, UploadProgressEvent } from "@vercel/blob";
 import { uploadPresigned } from "@vercel/blob/client";
 
 import { validateBatchFiles } from "@/lib/uploads/validation";
-import type { ApiError, CreateBatchResponse } from "@/types/api";
+import type {
+  ApiError,
+  CreateBatchResponse,
+  ReplaceDocumentResponse,
+} from "@/types/api";
+import type { DocumentSummary } from "@/types/documents";
 
 const uploadConcurrency = 3;
 
 export type ClientUploadStatus =
   | "creating-batch"
+  | "preparing-replacement"
   | "uploading"
   | "uploaded"
   | "failed";
@@ -29,6 +35,12 @@ export type ClientUploadOutcome = {
 export type ClientBatchUploadResult = {
   batch: CreateBatchResponse["batch"];
   uploads: ClientUploadOutcome[];
+};
+
+export type ClientReplacementUploadResult = {
+  document: DocumentSummary;
+  status: "uploaded" | "failed";
+  error?: string;
 };
 
 type ClientUploadDependencies = {
@@ -74,6 +86,77 @@ async function readBatchResponse(response: Response): Promise<CreateBatchRespons
   }
 
   return body;
+}
+
+async function readReplacementResponse(
+  response: Response,
+  documentId: string,
+): Promise<ReplaceDocumentResponse> {
+  const body = (await response.json()) as ReplaceDocumentResponse | ApiError;
+
+  if (!response.ok) {
+    if ("error" in body) {
+      throw new Error(body.error.message);
+    }
+
+    throw new Error("The document could not be replaced.");
+  }
+
+  if (
+    !("document" in body) ||
+    !body.uploadPathname ||
+    body.document.id !== documentId
+  ) {
+    throw new Error("The replacement response is invalid.");
+  }
+
+  return body;
+}
+
+type ClientUploadTarget = {
+  batchId: string;
+  documentId: string;
+  uploadPathname: string;
+};
+
+async function uploadDocumentFile(
+  target: ClientUploadTarget,
+  file: File,
+  onProgress: (percentage: number) => void,
+  dependencies: ClientUploadDependencies,
+): Promise<void> {
+  await dependencies.upload(target.uploadPathname, file, {
+    access: "private",
+    handleUploadUrl: "/api/upload",
+    clientPayload: JSON.stringify({
+      batchId: target.batchId,
+      documentId: target.documentId,
+    }),
+    ...(file.type ? { contentType: file.type } : {}),
+    multipart: false,
+    onUploadProgress: ({ percentage }) => onProgress(percentage),
+  });
+}
+
+async function reportUploadFailure(
+  target: Pick<ClientUploadTarget, "batchId" | "documentId">,
+  dependencies: ClientUploadDependencies,
+): Promise<void> {
+  try {
+    await dependencies.fetch("/api/upload", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        type: "docchat.upload-failed",
+        payload: {
+          batchId: target.batchId,
+          documentId: target.documentId,
+        },
+      }),
+    });
+  } catch {
+    // The original upload error remains the actionable client result.
+  }
 }
 
 export async function createAndUploadBatch(
@@ -138,22 +221,21 @@ export async function createAndUploadBatch(
       onUpdate({ index: current.index, status: "uploading", progress: 0 });
 
       try {
-        await dependencies.upload(serverFile.uploadPathname, current.file, {
-          access: "private",
-          handleUploadUrl: "/api/upload",
-          clientPayload: JSON.stringify({
+        await uploadDocumentFile(
+          {
             batchId: created.batch.id,
             documentId: serverFile.documentId,
-          }),
-          ...(current.file.type ? { contentType: current.file.type } : {}),
-          multipart: false,
-          onUploadProgress: ({ percentage }) =>
+            uploadPathname: serverFile.uploadPathname,
+          },
+          current.file,
+          (percentage) =>
             onUpdate({
               index: current.index,
               status: "uploading",
               progress: percentage,
             }),
-        });
+          dependencies,
+        );
 
         outcomes[current.index] = {
           index: current.index,
@@ -163,22 +245,10 @@ export async function createAndUploadBatch(
         onUpdate({ index: current.index, status: "uploaded", progress: 100 });
       } catch (error) {
         const message = errorMessage(error);
-
-        try {
-          await dependencies.fetch("/api/upload", {
-            method: "POST",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({
-              type: "docchat.upload-failed",
-              payload: {
-                batchId: created.batch.id,
-                documentId: serverFile.documentId,
-              },
-            }),
-          });
-        } catch {
-          // The original upload error remains the actionable client result.
-        }
+        await reportUploadFailure(
+          { batchId: created.batch.id, documentId: serverFile.documentId },
+          dependencies,
+        );
 
         outcomes[current.index] = {
           index: current.index,
@@ -199,4 +269,68 @@ export async function createAndUploadBatch(
   );
 
   return { batch: created.batch, uploads: outcomes };
+}
+
+export async function replaceAndUploadDocument(
+  documentId: string,
+  batchId: string,
+  file: File,
+  index: number,
+  onUpdate: (update: ClientUploadUpdate) => void,
+  dependencies: ClientUploadDependencies = defaultDependencies,
+): Promise<ClientReplacementUploadResult> {
+  if (!validateBatchFiles([file]).isValid) {
+    throw new Error("The replacement file must pass validation before upload.");
+  }
+
+  onUpdate({ index, status: "preparing-replacement" });
+  const response = await dependencies.fetch(
+    `/api/documents/${documentId}/replace`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        clientId: dependencies.createId(),
+        filename: file.name,
+        size: file.size,
+        mimeType: file.type,
+      }),
+    },
+  );
+  const replacement = await readReplacementResponse(response, documentId);
+  const target = {
+    batchId,
+    documentId,
+    uploadPathname: replacement.uploadPathname,
+  };
+
+  onUpdate({ index, status: "uploading", progress: 0 });
+
+  try {
+    await uploadDocumentFile(
+      target,
+      file,
+      (percentage) =>
+        onUpdate({ index, status: "uploading", progress: percentage }),
+      dependencies,
+    );
+    onUpdate({ index, status: "uploaded", progress: 100 });
+
+    return { document: replacement.document, status: "uploaded" };
+  } catch (error) {
+    const message = errorMessage(error);
+    await reportUploadFailure(target, dependencies);
+    onUpdate({ index, status: "failed", error: message });
+
+    return {
+      document: {
+        ...replacement.document,
+        status: "failed",
+        canRetry: false,
+        error: { code: "UPLOAD_FAILED", message },
+      },
+      status: "failed",
+      error: message,
+    };
+  }
 }
