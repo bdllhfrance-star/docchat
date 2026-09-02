@@ -41,6 +41,7 @@ const deleteDocumentMock = vi.mocked(deleteDocument);
 const retryDocumentMock = vi.mocked(retryDocument);
 
 beforeEach(() => {
+  sessionStorage.clear();
   createAndUploadBatchMock.mockReset();
   replaceAndUploadDocumentMock.mockReset();
   pollBatchStatusMock.mockReset();
@@ -370,10 +371,12 @@ test("keeps each file row stable while showing real processing states", async ()
   expect(await screen.findByText("Ready")).toBeDefined();
   expect(screen.getByText("guide.pdf")).toBeDefined();
   expect(
-    screen.getByText(
-      "All documents are ready. Chat will be enabled in the next phase.",
-    ),
+    await screen.findByRole("heading", { name: "Your documents are ready" }),
   ).toBeDefined();
+  expect(screen.getByRole("textbox", { name: "Message DocChat" })).toHaveProperty(
+    "disabled",
+    false,
+  );
 });
 
 test("retries a failed document and resumes status polling", async () => {

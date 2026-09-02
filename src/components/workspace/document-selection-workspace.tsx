@@ -47,6 +47,8 @@ import type {
   DocumentSummary,
 } from "@/types/documents";
 
+import { ChatWorkspace } from "./chat-workspace";
+
 const acceptedFileTypes = ".pdf,.docx,.pptx,.xlsx,.txt,.md,.csv";
 const supportedFormats = "PDF, DOCX, PPTX, XLSX, TXT, MD and CSV";
 
@@ -687,7 +689,7 @@ function DisabledComposer({
   } else if (hasFailedUpload || hasFailedProcessing) {
     reason = "A document failed. Chat remains unavailable.";
   } else if (batch?.status === "ready") {
-    reason = "All documents are ready. Chat will be enabled in the next phase.";
+    reason = "All documents are ready. Chat is available.";
   } else if (batch) {
     reason = "Documents are being processed. Chat remains unavailable.";
   } else if (hasUploadedFile) {
@@ -776,6 +778,16 @@ export function DocumentSelectionWorkspace() {
   }, [batch, documentIdsByIndex]);
   const hasUploadStarted = Object.keys(uploadUpdates).length > 0;
   const isSelectionLocked = isUploading || hasUploadStarted;
+  const readyDocumentIds = useMemo(
+    () =>
+      batch?.status === "ready" &&
+      batch.documents.length > 0 &&
+      batch.documents.every((document) => document.status === "ready")
+        ? batch.documents.map((document) => document.id)
+        : [],
+    [batch],
+  );
+  const canChat = batch !== null && readyDocumentIds.length > 0;
 
   useEffect(
     () => () => {
@@ -1172,29 +1184,39 @@ export function DocumentSelectionWorkspace() {
         className="flex min-h-0 min-w-0 flex-col bg-slate-50/30"
         aria-label="Conversation workspace"
       >
-        <DocumentSelector
-          creationError={creationError}
-          fileCount={validationResult.files.length}
-          hasUploadStarted={hasUploadStarted}
-          inputRef={inputRef}
-          isDragging={isDragging}
-          isSelectionLocked={isSelectionLocked}
-          isUploading={isUploading}
-          isValid={validationResult.isValid}
-          onChange={handleInputChange}
-          onDragEnter={handleDragEnter}
-          onDragLeave={handleDragLeave}
-          onDragOver={handleDragOver}
-          onDrop={handleDrop}
-          onOpenPicker={() => inputRef.current?.click()}
-          onUpload={handleUpload}
-        />
-        <DisabledComposer
-          batch={batch}
-          hasFiles={validationResult.files.length > 0}
-          isUploading={isUploading}
-          uploadUpdates={uploadUpdates}
-        />
+        {canChat ? (
+          <ChatWorkspace
+            key={batch.id}
+            batchId={batch.id}
+            documentIds={readyDocumentIds}
+          />
+        ) : (
+          <>
+            <DocumentSelector
+              creationError={creationError}
+              fileCount={validationResult.files.length}
+              hasUploadStarted={hasUploadStarted}
+              inputRef={inputRef}
+              isDragging={isDragging}
+              isSelectionLocked={isSelectionLocked}
+              isUploading={isUploading}
+              isValid={validationResult.isValid}
+              onChange={handleInputChange}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+              onOpenPicker={() => inputRef.current?.click()}
+              onUpload={handleUpload}
+            />
+            <DisabledComposer
+              batch={batch}
+              hasFiles={validationResult.files.length > 0}
+              isUploading={isUploading}
+              uploadUpdates={uploadUpdates}
+            />
+          </>
+        )}
       </section>
     </main>
   );
