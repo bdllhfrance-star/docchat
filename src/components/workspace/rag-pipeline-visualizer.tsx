@@ -16,6 +16,8 @@ const pipelineStages: readonly PipelineStage[] = [
   { key: "index", number: "06", label: "Index", detail: "Vectors searchable" },
 ];
 
+type RagPipelineMode = "processing" | "ready" | "waiting";
+
 function StageVisual({ stage }: { stage: PipelineStage["key"] }) {
   if (stage === "upload") {
     return (
@@ -105,12 +107,42 @@ function StageVisual({ stage }: { stage: PipelineStage["key"] }) {
 
 export function RagPipelineVisualizer({
   documentCount,
+  mode = "ready",
 }: {
   documentCount: number;
+  mode?: RagPipelineMode;
 }) {
+  const content =
+    mode === "ready"
+      ? {
+          badge: "Process replay",
+          heading: "Your documents are ready",
+          description: `See how ${documentCount} ready ${
+            documentCount === 1 ? "document becomes" : "documents become"
+          } searchable knowledge before your first question.`,
+          footer: "Vector context ready for grounded answers",
+        }
+      : mode === "processing"
+        ? {
+            badge: "Pipeline active",
+            heading: "Building your document context",
+            description: `${documentCount} ${
+              documentCount === 1 ? "document is" : "documents are"
+            } moving through extraction, chunking, embeddings and vector indexing.`,
+            footer: "Processing securely in your private workspace",
+          }
+        : {
+            badge: "Pipeline overview",
+            heading: "From files to searchable knowledge",
+            description:
+              "Validation, extraction, chunking, embeddings and vector indexing — visualized end to end.",
+            footer:
+              "PDF · DOCX · PPTX · XLSX · TXT · MD · CSV · up to 10 files · 10 MiB each · 50 MiB total",
+          };
+
   return (
     <section
-      className="rag-pipeline-shell relative flex min-h-full w-full flex-1 items-center justify-center overflow-hidden px-4 py-8 text-center sm:px-6 sm:py-10 lg:px-8"
+      className="rag-pipeline-shell relative flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden px-4 py-8 text-center sm:px-6 sm:py-10 lg:px-8"
       aria-labelledby="rag-pipeline-heading"
       data-testid="rag-pipeline-visualizer"
     >
@@ -121,16 +153,16 @@ export function RagPipelineVisualizer({
       <div className="relative z-10 w-full max-w-6xl">
         <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50/90 px-3 py-1 text-[10px] font-bold tracking-[0.2em] text-blue-700 uppercase dark:border-blue-900 dark:bg-blue-950/70 dark:text-blue-300">
           <span className="rag-replay-dot size-1.5 rounded-full bg-blue-500" aria-hidden="true" />
-          Process replay
+          {content.badge}
         </div>
         <h1
           id="rag-pipeline-heading"
           className="mt-4 text-2xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-3xl"
         >
-          Your documents are ready
+          {content.heading}
         </h1>
         <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-slate-600 dark:text-slate-400">
-          See how {documentCount} ready {documentCount === 1 ? "document becomes" : "documents become"} searchable knowledge before your first question.
+          {content.description}
         </p>
 
         <div className="relative mx-auto mt-7 max-w-6xl sm:mt-9">
@@ -171,9 +203,20 @@ export function RagPipelineVisualizer({
           </ol>
         </div>
 
-        <div className="mx-auto mt-6 flex w-fit max-w-full items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50/90 px-3 py-1.5 text-xs font-semibold text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300">
-          <span className="rag-ready-pulse relative size-2 rounded-full bg-emerald-500" aria-hidden="true" />
-          Vector context ready for grounded answers
+        <div
+          className={`mx-auto mt-6 flex w-fit max-w-full items-center gap-2 rounded-full px-3 py-1.5 text-xs font-semibold ${
+            mode === "ready"
+              ? "border border-emerald-200 bg-emerald-50/90 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-300"
+              : "border border-blue-200 bg-blue-50/90 text-blue-700 dark:border-blue-900 dark:bg-blue-950/60 dark:text-blue-300"
+          }`}
+        >
+          <span
+            className={`relative size-2 shrink-0 rounded-full ${
+              mode === "ready" ? "rag-ready-pulse bg-emerald-500" : "rag-replay-dot bg-blue-500"
+            }`}
+            aria-hidden="true"
+          />
+          <span>{content.footer}</span>
         </div>
       </div>
     </section>

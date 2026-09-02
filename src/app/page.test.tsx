@@ -5,6 +5,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
@@ -97,17 +98,31 @@ test("renders the initial document workspace", () => {
 
   expect(
     screen.getByRole("heading", {
-      level: 1,
+      level: 3,
       name: "Start with your documents",
     }),
   ).toBeDefined();
   expect(
     screen.getByRole("heading", { level: 2, name: "Documents" }),
   ).toBeDefined();
-  expect(screen.getByText("No documents yet")).toBeDefined();
   expect(
     screen.getByRole("button", { name: "Choose documents" }),
   ).toBeDefined();
+  expect(
+    screen.getByRole("heading", {
+      level: 1,
+      name: "From files to searchable knowledge",
+    }),
+  ).toBeDefined();
+  expect(screen.queryByText("Session limits")).toBeNull();
+
+  const conversation = screen.getByRole("region", {
+    name: "Conversation workspace",
+  });
+  expect(
+    within(conversation).queryByRole("button", { name: "Choose documents" }),
+  ).toBeNull();
+  expect(within(conversation).getByTestId("rag-pipeline-visualizer")).toBeDefined();
 });
 
 test("switches and persists the dark theme", async () => {
@@ -773,7 +788,9 @@ test("deletes the last ready document and returns to the initial workspace", asy
     screen.getByRole("heading", { name: "Your documents are ready" }),
   ).toBeDefined();
   expect(
-    screen.queryByRole("heading", { name: "Review your documents" }),
+    within(
+      screen.getByRole("region", { name: "Conversation workspace" }),
+    ).queryByRole("heading", { name: "Review your documents" }),
   ).toBeNull();
   expect(screen.getByText("Updating document context…")).toBeDefined();
   expect(screen.getByRole("textbox", { name: "Message DocChat" })).toHaveProperty(
@@ -786,7 +803,9 @@ test("deletes the last ready document and returns to the initial workspace", asy
   expect(
     screen.getByRole("heading", { name: "Start with your documents" }),
   ).toBeDefined();
-  expect(screen.getByText("No documents yet")).toBeDefined();
+  expect(
+    screen.getByRole("button", { name: "Choose documents" }),
+  ).toBeDefined();
 });
 
 test("keeps a document visible when its deletion fails", async () => {

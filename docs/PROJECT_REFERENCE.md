@@ -192,8 +192,9 @@ contraste accessible et un seul accent visuel principal.
 
 Principes obligatoires :
 
-- Aucun effet « AI UI » générique : pas de glow, d'orbe, d'étoiles, de robot,
-  de gradient spectaculaire ou d'animation décorative permanente.
+- Aucun effet « AI UI » générique dans les contrôles ou le chat. La seule
+  exception est la visualisation pédagogique centrale du pipeline : sa grille,
+  ses gradients et ses halos représentent le passage des fichiers aux vecteurs.
 - Les icônes sont des SVG Lucide simples, toujours accompagnés d'un texte
   lorsque leur sens n'est pas évident.
 - Les animations expliquent une opération réelle et ne servent pas à remplir
@@ -206,7 +207,7 @@ Principes obligatoires :
 ```text
 Ouverture de l'application
 → création d'une session anonyme
-→ écran centré d'ajout de documents
+→ ajout de documents depuis le panneau Documents à gauche
 → sélection et vérification préliminaire
 → bouton Upload sous la liste pour envoyer le batch
 → traitement et animation indépendante de chaque fichier
@@ -246,7 +247,6 @@ Blob. L'utilisateur peut alors :
 
 - **Réessayer** : reprendre le traitement à partir du fichier déjà uploadé
   lorsque celui-ci est exploitable.
-- **Remplacer** : sélectionner et uploader une nouvelle version du fichier.
 - **Supprimer** : retirer le fichier, ses métadonnées et ses éventuels chunks.
 
 Les autres fichiers continuent leur traitement après un échec, mais le chat
@@ -258,8 +258,12 @@ de son traitement.
 
 ### 8.3 Composition de l'interface
 
-- **État initial** : logo et titre discrets, courte instruction, dropzone
-  centrale et bouton principal d'upload.
+- **Panneau Documents** : toutes les actions documentaires sont centralisées à
+  gauche — sélection, drag-and-drop, upload initial, ajout, retrait, retry et
+  suppression — avec les titres et explications `Start`/`Review` associés.
+- **Surface centrale avant le chat** : aucun bouton ni dropzone documentaire.
+  Elle est réservée à la visualisation pédagogique du pipeline, à son état et à
+  une seule ligne compacte indiquant formats et limites pris en charge.
 - **Préparation** : liste des fichiers sélectionnés avec nom, format, taille,
   erreur locale éventuelle et action de retrait.
 - **Traitement** : une ligne stable par fichier avec animation, libellé de
@@ -268,6 +272,9 @@ de son traitement.
   pédagogique du pipeline au centre tant qu'aucun message n'existe ; elle est
   remplacée par la conversation dès le premier échange. Le panneau devient un
   tiroir sur mobile.
+- **Information non répétée** : le panneau gauche ne contient pas un second
+  bloc `Session limits`; les formats et limites sont affichés une seule fois
+  dans la surface centrale avant la conversation.
 - **Composer** : fixé au bas de la zone de conversation, désactivé avec une
   raison visible tant que `canSendMessage` vaut `false`.
 - **Mutation du contexte** : pendant un retry ou une suppression, la zone de
@@ -829,7 +836,7 @@ intégrés par l'agent principal avant le lancement d'une nouvelle vague.
 
 | État | ID | Dépend de | Responsable | Tâche et condition de fin |
 | --- | --- | --- | --- | --- |
-| [x] | UI-01 | SET-04 | UI | Construire le shell responsive : état vide, zone d'upload, panneau de documents, zone de chat et composer désactivé. Tests de rendu et navigation clavier réussis. |
+| [x] | UI-01 | SET-04 | UI | Construire le shell responsive : toutes les actions d'upload dans le panneau Documents, visualisation du pipeline dans la surface centrale, zone de chat et composer désactivé. Tests de rendu et navigation clavier réussis. |
 | [x] | API-01 | SET-03, SET-04 | Backend | Créer la session anonyme par cookie HTTP-only signé et appliquer `sessionId` à toutes les opérations. Un accès croisé est refusé par test. |
 | [x] | UPL-01 | SET-04, UI-01 | UI | Implémenter sélection multiple, drag-and-drop et vérification locale du nombre, type et poids. Les erreurs sont affichées fichier par fichier avant l'envoi. |
 | [x] | UPL-02 | API-01 | Backend | Implémenter `POST /api/batches` avec manifeste validé, limites serveur, identifiants et statuts initiaux. Les erreurs suivent `ApiError`. |
@@ -848,7 +855,7 @@ intégrés par l'agent principal avant le lancement d'une nouvelle vague.
 | [~] | CHAT-01 | RAG-03 | Backend/RAG | `POST /api/chat`, validations avant stream, contexte dynamique, prompt fondé uniquement sur les documents, refus sans contexte et UI message stream sourcé sont implémentés et testés localement. Une génération réelle `gemini-3.7-flash` a réussi ; le seuil et le parcours complet attendent Atlas. |
 | [~] | UI-05 | UI-04, CHAT-01 | UI | Chat relié à `/api/chat` avec `useChat`, historique `sessionStorage` isolé par batch, annulation et affichage progressif. Le composer ne s'active que lorsque tous les documents sont `ready` ; le parcours réel attend le smoke test Vercel. |
 | [~] | UI-06 | UI-05 | UI | Sources dépliables affichées sous chaque réponse avec numéro de citation, fichier, emplacement, extrait et score : `Similarity` pour le cosinus seul ou `Hybrid score` pour RRF. Le contrôle natif est utilisable au clavier et responsive ; le flux réel Atlas/Gemini reste à valider dans `GATE-01`. |
-| [x] | UI-07 | UI-05 | UI | L'état de chat vide présente un replay central du pipeline complet avec six scènes SVG/CSS personnalisées, séquence lisible, thèmes clair/sombre et repli `prefers-reduced-motion`. La visualisation disparaît dès le premier message. |
+| [x] | UI-07 | UI-05 | UI | Avant le premier message, la surface centrale présente le pipeline complet avec six scènes SVG/CSS personnalisées : vue explicative avant upload, état actif pendant traitement et replay lorsque le contexte est prêt. La séquence couvre les thèmes clair/sombre et `prefers-reduced-motion`, puis disparaît dès le premier message. |
 | [x] | SEC-01 | UPL-03, CHAT-01 | Backend/QA | Extension, MIME, signature PDF, limites de fichiers et requêtes, noms, sessions, propriété des ressources, prompt injection, rendu HTML inerte, headers et absence de logs sensibles sont vérifiés localement avec cas négatifs. |
 | [x] | TST-01 | SEC-01, UI-06 | QA | Les tests unitaires et d'intégration P0 couvrent contrats, upload, parser, chunker, statuts, retrieval, refus, streaming, sources, sécurité et erreurs. `lint`, `typecheck`, tests et build réussissent localement. |
 | [~] | GATE-01 | TST-01 | Principal | Le code et le parcours déterministe sont verts ; Gemini, Upstash, Atlas et Blob sont joignables. Le parcours PDF applicatif complet — callback, ingestion, streaming, source, refus, retry et suppression — doit maintenant être validé sur l'URL Vercel ; aucune simulation n'est présentée comme un E2E réel. |
@@ -1129,3 +1136,4 @@ Le projet est terminé uniquement lorsque :
 | 2026-09-02 | Envoyer les logs JSON vers la sortie standard : terminal en local et Runtime Logs Vercel en production, sans contenu utilisateur ni identifiant sensible. |
 | 2026-09-02 | Valider réellement Upstash par `PING` et écriture/lecture/suppression temporaire, puis Gemini par génération 3.7 Flash et embedding 768 dimensions ; conserver les secrets uniquement dans `.env.local`. |
 | 2026-09-02 | Valider Atlas par connexion et cycle CRUD temporaire, créer 3 collections, 11 index standards/TTL et les index Search vectoriel/lexical, puis prouver les deux recherches filtrées avant de supprimer la fixture. |
+| 2026-09-02 | Centraliser toutes les actions et explications documentaires dans le panneau gauche ; réserver la surface centrale au pipeline, à l'information compacte et au chat. Ne pas répéter le bloc des limites dans le panneau. |

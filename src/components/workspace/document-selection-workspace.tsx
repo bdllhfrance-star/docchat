@@ -7,7 +7,6 @@ import {
   Clock3,
   Files,
   LockKeyhole,
-  MessageSquareText,
   Plus,
   RotateCcw,
   Trash2,
@@ -48,10 +47,9 @@ import {
   DocumentOperationIcon,
   type DocumentOperationState,
 } from "./document-operation-icon";
+import { RagPipelineVisualizer } from "./rag-pipeline-visualizer";
 
 const acceptedFileTypes = ".pdf,.docx,.pptx,.xlsx,.txt,.md,.csv";
-const supportedFormats = "PDF, DOCX, PPTX, XLSX, TXT, MD and CSV";
-
 const fileErrorMessages: Record<FileValidationErrorCode, string> = {
   EMPTY_FILE: "This file is empty.",
   FILE_TOO_LARGE: "This file exceeds the 10 MiB limit.",
@@ -169,7 +167,12 @@ type DocumentsPanelProps = {
   canSubmitChanges: boolean;
   creationError: string | null;
   hasContext: boolean;
+  isDragging: boolean;
   isUploading: boolean;
+  onDragEnter: (event: DragEvent<HTMLElement>) => void;
+  onDragLeave: (event: DragEvent<HTMLElement>) => void;
+  onDragOver: (event: DragEvent<HTMLElement>) => void;
+  onDrop: (event: DragEvent<HTMLElement>) => void;
   onDelete: (index: number, document: DocumentSummary) => void;
   onOpenPicker: () => void;
   onRemove: (index: number) => void;
@@ -416,8 +419,13 @@ function DocumentsPanel({
   canSubmitChanges,
   creationError,
   hasContext,
+  isDragging,
   isSelectionLocked,
   isUploading,
+  onDragEnter,
+  onDragLeave,
+  onDragOver,
+  onDrop,
   onDelete,
   onOpenPicker,
   onRemove,
@@ -436,8 +444,16 @@ function DocumentsPanel({
 
   return (
     <aside
-      className="min-w-0 border-b border-slate-200 bg-slate-50/70 dark:border-slate-800 dark:bg-slate-900/70 lg:flex lg:min-h-0 lg:flex-col lg:overflow-hidden lg:border-r lg:border-b-0"
+      className={`relative min-w-0 border-b bg-slate-50/70 transition-colors dark:bg-slate-900/70 lg:flex lg:min-h-0 lg:flex-col lg:overflow-hidden lg:border-r lg:border-b-0 ${
+        isDragging
+          ? "border-blue-400 bg-blue-50/80 ring-2 ring-inset ring-blue-400 dark:border-blue-500 dark:bg-blue-950/30 dark:ring-blue-500"
+          : "border-slate-200 dark:border-slate-800"
+      }`}
       aria-labelledby="documents-heading"
+      onDragEnter={onDragEnter}
+      onDragLeave={onDragLeave}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
     >
       <div className="flex shrink-0 items-center justify-between px-4 py-4 sm:px-5 lg:py-5">
         <div className="flex items-center gap-2.5">
@@ -470,17 +486,51 @@ function DocumentsPanel({
 
       <div className="px-4 pb-4 sm:px-5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
         {!hasFiles ? (
-          <div className="rounded-xl border border-dashed border-slate-200 bg-white/70 px-4 py-4 dark:border-slate-700 dark:bg-slate-950/40 lg:py-6">
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
-              No documents yet
+          <div
+            className={`rounded-xl border border-dashed bg-white/70 px-4 py-5 text-center transition-colors dark:bg-slate-950/40 ${
+              isDragging
+                ? "border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/50"
+                : "border-slate-300 dark:border-slate-700"
+            }`}
+            role="group"
+            aria-label="Document drop zone"
+            aria-disabled={isSelectionLocked}
+          >
+            <div className="mx-auto grid size-10 place-items-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+              <Upload size={18} strokeWidth={1.8} aria-hidden="true" />
+            </div>
+            <h3 className="mt-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
+              Start with your documents
+            </h3>
+            <p className="mt-1.5 text-xs leading-5 text-slate-500 dark:text-slate-400">
+              {isDragging
+                ? "Drop to add documents"
+                : "Choose or drop files here. Chat unlocks after they are indexed."}
             </p>
-            <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
-              Your selected files and validation results will appear here.
-            </p>
+            <button
+              type="button"
+              onClick={onOpenPicker}
+              disabled={isSelectionLocked}
+              className="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-3 text-xs font-semibold text-white shadow-sm hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:bg-slate-300 dark:bg-blue-600 dark:hover:bg-blue-500 dark:focus-visible:outline-slate-200 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
+            >
+              <Plus size={15} aria-hidden="true" />
+              Choose documents
+            </button>
           </div>
         ) : (
-          <ul className="space-y-2" aria-label="Selected documents">
-            {result.files.map(({ errors, file, fileType }, index) => {
+          <>
+            <div className="mb-3 px-0.5">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                Review your documents
+              </h3>
+              <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
+                {hasContext
+                  ? "Add or remove files here. Existing files stay in your context."
+                  : "Check the files, then use the upload action below."}
+              </p>
+            </div>
+            <ul className="space-y-2" aria-label="Selected documents">
+              {result.files.map(({ errors, file, fileType }, index) => {
               const uploadUpdate = uploadUpdates[index];
               const processingDocument = processingDocuments[index];
               const action = processingDocument
@@ -497,7 +547,7 @@ function DocumentsPanel({
                 uploadUpdate,
               });
 
-              return (
+                return (
                 <li
                   key={`${file.name}-${file.size}-${file.lastModified}-${index}`}
                   className={`document-row-enter rounded-xl border bg-white p-3.5 dark:bg-slate-950/70 ${
@@ -582,9 +632,10 @@ function DocumentsPanel({
                     </p>
                   )}
                 </li>
-              );
-            })}
-          </ul>
+                );
+              })}
+            </ul>
+          </>
         )}
       </div>
 
@@ -614,136 +665,31 @@ function DocumentsPanel({
                   ? "Update context"
                   : "Upload"}
             </button>
-          ) : canAddFromSidebar ? (
+          ) : null}
+          {canAddFromSidebar ? (
             <button
               type="button"
               onClick={onOpenPicker}
               disabled={isSelectionLocked}
-              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus-visible:outline-slate-200"
+              className={`inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus-visible:outline-slate-200 ${
+                pendingFileCount > 0 ? "mt-2" : ""
+              }`}
             >
               <Plus size={16} aria-hidden="true" />
               Add documents
             </button>
           ) : null}
-          <p className="mt-2 text-center text-xs leading-5 text-slate-500 dark:text-slate-400">
-            {pendingFileCount > 0
-              ? `${pendingFileCount} new ${pendingFileCount === 1 ? "document" : "documents"} waiting to be sent.`
-              : canAddFromSidebar
-                ? "Add or remove documents without replacing the full context."
-                : "Document processing is reflected here in real time."}
-          </p>
+          {pendingFileCount > 0 ? (
+            <p className="mt-2 text-center text-xs leading-5 text-slate-500 dark:text-slate-400">
+              {isUploading
+                ? "Sending and processing the new documents."
+                : `${pendingFileCount} new ${pendingFileCount === 1 ? "document" : "documents"} waiting to be sent.`}
+            </p>
+          ) : null}
         </div>
       ) : null}
 
-      <div className="hidden shrink-0 border-t border-slate-200 px-5 py-5 dark:border-slate-800 lg:block">
-        <p className="text-xs font-medium text-slate-700 dark:text-slate-200">Session limits</p>
-        <dl className="mt-3 space-y-2 text-xs text-slate-500 dark:text-slate-400">
-          <div className="flex justify-between gap-3">
-            <dt>Files</dt>
-            <dd className="font-medium text-slate-700 dark:text-slate-200">Up to 10</dd>
-          </div>
-          <div className="flex justify-between gap-3">
-            <dt>Per file</dt>
-            <dd className="font-medium text-slate-700 dark:text-slate-200">10 MiB</dd>
-          </div>
-          <div className="flex justify-between gap-3">
-            <dt>Batch</dt>
-            <dd className="font-medium text-slate-700 dark:text-slate-200">50 MiB</dd>
-          </div>
-        </dl>
-      </div>
     </aside>
-  );
-}
-
-type DocumentSelectorProps = {
-  fileCount: number;
-  isDragging: boolean;
-  isSelectionLocked: boolean;
-  onDragEnter: (event: DragEvent<HTMLDivElement>) => void;
-  onDragLeave: (event: DragEvent<HTMLDivElement>) => void;
-  onDragOver: (event: DragEvent<HTMLDivElement>) => void;
-  onDrop: (event: DragEvent<HTMLDivElement>) => void;
-  onOpenPicker: () => void;
-};
-
-function DocumentSelector({
-  fileCount,
-  isDragging,
-  isSelectionLocked,
-  onDragEnter,
-  onDragLeave,
-  onDragOver,
-  onDrop,
-  onOpenPicker,
-}: DocumentSelectorProps) {
-  const hasFiles = fileCount > 0;
-
-  return (
-    <section
-      className="flex min-h-0 w-full flex-1 overflow-y-auto px-4 py-8 text-center sm:px-8 sm:py-10"
-      aria-labelledby="workspace-title"
-    >
-      <div className="mx-auto flex w-full max-w-3xl flex-col items-center justify-center">
-        <div className="grid size-12 place-items-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200">
-          <MessageSquareText size={22} strokeWidth={1.7} aria-hidden="true" />
-        </div>
-        <h1
-          id="workspace-title"
-          className="mt-5 text-balance text-2xl font-semibold tracking-[-0.025em] text-slate-950 dark:text-slate-100 sm:text-3xl"
-        >
-          {hasFiles ? "Review your documents" : "Start with your documents"}
-        </h1>
-        <p className="mt-3 max-w-xl text-pretty text-sm leading-6 text-slate-600 dark:text-slate-400 sm:text-base sm:leading-7">
-          {hasFiles
-            ? "Add more documents if needed, then use the action under the document list. Existing files stay in your context."
-            : "Add the files you want to explore. Chat becomes available only after every document is processed and indexed."}
-        </p>
-
-        <div
-          className={`mt-7 w-full rounded-2xl border border-dashed bg-white px-5 py-7 shadow-[0_1px_2px_rgba(15,23,42,0.03)] dark:bg-slate-900 sm:px-8 sm:py-9 ${
-            isDragging
-              ? "border-slate-700 bg-slate-50 dark:border-blue-400 dark:bg-slate-800"
-              : "border-slate-300 dark:border-slate-700"
-          }`}
-          onDragEnter={onDragEnter}
-          onDragLeave={onDragLeave}
-          onDragOver={onDragOver}
-          onDrop={onDrop}
-          role="group"
-          aria-label="Document drop zone"
-          aria-disabled={isSelectionLocked}
-        >
-          <div className="mx-auto grid size-11 place-items-center rounded-full bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-            <Upload size={20} strokeWidth={1.8} aria-hidden="true" />
-          </div>
-          <p className="mt-4 text-sm font-semibold text-slate-900 dark:text-slate-100">
-            {isDragging
-              ? "Drop to add documents"
-              : hasFiles
-                ? "Add more documents"
-                : "Add up to 10 documents at once"}
-          </p>
-          <p className="mx-auto mt-1.5 max-w-md text-xs leading-5 text-slate-500 dark:text-slate-400 sm:text-sm">
-            {hasFiles
-              ? "New files are added to the current list. Nothing is replaced."
-              : "Drag and drop your files here, or select them from your device."}
-          </p>
-          <button
-            type="button"
-            onClick={onOpenPicker}
-            disabled={isSelectionLocked}
-            className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:bg-slate-300 dark:bg-blue-600 dark:hover:bg-blue-500 dark:focus-visible:outline-slate-200 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
-          >
-            <Plus size={16} aria-hidden="true" />
-            {hasFiles ? "Add documents" : "Choose documents"}
-          </button>
-          <p className="mt-4 text-xs leading-5 text-slate-400 dark:text-slate-500">
-            {supportedFormats} · 10 MiB per file · 50 MiB per session
-          </p>
-        </div>
-      </div>
-    </section>
   );
 }
 
@@ -980,7 +926,7 @@ export function DocumentSelectionWorkspace() {
     }
   }
 
-  function handleDragOver(event: DragEvent<HTMLDivElement>): void {
+  function handleDragOver(event: DragEvent<HTMLElement>): void {
     event.preventDefault();
 
     if (isSelectionLocked) {
@@ -992,7 +938,7 @@ export function DocumentSelectionWorkspace() {
     setIsDragging(true);
   }
 
-  function handleDragEnter(event: DragEvent<HTMLDivElement>): void {
+  function handleDragEnter(event: DragEvent<HTMLElement>): void {
     event.preventDefault();
 
     if (isSelectionLocked) {
@@ -1002,7 +948,7 @@ export function DocumentSelectionWorkspace() {
     setIsDragging(true);
   }
 
-  function handleDragLeave(event: DragEvent<HTMLDivElement>): void {
+  function handleDragLeave(event: DragEvent<HTMLElement>): void {
     if (
       event.relatedTarget instanceof Node &&
       event.currentTarget.contains(event.relatedTarget)
@@ -1013,7 +959,7 @@ export function DocumentSelectionWorkspace() {
     setIsDragging(false);
   }
 
-  function handleDrop(event: DragEvent<HTMLDivElement>): void {
+  function handleDrop(event: DragEvent<HTMLElement>): void {
     event.preventDefault();
 
     if (isSelectionLocked) {
@@ -1253,12 +1199,17 @@ export function DocumentSelectionWorkspace() {
       <DocumentsPanel
         actionErrors={documentActionErrors}
         actions={documentActions}
-        canAddFromSidebar={canChat}
+        canAddFromSidebar={validationResult.files.length < 10}
         canSubmitChanges={canSubmitChanges}
         creationError={creationError}
         hasContext={batch !== null}
+        isDragging={isDragging}
         isSelectionLocked={isSelectionLocked}
         isUploading={isUploading}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
         onDelete={handleDeleteDocument}
         onOpenPicker={() => inputRef.current?.click()}
         processingDocuments={processingDocuments}
@@ -1284,15 +1235,9 @@ export function DocumentSelectionWorkspace() {
           />
         ) : (
           <>
-            <DocumentSelector
-              fileCount={validationResult.files.length}
-              isDragging={isDragging}
-              isSelectionLocked={isSelectionLocked}
-              onDragEnter={handleDragEnter}
-              onDragLeave={handleDragLeave}
-              onDragOver={handleDragOver}
-              onDrop={handleDrop}
-              onOpenPicker={() => inputRef.current?.click()}
+            <RagPipelineVisualizer
+              documentCount={validationResult.files.length}
+              mode={isUploading || isBatchProcessing ? "processing" : "waiting"}
             />
             <DisabledComposer
               batch={batch}
