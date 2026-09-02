@@ -673,6 +673,11 @@ Paramètres initiaux :
 - Retrieval filtré par `documentId`.
 - Suppression cohérente d'un document.
 - Endpoint de chat avec flux LLM simulé.
+- Parcours bonus déterministe à deux PDF : manifeste frontend, création du batch,
+  sélection des deux documents, recherches vectorielle et lexicale fusionnées
+  par RRF, sources multi-documents, logs JSON sûrs puis réponse `429` avant une
+  nouvelle recherche. Ce test local ne remplace pas le parcours externe de
+  `GATE-02`.
 
 ### Test end-to-end principal
 
@@ -844,7 +849,7 @@ intégrés par l'agent principal avant le lancement d'une nouvelle vague.
 | [x] | BON-04 | GATE-01 | Backend/QA | Chaque route API produit une ligne JSON avec `requestId`, durée, opération et code d'erreur sur `stdout`, sans contenu documentaire, question, réponse, vecteur, secret, IP brute ni session. Les cas succès, rejet et exception sont testés. |
 | [ ] | BON-05 | GATE-01, SET-05 | QA | Vérifier le parcours complet sur PDF français et arabe, affichage RTL du contenu arabe compris. Les résultats et défauts sont enregistrés. |
 | [ ] | BON-06 | BON-02, BON-05 | QA/RAG | Exécuter les cinq questions d'évaluation, dont une absente, et mesurer présence de la source dans le top-K, refus et citation. Ajuster seulement sur preuve. |
-| [ ] | BON-07 | BON-01, BON-03, BON-04 | QA | Ajouter les tests d'intégration des bonus et le parcours end-to-end multi-PDF. Tous les tests sont déterministes. |
+| [x] | BON-07 | BON-01, BON-03, BON-04 | QA | Un test intégré déterministe couvre le contrat frontend, la création d'un batch de deux PDF, le chat sur les deux documents, la fusion hybride RRF, les sources, les logs sans données sensibles et le blocage `429` avant toute recherche supplémentaire. Le parcours externe réel reste réservé à `GATE-02`. |
 | [ ] | GATE-02 | BON-06, BON-07 | Principal | Rejouer P0 et P1 sur le déploiement. Les bonus sont conservés seulement s'ils ne régressent pas le cœur PDF. |
 
 ### 19.7 Tâches P2 - formats supplémentaires
