@@ -1,8 +1,11 @@
 # DocChat
 
 A full-stack document Q&A application built for the Smartly.ai technical exercise.
-Users will be able to upload PDF documents and receive streamed, source-grounded
-answers through a small Retrieval-Augmented Generation pipeline.
+Users will be able to upload multiple document formats and receive streamed,
+source-grounded answers through a small Retrieval-Augmented Generation pipeline.
+
+The project scope, user stories, architecture, delivery plan, and definition of
+done are maintained in [the project reference](docs/PROJECT_REFERENCE.md).
 
 ## Local development
 
