@@ -99,6 +99,46 @@ test("renders progressive text and allows the request to be stopped", async () =
   expect(stop).toHaveBeenCalledOnce();
 });
 
+test("shows grounded sources in an accessible disclosure", async () => {
+  const answer: DocChatUIMessage = {
+    id: "assistant-1",
+    role: "assistant",
+    parts: [
+      {
+        type: "data-sources",
+        data: [
+          {
+            documentId: "document-1",
+            filename: "guide.pdf",
+            excerpt: "The guide requires grounded answers.",
+            score: 0.93,
+            source: { label: "Page 2", page: 2 },
+          },
+        ],
+      },
+      { type: "text", text: "The answer is supported by [1]." },
+    ],
+  };
+  useChatMock.mockReturnValue(chatState({ messages: [answer] }));
+
+  render(
+    <ChatWorkspace batchId="batch-1" documentIds={["document-1"]} />,
+  );
+
+  const summary = await screen.findByText("1 source");
+  const details = summary.closest("details");
+
+  expect(details).toHaveProperty("open", false);
+  fireEvent.click(summary.closest("summary") as HTMLElement);
+  expect(details).toHaveProperty("open", true);
+  expect(screen.getByText("[1] guide.pdf")).toBeDefined();
+  expect(screen.getByText("Page 2")).toBeDefined();
+  expect(screen.getByText("Similarity 93%")).toBeDefined();
+  expect(
+    screen.getByText("The guide requires grounded answers."),
+  ).toBeDefined();
+});
+
 test("restores and persists the browser-session conversation", async () => {
   const storedMessage = message("user-stored", "user", "Stored question");
   sessionStorage.setItem(

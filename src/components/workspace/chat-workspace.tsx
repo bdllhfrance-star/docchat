@@ -21,7 +21,7 @@ import {
   createDocChatTransport,
   getUIMessageText,
 } from "@/lib/chat/client";
-import type { DocChatUIMessage } from "@/types/api";
+import type { ChatSource, DocChatUIMessage } from "@/types/api";
 
 type ChatWorkspaceProps = {
   batchId: string;
@@ -52,6 +52,55 @@ function readStoredMessages(storageKey: string): DocChatUIMessage[] {
   }
 }
 
+function getMessageSources(message: DocChatUIMessage): ChatSource[] {
+  return message.parts.flatMap((part) =>
+    part.type === "data-sources" && Array.isArray(part.data)
+      ? part.data
+      : [],
+  );
+}
+
+function MessageSources({ sources }: { sources: readonly ChatSource[] }) {
+  const label = `${sources.length} ${sources.length === 1 ? "source" : "sources"}`;
+
+  return (
+    <details className="group mt-2 w-full overflow-hidden rounded-xl border border-slate-200 bg-white text-left shadow-sm">
+      <summary className="cursor-pointer list-none px-3 py-2.5 text-xs font-semibold text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950">
+        <span>{label}</span>
+        <span className="float-right font-normal text-slate-500 group-open:hidden">
+          Show
+        </span>
+        <span className="float-right hidden font-normal text-slate-500 group-open:inline">
+          Hide
+        </span>
+      </summary>
+      <ol className="space-y-2 border-t border-slate-100 p-2">
+        {sources.map((source, index) => (
+          <li
+            key={`${source.documentId}-${source.source.label}-${index}`}
+            className="rounded-lg bg-slate-50 px-3 py-2.5"
+          >
+            <div className="flex min-w-0 items-start justify-between gap-3">
+              <p className="min-w-0 break-words text-xs font-semibold text-slate-800">
+                [{index + 1}] {source.filename}
+              </p>
+              <span className="shrink-0 text-[11px] font-medium text-slate-500">
+                Similarity {Math.round(source.score * 100)}%
+              </span>
+            </div>
+            <p className="mt-1 text-[11px] font-medium text-slate-500">
+              {source.source.label}
+            </p>
+            <p className="mt-1.5 whitespace-pre-wrap text-xs leading-5 text-slate-600">
+              {source.excerpt}
+            </p>
+          </li>
+        ))}
+      </ol>
+    </details>
+  );
+}
+
 function ConversationMessage({ message }: { message: DocChatUIMessage }) {
   const text = getUIMessageText(message);
 
@@ -60,6 +109,7 @@ function ConversationMessage({ message }: { message: DocChatUIMessage }) {
   }
 
   const isUser = message.role === "user";
+  const sources = isUser ? [] : getMessageSources(message);
 
   return (
     <article
@@ -75,13 +125,20 @@ function ConversationMessage({ message }: { message: DocChatUIMessage }) {
         </span>
       ) : null}
       <div
-        className={`max-w-[min(42rem,88%)] whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-6 ${
-          isUser
-            ? "rounded-br-md bg-slate-900 text-white"
-            : "rounded-bl-md border border-slate-200 bg-white text-slate-800 shadow-sm"
+        className={`flex max-w-[min(42rem,88%)] min-w-0 flex-col ${
+          isUser ? "items-end" : "items-start"
         }`}
       >
-        {text}
+        <div
+          className={`whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-6 ${
+            isUser
+              ? "rounded-br-md bg-slate-900 text-white"
+              : "rounded-bl-md border border-slate-200 bg-white text-slate-800 shadow-sm"
+          }`}
+        >
+          {text}
+        </div>
+        {sources.length > 0 ? <MessageSources sources={sources} /> : null}
       </div>
     </article>
   );
