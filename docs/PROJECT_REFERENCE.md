@@ -477,6 +477,7 @@ Références par format :
 | `POST /api/upload` | Autoriser l'upload Blob et traiter la fin d'upload. |
 | `GET /api/batches/:batchId` | Retourner la progression et les erreurs du batch. |
 | `POST /api/documents/:documentId/retry` | Relancer un document en erreur. |
+| `POST /api/documents/:documentId/replace` | Valider un nouveau fichier, conserver le document et le préparer pour le flux d'upload existant. |
 | `DELETE /api/documents/:documentId` | Supprimer le fichier, les métadonnées et les chunks. |
 | `POST /api/chat` | Valider, retrouver le contexte et streamer la réponse. |
 | `GET /api/health` | Vérifier que l'application et ses dépendances répondent. |
@@ -774,7 +775,7 @@ intégrés par l'agent principal avant le lancement d'une nouvelle vague.
 | [x] | UPL-04 | ING-01 | Backend | Implémenter `GET /api/batches/:batchId` avec les états et erreurs de chaque fichier, filtrés par session. Le contrat est testé avant son utilisation par l'UI. |
 | [x] | UI-02 | UPL-04 | UI | Afficher la progression par polling borné, une ligne stable par fichier et le libellé réel de chaque opération. Aucun faux pourcentage n'est affiché. |
 | [ ] | UI-03 | UI-02 | UI | Réaliser manuellement les animations CSS/SVG définies en 8.4, y compris succès, échec, retry et suppression. `prefers-reduced-motion` et `aria-live` sont testés. |
-| [~] | API-02 | ING-01 | Backend | Statut du batch, retry idempotent depuis un Blob existant et suppression ordonnée Blob → chunks → document terminés et testés localement. Le remplacement par un nouveau fichier reste à relier au flux d'upload ; les appels réels Blob, Atlas et Gemini restent bloqués par SET-07. |
+| [~] | API-02 | ING-01 | Backend | Statut du batch, retry idempotent, remplacement en place via le flux d'upload existant et suppression terminés et testés localement. Le remplacement conserve le `documentId`, recalcule la limite de 50 MiB et nettoie l'ancien Blob et les chunks ; les appels réels Blob, Atlas et Gemini restent bloqués par SET-07. |
 | [~] | UI-04 | API-02, UI-03 | UI | `Réessayer` et `Supprimer` sont reliés aux routes réelles avec états d'attente, erreurs par document et retour à l'état initial après suppression du dernier fichier. `Remplacer` et l'activation exacte du composer via `canSendMessage` restent à terminer. |
 | [ ] | RAG-03 | DB-01, RAG-02 | Backend/RAG | Implémenter la recherche vectorielle cosinus filtrée par `sessionId`, batch et documents autorisés. Les sources conservent fichier, page, extrait et score. |
 | [ ] | CHAT-01 | RAG-03 | Backend/RAG | Implémenter le prompt fondé uniquement sur le contexte, le seuil de refus et `POST /api/chat` en streaming. Une question absente produit un refus explicite. |

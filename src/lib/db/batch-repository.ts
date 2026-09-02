@@ -60,6 +60,22 @@ export type CompleteDocumentIndexing = DocumentOwnership & {
   chunks: ChunkRecord[];
 };
 
+export type PrepareDocumentReplacement = DocumentOwnership &
+  Pick<
+    DocumentRecord,
+    | "clientId"
+    | "filename"
+    | "mimeType"
+    | "fileType"
+    | "blobPathname"
+    | "size"
+  >;
+
+export type RestoreDocumentReplacement = DocumentOwnership & {
+  original: DocumentRecord;
+  replacementClientId: string;
+};
+
 export type DeleteDocumentResult = {
   batchDeleted: boolean;
   deleted: boolean;
@@ -470,6 +486,122 @@ export function createBatchRepository(
         await refreshBatchProgress(collections, ownership).catch(() => undefined);
         throw error;
       }
+
+      return collections.documents.findOne(ownershipFilter);
+    },
+
+    async prepareDocumentReplacement(
+      replacement: PrepareDocumentReplacement,
+    ): Promise<DocumentRecord | null> {
+      const ownershipFilter = {
+        sessionId: replacement.sessionId,
+        batchId: replacement.batchId,
+        id: replacement.documentId,
+      } satisfies Filter<DocumentRecord>;
+      const current = await collections.documents.findOne(ownershipFilter);
+
+      if (current?.status !== "failed") {
+        return null;
+      }
+
+      const result = await collections.documents.updateOne(
+        { ...ownershipFilter, status: "failed" },
+        {
+          $set: {
+            clientId: replacement.clientId,
+            filename: replacement.filename,
+            mimeType: replacement.mimeType,
+            fileType: replacement.fileType,
+            blobPathname: replacement.blobPathname,
+            size: replacement.size,
+            status: "queued",
+          },
+          $unset: { blobUrl: "", error: "" },
+        },
+      );
+
+      if (result.matchedCount !== 1) {
+        return null;
+      }
+
+      try {
+        await collections.chunks.deleteMany({
+          sessionId: replacement.sessionId,
+          batchId: replacement.batchId,
+          documentId: replacement.documentId,
+        });
+        await refreshBatchProgress(collections, replacement);
+      } catch (error) {
+        await collections.documents.updateOne(
+          {
+            ...ownershipFilter,
+            status: "queued",
+            clientId: replacement.clientId,
+          },
+          {
+            $set: {
+              clientId: current.clientId,
+              filename: current.filename,
+              mimeType: current.mimeType,
+              fileType: current.fileType,
+              blobPathname: current.blobPathname,
+              blobUrl: current.blobUrl,
+              size: current.size,
+              status: "failed",
+              error: current.error ?? {
+                code: "REPLACEMENT_PREPARATION_FAILED",
+                message: "The document could not be prepared for replacement.",
+              },
+            },
+          },
+        );
+        await refreshBatchProgress(collections, replacement).catch(
+          () => undefined,
+        );
+        throw error;
+      }
+
+      return collections.documents.findOne(ownershipFilter);
+    },
+
+    async restoreDocumentReplacement(
+      restoration: RestoreDocumentReplacement,
+    ): Promise<DocumentRecord | null> {
+      const ownershipFilter = {
+        sessionId: restoration.sessionId,
+        batchId: restoration.batchId,
+        id: restoration.documentId,
+      } satisfies Filter<DocumentRecord>;
+      const original = restoration.original;
+      const result = await collections.documents.updateOne(
+        {
+          ...ownershipFilter,
+          status: "queued",
+          clientId: restoration.replacementClientId,
+        },
+        {
+          $set: {
+            clientId: original.clientId,
+            filename: original.filename,
+            mimeType: original.mimeType,
+            fileType: original.fileType,
+            blobPathname: original.blobPathname,
+            blobUrl: original.blobUrl,
+            size: original.size,
+            status: "failed",
+            error: original.error ?? {
+              code: "REPLACEMENT_UPLOAD_FAILED",
+              message: "The replacement upload could not be prepared.",
+            },
+          },
+        },
+      );
+
+      if (result.matchedCount !== 1) {
+        return null;
+      }
+
+      await refreshBatchProgress(collections, restoration);
 
       return collections.documents.findOne(ownershipFilter);
     },

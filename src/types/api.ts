@@ -71,6 +71,13 @@ export type RetryDocumentResponse = {
   document: DocumentSummary;
 };
 
+export type ReplaceDocumentRequest = BatchManifestFile;
+
+export type ReplaceDocumentResponse = {
+  document: DocumentSummary;
+  uploadPathname: string;
+};
+
 export type ChatRequest = {
   batchId: string;
   documentIds: string[];

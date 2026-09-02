@@ -471,6 +471,98 @@ describe("batch repository", () => {
     ).resolves.toBeNull();
   });
 
+  test("replaces a failed document in place and clears its stale chunks", async () => {
+    const { batches, chunks, documents, repository } = createMemoryRepository();
+    await repository.createBatch(createFixture());
+    Object.assign(documents.records[0], {
+      status: "failed",
+      blobUrl: "https://blob.example/guide.pdf",
+      error: { code: "INVALID_PDF", message: "The PDF is invalid." },
+    });
+    Object.assign(batches.records[0], { status: "failed", failedFiles: 1 });
+    chunks.records.push({
+      id: "80140e63-f8cb-4095-9cbd-dae9da4cf930",
+      sessionId: sessionA,
+      batchId,
+      documentId,
+      filename: "guide.pdf",
+      fileType: "pdf",
+      text: "stale chunk",
+      embedding: [0.1],
+      source: { label: "Page 1", page: 1 },
+      chunkIndex: 0,
+      createdAt,
+      expiresAt,
+    });
+
+    await expect(
+      repository.prepareDocumentReplacement({
+        sessionId: sessionA,
+        batchId,
+        documentId,
+        clientId: "0821134d-a736-4cc4-baa9-9ac3a6d42a10",
+        filename: "replacement.xlsx",
+        mimeType:
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        fileType: "xlsx",
+        blobPathname: `documents/${batchId}/${documentId}.xlsx`,
+        size: 2048,
+      }),
+    ).resolves.toMatchObject({
+      id: documentId,
+      filename: "replacement.xlsx",
+      fileType: "xlsx",
+      status: "queued",
+    });
+    expect(chunks.records).toEqual([]);
+    expect(documents.records[0]).not.toHaveProperty("blobUrl");
+    expect(documents.records[0]).not.toHaveProperty("error");
+    expect(batches.records[0]).toMatchObject({
+      status: "processing",
+      failedFiles: 0,
+    });
+  });
+
+  test("restores the original failed record after replacement setup fails", async () => {
+    const { documents, repository } = createMemoryRepository();
+    await repository.createBatch(createFixture());
+    Object.assign(documents.records[0], {
+      status: "failed",
+      blobUrl: "https://blob.example/guide.pdf",
+      error: { code: "INVALID_PDF", message: "The PDF is invalid." },
+    });
+    const original = structuredClone(documents.records[0]);
+    const replacementClientId = "0821134d-a736-4cc4-baa9-9ac3a6d42a10";
+    await repository.prepareDocumentReplacement({
+      sessionId: sessionA,
+      batchId,
+      documentId,
+      clientId: replacementClientId,
+      filename: "replacement.xlsx",
+      mimeType:
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      fileType: "xlsx",
+      blobPathname: `documents/${batchId}/${documentId}.xlsx`,
+      size: 2048,
+    });
+
+    await expect(
+      repository.restoreDocumentReplacement({
+        sessionId: sessionA,
+        batchId,
+        documentId,
+        replacementClientId,
+        original,
+      }),
+    ).resolves.toMatchObject({
+      filename: "guide.pdf",
+      fileType: "pdf",
+      status: "failed",
+      blobUrl: "https://blob.example/guide.pdf",
+      error: { code: "INVALID_PDF" },
+    });
+  });
+
   test("deletes a document and recalculates its remaining batch", async () => {
     const { batches, chunks, documents, repository } = createMemoryRepository();
     const fixture = createFixture();
