@@ -9,7 +9,13 @@ import type {
 
 import { getDatabase } from "@/lib/db/client";
 import { databaseCollectionNames } from "@/lib/db/indexes";
+import { canTransitionDocumentStatus } from "@/lib/documents/status";
 import { createBlobPathname } from "@/lib/uploads/blob-contract";
+import type {
+  BatchStatus,
+  ChunkRecord,
+  DocumentStatus,
+} from "@/types/documents";
 import type {
   BatchRecord,
   CreatedBatch,
@@ -26,11 +32,13 @@ type CollectionPort<T extends object> = {
   ): Promise<UpdateResult<T>>;
   deleteOne(filter: Filter<T>): Promise<DeleteResult>;
   deleteMany(filter: Filter<T>): Promise<DeleteResult>;
+  countDocuments(filter: Filter<T>): Promise<number>;
 };
 
 export type BatchRepositoryCollections = {
   batches: CollectionPort<BatchRecord>;
   documents: CollectionPort<DocumentRecord>;
+  chunks: CollectionPort<ChunkRecord>;
 };
 
 export type DocumentOwnership = {
@@ -45,6 +53,10 @@ export type CompleteDocumentUpload = DocumentOwnership & {
 
 export type FailDocumentUpload = DocumentOwnership & {
   error: NonNullable<DocumentRecord["error"]>;
+};
+
+export type CompleteDocumentIndexing = DocumentOwnership & {
+  chunks: ChunkRecord[];
 };
 
 function hasSameFailure(
@@ -104,6 +116,60 @@ async function compensateBatchCreation(
   return cleanupResults.flatMap((result) =>
     result.status === "rejected" ? [result.reason] : [],
   );
+}
+
+function getBatchStatus(
+  totalFiles: number,
+  readyFiles: number,
+  failedFiles: number,
+): BatchStatus {
+  if (readyFiles + failedFiles < totalFiles) {
+    return "processing";
+  }
+
+  if (readyFiles === totalFiles) {
+    return "ready";
+  }
+
+  return readyFiles > 0 ? "partial" : "failed";
+}
+
+async function refreshBatchProgress(
+  collections: BatchRepositoryCollections,
+  ownership: Pick<DocumentOwnership, "sessionId" | "batchId">,
+): Promise<void> {
+  const batchFilter = {
+    sessionId: ownership.sessionId,
+    id: ownership.batchId,
+  } satisfies Filter<BatchRecord>;
+  const batch = await collections.batches.findOne(batchFilter);
+
+  if (!batch) {
+    throw new Error("Batch not found while refreshing progress");
+  }
+
+  const documentFilter = {
+    sessionId: ownership.sessionId,
+    batchId: ownership.batchId,
+  };
+  const [readyFiles, failedFiles] = await Promise.all([
+    collections.documents.countDocuments({
+      ...documentFilter,
+      status: "ready",
+    }),
+    collections.documents.countDocuments({
+      ...documentFilter,
+      status: "failed",
+    }),
+  ]);
+
+  await collections.batches.updateOne(batchFilter, {
+    $set: {
+      readyFiles,
+      failedFiles,
+      status: getBatchStatus(batch.totalFiles, readyFiles, failedFiles),
+    },
+  });
 }
 
 export function createBatchRepository(
@@ -268,10 +334,127 @@ export function createBatchRepository(
 
       const transitioned = await collections.documents.findOne(ownershipFilter);
 
+      await refreshBatchProgress(collections, failure);
+
       return transitioned?.status === "failed" &&
         hasSameFailure(transitioned, failure.error)
         ? transitioned
         : null;
+    },
+
+    async transitionDocumentStatus(
+      ownership: DocumentOwnership,
+      from: DocumentStatus,
+      to: DocumentStatus,
+    ): Promise<DocumentRecord | null> {
+      if (!canTransitionDocumentStatus(from, to)) {
+        throw new Error(`Invalid document status transition: ${from} -> ${to}`);
+      }
+
+      const ownershipFilter = {
+        sessionId: ownership.sessionId,
+        batchId: ownership.batchId,
+        id: ownership.documentId,
+      } satisfies Filter<DocumentRecord>;
+      const result = await collections.documents.updateOne(
+        { ...ownershipFilter, status: from },
+        { $set: { status: to }, $unset: { error: "" } },
+      );
+
+      if (result.matchedCount !== 1) {
+        return null;
+      }
+
+      return collections.documents.findOne(ownershipFilter);
+    },
+
+    async failDocumentProcessing(
+      failure: FailDocumentUpload,
+    ): Promise<DocumentRecord | null> {
+      const ownershipFilter = {
+        sessionId: failure.sessionId,
+        batchId: failure.batchId,
+        id: failure.documentId,
+      } satisfies Filter<DocumentRecord>;
+      const current = await collections.documents.findOne(ownershipFilter);
+
+      if (!current) {
+        return null;
+      }
+
+      if (current.status === "failed") {
+        return hasSameFailure(current, failure.error) ? current : null;
+      }
+
+      if (!canTransitionDocumentStatus(current.status, "failed")) {
+        return null;
+      }
+
+      const result = await collections.documents.updateOne(
+        { ...ownershipFilter, status: current.status },
+        { $set: { status: "failed", error: failure.error } },
+      );
+
+      if (result.matchedCount !== 1) {
+        return null;
+      }
+
+      await refreshBatchProgress(collections, failure);
+
+      return collections.documents.findOne(ownershipFilter);
+    },
+
+    async completeDocumentIndexing(
+      completion: CompleteDocumentIndexing,
+    ): Promise<DocumentRecord | null> {
+      if (completion.chunks.length === 0) {
+        throw new Error("A ready document must contain at least one chunk");
+      }
+
+      const ownershipFilter = {
+        sessionId: completion.sessionId,
+        batchId: completion.batchId,
+        id: completion.documentId,
+      } satisfies Filter<DocumentRecord>;
+
+      for (const chunk of completion.chunks) {
+        if (
+          chunk.sessionId !== completion.sessionId ||
+          chunk.batchId !== completion.batchId ||
+          chunk.documentId !== completion.documentId
+        ) {
+          throw new Error("Chunk ownership does not match its document");
+        }
+      }
+
+      const chunkFilter = {
+        sessionId: completion.sessionId,
+        batchId: completion.batchId,
+        documentId: completion.documentId,
+      } satisfies Filter<ChunkRecord>;
+
+      await collections.chunks.deleteMany(chunkFilter);
+
+      try {
+        await collections.chunks.insertMany(completion.chunks);
+      } catch (error) {
+        await collections.chunks.deleteMany(chunkFilter);
+        throw error;
+      }
+
+      const result = await collections.documents.updateOne(
+        { ...ownershipFilter, status: "indexing" },
+        { $set: { status: "ready" }, $unset: { error: "" } },
+      );
+
+      if (result.matchedCount !== 1) {
+        await collections.chunks.deleteMany(chunkFilter);
+        return null;
+      }
+
+      await refreshBatchProgress(collections, completion);
+
+      return collections.documents.findOne(ownershipFilter);
     },
   };
 }
@@ -284,9 +467,11 @@ export async function getBatchRepository() {
   const documents = database.collection<DocumentRecord>(
     databaseCollectionNames.documents,
   );
+  const chunks = database.collection<ChunkRecord>(databaseCollectionNames.chunks);
 
   return createBatchRepository({
     batches,
     documents,
+    chunks,
   });
 }

@@ -72,6 +72,7 @@ export type BlobUploadDependencies = {
   requireSession: () => Promise<string | null>;
   handleUpload?: UploadHandler;
   issueSignedToken?: SignedTokenIssuer;
+  ingestDocument: (document: DocumentRecord) => Promise<void>;
   now?: () => number;
   requestId?: () => string;
 };
@@ -329,6 +330,8 @@ export async function handleBlobUpload(
             "The completed upload could not be persisted.",
           );
         }
+
+        await dependencies.ingestDocument(completed);
       },
     });
 

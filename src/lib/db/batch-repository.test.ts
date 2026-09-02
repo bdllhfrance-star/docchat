@@ -17,6 +17,7 @@ import type {
   CreatedBatch,
   DocumentRecord,
 } from "@/types/persistence";
+import type { ChunkRecord } from "@/types/documents";
 
 const sessionA = "271bf840-1fed-443d-86fb-a82b0bd70465";
 const sessionB = "75f9d4bc-c530-43dd-a30f-91dad3ab8ff4";
@@ -109,6 +110,10 @@ class MemoryCollection<T extends object> {
 
     return { acknowledged: true, deletedCount };
   }
+
+  async countDocuments(filter: Filter<T>): Promise<number> {
+    return this.records.filter((record) => matches(record, filter)).length;
+  }
 }
 
 function createFixture(owner = sessionA): CreatedBatch {
@@ -143,11 +148,17 @@ function createFixture(owner = sessionA): CreatedBatch {
 function createMemoryRepository() {
   const batches = new MemoryCollection<BatchRecord>();
   const documents = new MemoryCollection<DocumentRecord>();
-  const collections: BatchRepositoryCollections = { batches, documents };
+  const chunks = new MemoryCollection<ChunkRecord>();
+  const collections: BatchRepositoryCollections = {
+    batches,
+    documents,
+    chunks,
+  };
 
   return {
     batches,
     documents,
+    chunks,
     repository: createBatchRepository(collections),
   };
 }
@@ -312,5 +323,89 @@ describe("batch repository", () => {
     ).resolves.toBeNull();
     expect(documents.records[0]).toMatchObject({ status: "queued" });
     expect(documents.records[0]).not.toHaveProperty("error");
+  });
+
+  test("stores chunks before marking the document and batch ready", async () => {
+    const { batches, chunks, documents, repository } = createMemoryRepository();
+    await repository.createBatch(createFixture());
+    const ownership = { sessionId: sessionA, batchId, documentId };
+
+    await repository.markDocumentUploading(ownership);
+    await repository.completeDocumentUpload({
+      ...ownership,
+      blobUrl: "https://blob.example/guide.pdf",
+    });
+    await repository.transitionDocumentStatus(
+      ownership,
+      "validating",
+      "extracting",
+    );
+    await repository.transitionDocumentStatus(
+      ownership,
+      "extracting",
+      "chunking",
+    );
+    await repository.transitionDocumentStatus(
+      ownership,
+      "chunking",
+      "embedding",
+    );
+    await repository.transitionDocumentStatus(
+      ownership,
+      "embedding",
+      "indexing",
+    );
+
+    const chunk: ChunkRecord = {
+      id: "80140e63-f8cb-4095-9cbd-dae9da4cf930",
+      sessionId: sessionA,
+      batchId,
+      documentId,
+      filename: "guide.pdf",
+      fileType: "pdf",
+      text: "Indexed text",
+      embedding: Array.from({ length: 768 }, () => 0.1),
+      source: { label: "Page 1", page: 1 },
+      chunkIndex: 0,
+      createdAt,
+      expiresAt,
+    };
+    await expect(
+      repository.completeDocumentIndexing({ ...ownership, chunks: [chunk] }),
+    ).resolves.toMatchObject({ status: "ready" });
+
+    expect(chunks.records).toEqual([chunk]);
+    expect(documents.records[0]).toMatchObject({ status: "ready" });
+    expect(batches.records[0]).toMatchObject({
+      status: "ready",
+      readyFiles: 1,
+      failedFiles: 0,
+    });
+  });
+
+  test("marks a processing failure and refreshes batch progress", async () => {
+    const { batches, repository } = createMemoryRepository();
+    await repository.createBatch(createFixture());
+    const ownership = { sessionId: sessionA, batchId, documentId };
+    await repository.markDocumentUploading(ownership);
+    await repository.completeDocumentUpload({
+      ...ownership,
+      blobUrl: "https://blob.example/guide.pdf",
+    });
+
+    await expect(
+      repository.failDocumentProcessing({
+        ...ownership,
+        error: { code: "INVALID_PDF", message: "The PDF is invalid." },
+      }),
+    ).resolves.toMatchObject({
+      status: "failed",
+      error: { code: "INVALID_PDF" },
+    });
+    expect(batches.records[0]).toMatchObject({
+      status: "failed",
+      readyFiles: 0,
+      failedFiles: 1,
+    });
   });
 });

@@ -68,6 +68,7 @@ function dependencies() {
         status: "uploading",
       }),
     ),
+    ingestDocument: vi.fn(async () => undefined),
     requireSession: vi.fn(async (): Promise<string | null> => sessionId),
     issueSignedToken: vi.fn(async () => token),
     now: () => 1_800_000_000_000,
@@ -193,6 +194,9 @@ describe("private Blob upload handler", () => {
       documentId,
       blobUrl: blob.url,
     });
+    expect(deps.ingestDocument).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "validating", blobUrl: blob.url }),
+    );
   });
 
   test("returns not found for a document owned by another session", async () => {
@@ -270,5 +274,6 @@ describe("private Blob upload handler", () => {
     });
 
     expect(callbackResponse.status).toBe(409);
+    expect(refusedCallback.ingestDocument).not.toHaveBeenCalled();
   });
 });
