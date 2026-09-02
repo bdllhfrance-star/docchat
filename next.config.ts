@@ -12,6 +12,7 @@ export const securityHeaders = [
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
+  serverExternalPackages: ["pdf-parse", "@napi-rs/canvas"],
   async headers() {
     return [
       {

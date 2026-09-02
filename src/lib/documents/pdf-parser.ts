@@ -1,3 +1,4 @@
+import { CanvasFactory } from "pdf-parse/worker";
 import {
   FormatError,
   InvalidPDFException,
@@ -84,7 +85,11 @@ export const pdfParser: DocumentParser = {
       );
     }
 
-    const parser = new PDFParse({ data: content, stopAtErrors: true });
+    const parser = new PDFParse({
+      data: content,
+      stopAtErrors: true,
+      CanvasFactory,
+    });
 
     try {
       const info = await parser.getInfo();
