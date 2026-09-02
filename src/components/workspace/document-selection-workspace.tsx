@@ -894,7 +894,10 @@ export function DocumentSelectionWorkspace() {
     [batch],
   );
   const canChat =
-    batch !== null && pendingFiles.length === 0 && readyDocumentIds.length > 0;
+    batch !== null &&
+    pendingFiles.length === 0 &&
+    readyDocumentIds.length > 0 &&
+    !isSelectionLocked;
   const excludedChatDocumentIdSet = new Set(excludedChatDocumentIds);
   const chatDocumentIds = readyDocumentIds.filter(
     (id) => !excludedChatDocumentIdSet.has(id),
@@ -942,17 +945,39 @@ export function DocumentSelectionWorkspace() {
   }
 
   function addToSelection(files: FileList | readonly File[]): void {
-    if (isSelectionLocked) {
+    const additions = Array.from(files);
+
+    if (isSelectionLocked || additions.length === 0) {
       return;
     }
 
-    setSelectedFiles((current) => [...current, ...Array.from(files)]);
+    setSelectedFiles((current) => [...current, ...additions]);
     setCreationError(null);
   }
 
   function handleInputChange(event: ChangeEvent<HTMLInputElement>): void {
-    addToSelection(event.target.files ?? []);
+    const additions = Array.from(event.target.files ?? []);
     event.target.value = "";
+
+    if (isSelectionLocked || additions.length === 0) {
+      return;
+    }
+
+    const firstAdditionIndex = selectedFiles.length;
+    const nextFiles = [...selectedFiles, ...additions];
+    setSelectedFiles(nextFiles);
+    setCreationError(null);
+
+    if (batch && canChat && validateBatchFiles(nextFiles).isValid) {
+      void uploadFiles({
+        allFiles: nextFiles,
+        filesToUpload: additions.map((file, offset) => ({
+          file,
+          index: firstAdditionIndex + offset,
+        })),
+        targetBatch: batch,
+      });
+    }
   }
 
   function handleDragOver(event: DragEvent<HTMLDivElement>): void {
@@ -1093,6 +1118,9 @@ export function DocumentSelectionWorkspace() {
       setSelectedFiles(remainingFiles);
       setUploadUpdates((current) => removeIndexedValue(current, index));
       setDocumentIdsByIndex((current) => removeIndexedValue(current, index));
+      setExcludedChatDocumentIds((current) =>
+        current.filter((documentId) => documentId !== document.id),
+      );
       setDocumentActionErrors((current) => {
         const next = { ...current };
         delete next[document.id];
@@ -1133,8 +1161,12 @@ export function DocumentSelectionWorkspace() {
     }
   }
 
-  async function handleUpload(): Promise<void> {
-    if (!canSubmitChanges || uploadInFlightRef.current) {
+  async function uploadFiles(input: {
+    allFiles: readonly File[];
+    filesToUpload: readonly { file: File; index: number }[];
+    targetBatch: BatchSummary | null;
+  }): Promise<void> {
+    if (input.filesToUpload.length === 0 || uploadInFlightRef.current) {
       return;
     }
 
@@ -1149,17 +1181,17 @@ export function DocumentSelectionWorkspace() {
           [update.index]: update,
         }));
       };
-      const result = batch
+      const result = input.targetBatch
         ? await addAndUploadDocuments(
-            batch.id,
-            pendingFiles,
+            input.targetBatch.id,
+            input.filesToUpload,
             updateProgress,
           )
-        : await createAndUploadBatch(selectedFiles, updateProgress);
+        : await createAndUploadBatch(input.allFiles, updateProgress);
 
       setBatch(result.batch);
       setDocumentIdsByIndex((current) => ({
-        ...(batch ? current : {}),
+        ...(input.targetBatch ? current : {}),
         ...Object.fromEntries(
           result.uploads
             .filter((upload) => upload.documentId)
@@ -1172,26 +1204,38 @@ export function DocumentSelectionWorkspace() {
       const message =
         error instanceof Error
           ? error.message
-          : batch
+          : input.targetBatch
             ? "The context could not be updated."
             : "The batch could not be created.";
 
       setUploadUpdates((current) => {
         const next = { ...current };
 
-        for (const { index } of pendingFiles) {
+        for (const { index } of input.filesToUpload) {
           delete next[index];
         }
 
         return next;
       });
       setCreationError(
-        `${batch ? "Context update" : "Upload"} failed: ${message}`,
+        `${input.targetBatch ? "Context update" : "Upload"} failed: ${message}`,
       );
     } finally {
       uploadInFlightRef.current = false;
       setIsUploading(false);
     }
+  }
+
+  async function handleUpload(): Promise<void> {
+    if (!canSubmitChanges) {
+      return;
+    }
+
+    await uploadFiles({
+      allFiles: selectedFiles,
+      filesToUpload: pendingFiles,
+      targetBatch: batch,
+    });
   }
 
   return (

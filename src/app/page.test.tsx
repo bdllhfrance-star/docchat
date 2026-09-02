@@ -647,18 +647,78 @@ test("adds documents to the existing batch and updates the context", async () =>
   });
   expect(screen.getByText("guide.pdf")).toBeDefined();
   expect(screen.getByText("appendix.xlsx")).toBeDefined();
-  fireEvent.click(screen.getByRole("button", { name: "Update context" }));
 
-  expect(addAndUploadDocumentsMock).toHaveBeenCalledWith(
-    "batch-1",
-    [{ file: addedFile, index: 1 }],
-    expect.any(Function),
+  await waitFor(() =>
+    expect(addAndUploadDocumentsMock).toHaveBeenCalledWith(
+      "batch-1",
+      [{ file: addedFile, index: 1 }],
+      expect.any(Function),
+    ),
   );
   expect(await screen.findByRole("checkbox", {
     name: "Use appendix.xlsx in chat",
   })).toBeDefined();
   expect(screen.getByText("guide.pdf")).toBeDefined();
   expect(pollBatchStatusMock).toHaveBeenCalledTimes(2);
+});
+
+test("removes a deleted document from the active chat context", async () => {
+  const files = [file("guide.pdf"), file("appendix.pdf")];
+  const readyBatch: BatchSummary = {
+    id: "batch-1",
+    status: "ready",
+    documents: [
+      {
+        id: "document-1",
+        batchId: "batch-1",
+        filename: "guide.pdf",
+        fileType: "pdf",
+        size: 1024,
+        status: "ready",
+      },
+      {
+        id: "document-2",
+        batchId: "batch-1",
+        filename: "appendix.pdf",
+        fileType: "pdf",
+        size: 1024,
+        status: "ready",
+      },
+    ],
+    createdAt: "2026-09-02T12:00:00.000Z",
+    expiresAt: "2026-09-09T12:00:00.000Z",
+  };
+
+  createAndUploadBatchMock.mockResolvedValue({
+    batch: { ...readyBatch, status: "processing", documents: [] },
+    uploads: [
+      { index: 0, documentId: "document-1", status: "uploaded" },
+      { index: 1, documentId: "document-2", status: "uploaded" },
+    ],
+  });
+  pollBatchStatusMock.mockImplementationOnce(async (_, onUpdate) => {
+    onUpdate(readyBatch);
+    return readyBatch;
+  });
+  deleteDocumentMock.mockResolvedValue();
+
+  render(<Home />);
+  fireEvent.change(screen.getByLabelText("Select documents from device"), {
+    target: { files },
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Delete guide.pdf" }),
+  );
+
+  await waitFor(() => {
+    expect(screen.queryByText("guide.pdf")).toBeNull();
+  });
+  expect(deleteDocumentMock).toHaveBeenCalledWith("document-1");
+  expect(
+    screen.getByRole("checkbox", { name: "Use appendix.pdf in chat" }),
+  ).toHaveProperty("checked", true);
+  expect(screen.getByText(/Answers use 1 ready document\./)).toBeDefined();
 });
 
 test("deletes the last ready document and returns to the initial workspace", async () => {
