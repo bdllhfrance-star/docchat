@@ -1,15 +1,18 @@
-import { FileText, ShieldCheck } from "lucide-react";
+import Image from "next/image";
+import { ShieldCheck } from "lucide-react";
 
 import { DocumentSelectionWorkspace } from "./document-selection-workspace";
 
-function BrandMark() {
+function BrandLogo() {
   return (
-    <span
-      className="grid size-9 shrink-0 place-items-center rounded-xl bg-slate-950 text-white shadow-sm"
-      aria-hidden="true"
-    >
-      <FileText size={18} strokeWidth={1.8} />
-    </span>
+    <Image
+      src="/smartly-ai-logo.png"
+      alt="Smartly.ai"
+      width={296}
+      height={80}
+      className="h-7 w-auto shrink-0 sm:h-8"
+      priority
+    />
   );
 }
 
@@ -17,11 +20,8 @@ function WorkspaceHeader() {
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-slate-200/80 bg-white px-4 sm:px-6">
       <div className="flex min-w-0 items-center gap-3">
-        <BrandMark />
+        <BrandLogo />
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold tracking-tight text-slate-950">
-            DocChat
-          </p>
           <p className="truncate text-xs text-slate-500">
             Answers grounded in your documents
           </p>
