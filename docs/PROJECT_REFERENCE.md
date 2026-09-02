@@ -482,6 +482,19 @@ Références par format :
 | `POST /api/chat` | Valider, retrouver le contexte et streamer la réponse. |
 | `GET /api/health` | Vérifier que l'application et ses dépendances répondent. |
 
+Contrat initial de `POST /api/chat` :
+
+- Le body JSON est limité à 1 MiB et contient `batchId`, de 1 à 10
+  `documentIds` uniques, la nouvelle `message` et l'`history` textuelle.
+- L'historique accepté ne contient que des messages `user` et `assistant` non
+  vides. Les sources affichées dans l'UI ne sont jamais renvoyées comme contexte
+  de confiance au modèle.
+- La session, la propriété du batch et des documents, ainsi que l'état `ready`
+  de chaque document conservé sont vérifiés avant l'ouverture du stream.
+- Les erreurs de validation, de session, d'état ou de retrieval restent des
+  réponses JSON structurées. Une erreur de génération survenant après le début
+  du stream devient une erreur SSE générique sans détail sensible.
+
 Format d'erreur commun :
 
 ```ts
@@ -784,7 +797,7 @@ intégrés par l'agent principal avant le lancement d'une nouvelle vague.
 | [~] | API-02 | ING-01 | Backend | Statut du batch, retry idempotent, remplacement en place via le flux d'upload existant et suppression terminés et testés localement. Le remplacement conserve le `documentId`, recalcule la limite de 50 MiB et nettoie l'ancien Blob et les chunks ; les appels réels Blob, Atlas et Gemini restent bloqués par SET-07. |
 | [~] | UI-04 | API-02, UI-03 | UI | `Réessayer`, `Remplacer` et `Supprimer` sont reliés aux routes réelles avec validation locale, progression d'upload, erreurs par document et reprise du polling. L'activation exacte du composer via `canSendMessage` reste à terminer. |
 | [~] | RAG-03 | DB-01, RAG-02 | Backend/RAG | Recherche vectorielle cosinus, embedding de question, filtres `sessionId`/batch/documents, déduplication et validation défensive des sources et scores terminés et testés localement. La requête réelle sur l'index Atlas reste bloquée par SET-07. |
-| [ ] | CHAT-01 | RAG-03 | Backend/RAG | Implémenter le prompt fondé uniquement sur le contexte, le seuil de refus et `POST /api/chat` en streaming. Une question absente produit un refus explicite. |
+| [~] | CHAT-01 | RAG-03 | Backend/RAG | `POST /api/chat`, validations avant stream, contexte dynamique, prompt fondé uniquement sur les documents, refus sans contexte et UI message stream sourcé sont implémentés et testés localement. Le seuil de pertinence doit encore être calibré par l'évaluation et le parcours réel Atlas/Gemini reste bloqué par SET-07. |
 | [ ] | UI-05 | UI-04, CHAT-01 | UI | Construire le chat, l'historique de session navigateur, l'annulation et l'affichage progressif des deltas. Le composer ne s'active que lorsque le gate est vrai. |
 | [ ] | UI-06 | UI-05 | UI | Afficher sous chaque réponse les sources dépliables : fichier, page, extrait et score. Les sources sont utilisables au clavier et sur mobile. |
 | [ ] | SEC-01 | UPL-03, CHAT-01 | Backend/QA | Vérifier extension, MIME, signature, limites, noms, sessions, prompt injection, Markdown rendu et absence de données sensibles dans les logs. Les cas négatifs ont des tests. |

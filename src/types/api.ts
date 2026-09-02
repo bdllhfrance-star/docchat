@@ -4,6 +4,7 @@ import type {
   DocumentSource,
   SupportedFileType,
 } from "@/types/documents";
+import type { UIMessage } from "ai";
 
 export const apiErrorCodes = [
   "INVALID_REQUEST",
@@ -78,10 +79,16 @@ export type ReplaceDocumentResponse = {
   uploadPathname: string;
 };
 
+export type ChatHistoryMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
 export type ChatRequest = {
   batchId: string;
   documentIds: string[];
   message: string;
+  history: ChatHistoryMessage[];
 };
 
 export type ChatSource = {
@@ -91,3 +98,8 @@ export type ChatSource = {
   score: number;
   source: DocumentSource;
 };
+
+export type DocChatUIMessage = UIMessage<
+  unknown,
+  { sources: ChatSource[] }
+>;
