@@ -15,7 +15,9 @@ Règles d'utilisation :
 - Une décision prise dans ce document prévaut sur une supposition d'un agent IA.
 - Les agents ne doivent pas ajouter une dépendance, un service ou une abstraction
   qui ne répond pas à une exigence identifiée ici.
-- Chaque étape est terminée, testée et commitée avant de commencer la suivante.
+- Les petites tâches d'une même grande phase sont intégrées sans commit séparé.
+- Chaque grande phase est entièrement vérifiée, puis reçoit un commit atomique
+  et un résumé utilisateur avant le passage à la phase suivante.
 - Les optimisations sont motivées par une limite observée ou une mesure.
 
 ## 2. Vision du produit
@@ -340,9 +342,10 @@ frontières claires entre composants frontend, routes HTTP et services serveur.
 | Fichiers | Vercel Blob privé | Upload direct adapté aux limites de payload des fonctions Vercel. |
 | Persistance | MongoDB Atlas | Une base pour données métier, chunks, vecteurs, filtres et recherche hybride. |
 | Accès MongoDB | Driver officiel `mongodb` | Pas d'ORM nécessaire pour trois collections simples. |
-| Embeddings | Gemini Embedding, dimension initiale 768 | Hypothèse multilingue à confirmer avec la documentation officielle au moment de l'intégration. |
-| Génération | Gemini Flash stable | Le modèle stable exact sera confirmé au moment de l'intégration selon sa disponibilité. |
-| Streaming | Vercel AI SDK | Gestion standard du flux backend/frontend. |
+| Runtime | Node.js 22 minimum, Node.js 24 sur Vercel | Compatible avec Next.js 16 et AI SDK 7 tout en préparant les déploiements Vercel actuels. |
+| Embeddings | `gemini-embedding-2`, dimension 768 | Modèle multilingue actuel ; 768 limite stockage et mémoire pour le MVP. |
+| Génération | `gemini-3.7-flash` | Modèle Flash stable actuel adapté au streaming interactif ; disponibilité à confirmer sur le compte. |
+| Streaming | AI SDK 7, `@ai-sdk/google` et `@ai-sdk/react` | Flux UI typé, annulation et custom data parts pour les sources documentaires. |
 | Rate limiting | Upstash Redis | Compteur distribué compatible serverless, ajouté au moment du hardening. |
 | Framework RAG | Pipeline TypeScript direct | Le périmètre est petit et doit rester visible, testable et explicable. |
 | Queue | Aucune initialement | Le traitement synchrone est mesuré avant d'ajouter une infrastructure. |
@@ -554,6 +557,13 @@ Paramètres initiaux :
 - 5 chunks maximum dans le contexte final.
 - Seuil de pertinence déterminé par l'évaluation.
 - Aucune connaissance générale ne complète une information absente.
+- Aucun outil Google Search ou accès web n'est activé pour le modèle.
+- Les sources MongoDB sont envoyées au début du stream comme custom data part
+  persistante `data-sources`, puis le texte du modèle est fusionné dans le même
+  UI message stream.
+- Les custom data parts de sources restent dans l'historique UI mais ne sont pas
+  reconverties en contexte modèle. Le serveur reconstruit explicitement le
+  contexte RAG autorisé à chaque question.
 
 ## 15. Sécurité
 
@@ -729,12 +739,13 @@ intégrés par l'agent principal avant le lancement d'une nouvelle vague.
 | État | ID | Priorité | Dépend de | Responsable | Tâche et condition de fin |
 | --- | --- | --- | --- | --- | --- |
 | [x] | SET-00 | P0 | - | Principal | Relire, valider puis committer le présent cadrage. Le diff ne contient que la documentation attendue. |
-| [ ] | SET-01 | P0 | SET-00 | Principal | Lire les sections locales Next.js 16 nécessaires : App Router, Route Handlers, cookies, variables serveur, upload et streaming. Les contraintes retenues sont notées avant le code. |
-| [ ] | SET-02 | P0 | SET-00 | Principal | Vérifier les accès Vercel, Blob, Atlas et Gemini, puis confirmer modèles, dimensions, régions et limites dans la documentation officielle. Aucun secret n'est affiché ou committé. |
-| [ ] | SET-03 | P0 | SET-01, SET-02 | Principal | Installer uniquement les dépendances directement requises et enregistrer un lockfile cohérent. `pnpm check` et `pnpm build` réussissent. |
-| [ ] | SET-04 | P0 | SET-01 | Principal | Créer les contrats TypeScript partagés : fichier, batch, statuts, source, parser et erreur API. Les statuts et transitions impossibles sont testés. |
-| [ ] | SET-05 | P0 | SET-00 | QA | Préparer les fixtures libres de droits et le manifeste d'évaluation : petit PDF français, PDF arabe natif et fichiers invalides. La licence ou l'origine est documentée. |
-| [ ] | SET-06 | P0 | SET-03 | Principal | Déployer le squelette sur Vercel et vérifier une URL publique avant l'ajout du pipeline. Le build local et le smoke test public réussissent. |
+| [x] | SET-01 | P0 | SET-00 | Principal | Lire les sections locales Next.js 16 nécessaires : App Router, Route Handlers, cookies, variables serveur, upload et streaming. Les contraintes retenues sont notées avant le code. |
+| [x] | SET-02 | P0 | SET-00 | Principal | Confirmer dans les documentations officielles les SDK, modèles, dimensions, runtimes et limites de Vercel, Blob, Atlas, Gemini et Upstash. Les décisions exactes sont inscrites en 20.3. |
+| [x] | SET-03 | P0 | SET-01, SET-02 | Principal | Installer uniquement les dépendances directement requises et enregistrer un lockfile cohérent. `pnpm check` et `pnpm build` réussissent. |
+| [x] | SET-04 | P0 | SET-01 | Principal | Créer les contrats TypeScript partagés : fichier, batch, statuts, source, parser et erreur API. Les statuts et transitions impossibles sont testés. |
+| [x] | SET-05 | P0 | SET-00 | QA | Préparer les fixtures libres de droits et le manifeste d'évaluation : petit PDF français, PDF arabe natif et fichiers invalides. La licence ou l'origine est documentée. |
+| [!] | SET-07 | P0 | SET-02 | Principal | Vérifier les accès réels et quotas Vercel, Blob, Atlas, Gemini et Upstash. Bloqué : aucune variable, aucun remote GitHub, aucun projet Vercel lié et aucun accès utilisateur n'est disponible localement. |
+| [!] | SET-06 | P0 | SET-03, SET-07 | Principal | Déployer le squelette sur Vercel et vérifier une URL publique avant l'ajout du pipeline. Bloqué tant que les accès de SET-07 ne sont pas fournis. |
 
 ### 19.5 Tâches P0 - parcours PDF obligatoire
 
@@ -838,7 +849,7 @@ Une mission ne doit contenir qu'un objectif vérifiable. L'agent principal ne
 lance pas deux missions qui modifient le même fichier et reste responsable de
 l'intégration, des commandes finales et des commits.
 
-### 19.11 Ordre des étapes et commits
+### 19.11 Ordre des grandes phases et commits
 
 | Étape | Livrable | Exemple de commit |
 | --- | --- | --- |
@@ -855,7 +866,7 @@ l'intégration, des commandes finales et des commits.
 | 10 | Évaluation et documentation | `docs: add RAG evaluation results` |
 | 11 | Déploiement vérifié | `chore: prepare production deployment` |
 
-À la fin de chaque étape :
+À la fin de chaque grande phase :
 
 ```text
 Implémentation ciblée
@@ -865,6 +876,7 @@ Implémentation ciblée
 → vérification manuelle
 → revue du diff
 → commit atomique
+→ résumé clair présenté au propriétaire du projet
 ```
 
 ## 20. Prérequis avant la journée de réalisation
@@ -885,7 +897,9 @@ Variables attendues :
 MONGODB_URI
 MONGODB_DATABASE
 GOOGLE_GENERATIVE_AI_API_KEY
-BLOB_READ_WRITE_TOKEN
+BLOB_STORE_ID
+VERCEL_OIDC_TOKEN
+BLOB_WEBHOOK_PUBLIC_KEY
 UPSTASH_REDIS_REST_URL
 UPSTASH_REDIS_REST_TOKEN
 APP_SECRET
@@ -893,14 +907,72 @@ APP_SECRET
 
 ### 20.1 Confirmations à faire avant l'implémentation concernée
 
-- Confirmer dans la documentation officielle le modèle Gemini de génération,
-  le modèle d'embedding et sa dimension.
+- Confirmer que le compte Gemini expose `gemini-3.7-flash` et
+  `gemini-embedding-2` avec les quotas nécessaires.
 - Choisir des régions Vercel et MongoDB Atlas compatibles et proches.
 - Valider les bibliothèques de parsing sur une fixture réelle de chaque format.
 - Choisir et documenter les PDF d'évaluation français et arabe et leur licence.
 - Calibrer `topK` et le seuil de refus avec le jeu d'évaluation, sans les fixer
   arbitrairement.
 - Vérifier l'accès effectif à Vercel, Atlas, Blob, Gemini et Upstash.
+
+### 20.2 Contraintes Next.js 16 confirmées localement
+
+Ces règles proviennent de la documentation livrée avec Next.js 16.3.3 dans
+`node_modules/next/dist/docs/` et sont obligatoires pour l'implémentation :
+
+- Les endpoints utilisent uniquement les Route Handlers sous `src/app/api/` et
+  les Web APIs `Request`, `Response` et `ReadableStream`.
+- Les Route Handlers sont publics : chaque route valide ses entrées, la session,
+  la propriété des ressources et les limites ; aucune sécurité implicite n'est
+  supposée.
+- Les paramètres des routes dynamiques sont des promesses. Ils sont attendus
+  avec `await` ou typés avec le helper global `RouteContext` généré par Next.js.
+- `cookies()` est asynchrone. La session est créée ou modifiée dans un Route
+  Handler non streamé ; aucun cookie n'est écrit après le début du stream.
+- Toute validation capable de produire une erreur HTTP est exécutée avant le
+  premier chunk du chat, car statut et headers ne peuvent plus changer après le
+  début du streaming.
+- Les secrets restent dans des variables serveur sans préfixe `NEXT_PUBLIC_`.
+  Les fichiers `.env*` sont placés à la racine, jamais sous `src/`, et ne sont
+  pas commités.
+- Les uploads utilisent le File API côté client et un stockage Blob dédié. Les
+  fichiers et l'état ne sont jamais conservés sur le système de fichiers ou
+  dans la mémoire partagée d'une fonction serverless.
+- Le polling des statuts part du navigateur ; un Server Component ne fait pas
+  un appel HTTP à ses propres Route Handlers.
+- Les handlers de traitement utilisent le runtime Node.js lorsque les parsers
+  ou le driver MongoDB le demandent. Le mode `export` statique est exclu.
+- La frontière `'use client'` est placée uniquement à l'entrée des sous-arbres
+  interactifs. Aucun module serveur, secret, parser ou accès base de données ne
+  doit entrer dans le bundle client.
+- Le body d'une requête n'est lu qu'une fois sauf clonage explicite. Les erreurs
+  renvoyées au client ne contiennent aucun détail sensible.
+- Vercel supporte le streaming, mais son fonctionnement réel est vérifié sur la
+  réponse réseau déployée et pas uniquement sur l'affichage final du navigateur.
+- L'exemple AI SDK inclus dans la documentation locale n'est pas copié sans
+  vérifier les APIs actuelles de la version installée au moment de `SET-03`.
+
+### 20.3 Choix externes confirmés dans les documentations officielles
+
+- AI SDK : `ai@7.0.90`, `@ai-sdk/react@4.0.93` et
+  `@ai-sdk/google@4.0.62`. Les anciens contrats `StreamingTextResponse`,
+  `message.content` et `ai/react` sont interdits.
+- Génération : `gemini-3.7-flash`, sans Google Search ni outil externe.
+- Embeddings : `gemini-embedding-2` avec `outputDimensionality: 768` ; les
+  documents et questions utilisent des préfixes de tâche cohérents.
+- Atlas : index Vector Search cosine de 768 dimensions, avec champs de filtre
+  `sessionId`, `batchId` et `documentId`. L'index Search lexical reste séparé
+  pour le bonus hybride.
+- Blob : store privé et upload direct signé depuis le navigateur, limité par
+  fichier à 10 Mo. Le callback de fin d'upload est idempotent.
+- Upstash : Redis régional et sliding window initial de 10 chats par minute,
+  ajusté uniquement après observation des quotas réels.
+- Runtime : Node.js 22 minimum en local et Node.js 24 sélectionné sur Vercel.
+
+Les packages sont installés et compilent. Les appels réels restent bloqués tant
+que les comptes, régions, quotas, stores, index et secrets ne sont pas fournis ;
+aucun mock ne sera présenté comme une validation externe.
 
 ## 21. Risques et réponses prévues
 

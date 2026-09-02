@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "documents": [
+    {
+      "path": "documents/wikipedia-contribution-guide-fr.pdf",
+      "language": "fr",
+      "expectedPageCount": 13,
+      "expectedSizeBytes": 116369,
+      "sha256": "4B4B626E15582842FE1253ABAB36D2364FC6A3DC8CBD21E6391FA70A5C385A8A",
+      "expectedOutcome": "ready"
+    },
+    {
+      "path": "documents/wikipedia-classroom-booklet-ar.pdf",
+      "language": "ar",
+      "expectedPageCount": 10,
+      "expectedSizeBytes": 3073424,
+      "sha256": "B0D6F503038CE9E661787C56AB8680DEA9E748E3A577C3473D9552FA3273DCE2",
+      "expectedOutcome": "ready"
+    }
+  ],
+  "invalidDocuments": [
+    {
+      "path": "documents/empty.pdf",
+      "expectedFailure": "invalid-signature"
+    },
+    {
+      "path": "documents/invalid-signature.pdf",
+      "expectedFailure": "invalid-signature"
+    },
+    {
+      "path": "documents/truncated.pdf",
+      "expectedFailure": "parse-failed"
+    }
+  ],
+  "generatedCases": [
+    {
+      "name": "oversized-pdf",
+      "sizeBytes": 10485761,
+      "expectedFailure": "file-too-large"
+    }
+  ]
+}

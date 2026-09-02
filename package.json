@@ -2,6 +2,9 @@
   "name": "docchat",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -13,15 +16,24 @@
     "check": "pnpm lint && pnpm typecheck && pnpm test"
   },
   "dependencies": {
+    "@ai-sdk/google": "4.0.62",
+    "@ai-sdk/react": "4.0.93",
+    "@upstash/ratelimit": "2.0.8",
+    "@upstash/redis": "1.38.3",
+    "@vercel/blob": "2.8.0",
+    "ai": "7.0.90",
+    "lucide-react": "1.39.0",
+    "mongodb": "7.6.0",
     "next": "16.3.3",
     "react": "19.2.8",
-    "react-dom": "19.2.8"
+    "react-dom": "19.2.8",
+    "zod": "4.5.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/react": "^16.3.3",
-    "@types/node": "^20",
+    "@types/node": "^24.13.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.1.1",

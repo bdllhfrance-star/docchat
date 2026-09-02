@@ -1,0 +1,50 @@
+{
+  "version": 1,
+  "questions": [
+    {
+      "id": "eval-fr-01",
+      "language": "fr",
+      "question": "Quel est l'objectif principal de l'initiative Art+Féminisme ?",
+      "expectedAnswer": "Réduire l'écart des genres sur Wikipédia en améliorant notamment le contenu consacré aux femmes cis et trans, aux personnes non-binaires, aux arts et au féminisme.",
+      "expectedDocument": "wikipedia-contribution-guide-fr.pdf",
+      "expectedPage": 4,
+      "shouldRefuse": false
+    },
+    {
+      "id": "eval-fr-02",
+      "language": "fr",
+      "question": "Que recommande le guide en cas de conflit d'intérêts ?",
+      "expectedAnswer": "Ne pas rédiger soi-même l'article et proposer plutôt les améliorations sur la page de discussion appropriée.",
+      "expectedDocument": "wikipedia-contribution-guide-fr.pdf",
+      "expectedPage": 8,
+      "shouldRefuse": false
+    },
+    {
+      "id": "eval-ar-01",
+      "language": "ar",
+      "question": "ما هي ويكيبيديا؟",
+      "expectedAnswer": "ويكيبيديا موسوعة مجانية يمكن لأي شخص تحريرها، وهي متاحة بمئات اللغات.",
+      "expectedDocument": "wikipedia-classroom-booklet-ar.pdf",
+      "expectedPage": 2,
+      "shouldRefuse": false
+    },
+    {
+      "id": "eval-ar-02",
+      "language": "ar",
+      "question": "اذكر علامتين إيجابيتين تدلان على جودة مقالة ويكيبيديا.",
+      "expectedAnswer": "من العلامات الإيجابية وجود مراجع عديدة من مصادر موثوقة ووجود مقدمة واضحة وغنية بالمعلومات.",
+      "expectedDocument": "wikipedia-classroom-booklet-ar.pdf",
+      "expectedPage": 5,
+      "shouldRefuse": false
+    },
+    {
+      "id": "eval-absent-01",
+      "language": "fr",
+      "question": "Quel est le taux de TVA appliqué au Maroc en 2026 ?",
+      "expectedAnswer": null,
+      "expectedDocument": null,
+      "expectedPage": null,
+      "shouldRefuse": true
+    }
+  ]
+}
