@@ -48,6 +48,7 @@ export type FileValidationErrorCode =
   | "EMPTY_FILE"
   | "FILE_TOO_LARGE"
   | "MIME_TYPE_MISMATCH"
+  | "UNSAFE_FILENAME"
   | "UNSUPPORTED_FILE_TYPE";
 
 export type BatchValidationErrorCode =
@@ -72,6 +73,23 @@ export type BatchValidationResult<TFile extends FileLike = FileLike> = {
   isValid: boolean;
   totalSize: number;
 };
+
+const unsafeFilenameCharacters =
+  /[\/\\\u0000-\u001f\u007f\u202a-\u202e\u2066-\u2069]/u;
+
+export function normalizeFilename(filename: string): string {
+  return filename.trim().normalize("NFC");
+}
+
+export function isSafeFilename(filename: string): boolean {
+  const normalizedFilename = normalizeFilename(filename);
+
+  return (
+    normalizedFilename.length > 0 &&
+    normalizedFilename.length <= 255 &&
+    !unsafeFilenameCharacters.test(normalizedFilename)
+  );
+}
 
 function getExtension(filename: string): string {
   const dotIndex = filename.lastIndexOf(".");
@@ -100,11 +118,16 @@ export function validateBatchFiles<TFile extends FileLike>(
   }
 
   const validatedFiles = files.map((file) => {
-    const extension = getExtension(file.name);
+    const normalizedFilename = normalizeFilename(file.name);
+    const extension = getExtension(normalizedFilename);
     const config = fileTypesByExtension[
       extension as keyof typeof fileTypesByExtension
     ];
     const errors: FileValidationErrorCode[] = [];
+
+    if (!isSafeFilename(file.name)) {
+      errors.push("UNSAFE_FILENAME");
+    }
 
     if (!config) {
       errors.push("UNSUPPORTED_FILE_TYPE");

@@ -600,16 +600,23 @@ Paramètres initiaux :
 - Secrets uniquement dans les variables serveur Vercel.
 - Validation client et nouvelle validation côté serveur.
 - Liste blanche stricte des extensions et MIME types.
-- Vérification de la signature binaire lorsque le format le permet.
+- Lecture incrémentale et bornée des corps de requête ; une taille déclarée ou
+  réellement lue au-dessus de la limite est interrompue avec une erreur `413`.
+- Vérification de la signature `%PDF-` avant le parsing d'un PDF.
 - Inspection des archives OOXML : nombre d'entrées, taille décompressée et rejet
-  des fichiers avec macros afin de limiter les ZIP bombs.
-- Nom de fichier normalisé et jamais utilisé comme chemin système.
+  des fichiers avec macros afin de limiter les ZIP bombs, à réaliser avec
+  `FMT-06` avant d'activer les formats Office.
+- Nom de fichier normalisé en Unicode NFC ; séparateurs de chemin, contrôles,
+  contrôles bidirectionnels et noms de plus de 255 caractères refusés.
 - Vérification du `sessionId` sur chaque lecture, suppression et recherche.
 - Filtres MongoDB sur les documents explicitement sélectionnés.
 - Contenu documentaire traité comme donnée non fiable dans le prompt.
-- HTML brut non rendu dans les réponses Markdown.
-- Rate limiting sur upload, retry et chat.
-- Logs sans contenu complet des documents, embeddings ou secrets.
+- Réponses affichées en texte React sans interprétation de HTML brut.
+- Headers globaux `nosniff`, `no-referrer`, anti-framing et désactivation des
+  capteurs inutilisés. Une CSP sera définie avec le déploiement réel afin de ne
+  pas inventer les origines Blob/Vercel avant `SET-07`.
+- Aucun log de production ne contient de document, vecteur ou secret. Les logs
+  structurés et le rate limiting partagé restent les bonus `BON-04` et `BON-03`.
 - Suppression automatique par TTL et suppression manuelle cohérente.
 
 ## 16. Performance et comportement serverless
@@ -800,9 +807,9 @@ intégrés par l'agent principal avant le lancement d'une nouvelle vague.
 | [~] | CHAT-01 | RAG-03 | Backend/RAG | `POST /api/chat`, validations avant stream, contexte dynamique, prompt fondé uniquement sur les documents, refus sans contexte et UI message stream sourcé sont implémentés et testés localement. Le seuil de pertinence doit encore être calibré par l'évaluation et le parcours réel Atlas/Gemini reste bloqué par SET-07. |
 | [~] | UI-05 | UI-04, CHAT-01 | UI | Chat relié à `/api/chat` avec `useChat`, historique `sessionStorage` isolé par batch, annulation et affichage progressif. Le composer ne s'active que lorsque tous les documents sont `ready` ; le parcours réel Atlas/Gemini reste bloqué par SET-07. |
 | [~] | UI-06 | UI-05 | UI | Sources dépliables affichées sous chaque réponse avec numéro de citation, fichier, emplacement, extrait et score nommé explicitement `similarity`. Le contrôle natif est utilisable au clavier et responsive ; le flux réel Atlas/Gemini reste à valider avec SET-07. |
-| [ ] | SEC-01 | UPL-03, CHAT-01 | Backend/QA | Vérifier extension, MIME, signature, limites, noms, sessions, prompt injection, Markdown rendu et absence de données sensibles dans les logs. Les cas négatifs ont des tests. |
-| [ ] | TST-01 | SEC-01, UI-06 | QA | Compléter les tests unitaires et d'intégration P0 pour contrats, upload, parser, chunker, statuts, retrieval, refus, streaming et erreurs. Les commandes qualité réussissent. |
-| [ ] | GATE-01 | TST-01 | Principal | Exécuter le parcours PDF complet localement et sur Vercel : upload, `ready`, chat streamé, source, refus, retry et suppression. P2 est interdit tant que ce gate échoue. |
+| [x] | SEC-01 | UPL-03, CHAT-01 | Backend/QA | Extension, MIME, signature PDF, limites de fichiers et requêtes, noms, sessions, propriété des ressources, prompt injection, rendu HTML inerte, headers et absence de logs sensibles sont vérifiés localement avec cas négatifs. |
+| [x] | TST-01 | SEC-01, UI-06 | QA | Les tests unitaires et d'intégration P0 couvrent contrats, upload, parser, chunker, statuts, retrieval, refus, streaming, sources, sécurité et erreurs. `lint`, `typecheck`, tests et build réussissent localement. |
+| [!] | GATE-01 | TST-01 | Principal | Le code et le parcours simulé sont verts. Le parcours PDF réel local et Vercel — Blob, Atlas, Gemini, streaming, source, refus, retry et suppression — reste bloqué uniquement par les accès externes absents de `SET-07`; aucune simulation n'est présentée comme un E2E réel. |
 
 ### 19.6 Tâches P1 - bonus retenus
 

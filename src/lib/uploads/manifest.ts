@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import {
   MAX_FILES_PER_BATCH,
+  normalizeFilename,
   validateBatchFiles,
 } from "@/lib/uploads/validation";
 import type {
@@ -68,6 +69,7 @@ export function parseBatchManifest(input: unknown): ValidatedBatchManifest {
   return {
     files: request.files.map((file, index) => ({
       ...file,
+      filename: normalizeFilename(file.filename),
       fileType: validation.files[index].fileType!,
     })),
   };

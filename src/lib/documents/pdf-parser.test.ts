@@ -96,6 +96,10 @@ describe("PDF parser", () => {
       "INVALID_PDF",
     );
     await expectErrorCode(
+      pdfParser.extract(new TextEncoder().encode("not a PDF").buffer),
+      "INVALID_PDF",
+    );
+    await expectErrorCode(
       pdfParser.extract(blankPdf()),
       "NO_EXTRACTABLE_TEXT",
     );

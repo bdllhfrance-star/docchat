@@ -4,6 +4,10 @@ import { z, ZodError } from "zod";
 
 import { apiErrorResponse } from "@/lib/api/errors";
 import {
+  readBoundedRequestText,
+  RequestBodyTooLargeError,
+} from "@/lib/api/request-body";
+import {
   buildGroundedChatContext,
   getChatDocumentTokenBudget,
   getVectorRetrievalLimit,
@@ -119,9 +123,18 @@ async function parseRequest(
   request: Request,
   requestId: string,
 ): Promise<ChatRequest | Response> {
-  const rawBody = await request.text();
+  let rawBody: string;
 
-  if (new TextEncoder().encode(rawBody).byteLength > MAX_CHAT_REQUEST_BODY_BYTES) {
+  try {
+    rawBody = await readBoundedRequestText(
+      request,
+      MAX_CHAT_REQUEST_BODY_BYTES,
+    );
+  } catch (error) {
+    if (!(error instanceof RequestBodyTooLargeError)) {
+      throw error;
+    }
+
     return apiErrorResponse(
       413,
       requestId,

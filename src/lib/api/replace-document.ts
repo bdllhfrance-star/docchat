@@ -3,6 +3,10 @@ import { randomUUID } from "node:crypto";
 import { ZodError, z } from "zod";
 
 import { apiErrorResponse } from "@/lib/api/errors";
+import {
+  readBoundedRequestText,
+  RequestBodyTooLargeError,
+} from "@/lib/api/request-body";
 import type {
   PrepareDocumentReplacement,
   RestoreDocumentReplacement,
@@ -103,16 +107,10 @@ export async function handleReplaceDocument(
   }
 
   try {
-    const rawBody = await request.text();
-
-    if (new TextEncoder().encode(rawBody).byteLength > maxReplacementBodyBytes) {
-      return apiErrorResponse(
-        413,
-        requestId,
-        "PAYLOAD_TOO_LARGE",
-        "The replacement manifest is too large.",
-      );
-    }
+    const rawBody = await readBoundedRequestText(
+      request,
+      maxReplacementBodyBytes,
+    );
 
     let input: unknown;
 
@@ -227,6 +225,15 @@ export async function handleReplaceDocument(
 
     return Response.json(body);
   } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return apiErrorResponse(
+        413,
+        requestId,
+        "PAYLOAD_TOO_LARGE",
+        "The replacement manifest is too large.",
+      );
+    }
+
     if (error instanceof ZodError) {
       return validationErrorResponse(error, requestId);
     }

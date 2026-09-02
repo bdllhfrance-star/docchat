@@ -4,6 +4,8 @@ import {
   MAX_BATCH_SIZE_BYTES,
   MAX_FILE_SIZE_BYTES,
   MAX_FILES_PER_BATCH,
+  isSafeFilename,
+  normalizeFilename,
   validateBatchFiles,
   type FileLike,
 } from "./validation";
@@ -73,5 +75,22 @@ describe("batch file validation", () => {
 
   test("requires at least one file", () => {
     expect(validateBatchFiles([]).isValid).toBe(false);
+  });
+
+  test("rejects path separators, control characters, bidi controls, and long names", () => {
+    expect(isSafeFilename("résumé.pdf")).toBe(true);
+    expect(isSafeFilename("../guide.pdf")).toBe(false);
+    expect(isSafeFilename("folder\\guide.pdf")).toBe(false);
+    expect(isSafeFilename("guide\u0000.pdf")).toBe(false);
+    expect(isSafeFilename("guide\u202efdp.pdf")).toBe(false);
+    expect(isSafeFilename(`${"a".repeat(252)}.pdf`)).toBe(false);
+
+    expect(
+      validateBatchFiles([file({ name: "../guide.pdf" })]).files[0].errors,
+    ).toContain("UNSAFE_FILENAME");
+  });
+
+  test("normalizes accepted Unicode filenames to NFC", () => {
+    expect(normalizeFilename("  re\u0301sume\u0301.pdf  ")).toBe("résumé.pdf");
   });
 });

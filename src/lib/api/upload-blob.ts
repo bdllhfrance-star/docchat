@@ -13,6 +13,10 @@ import {
 
 import { apiErrorResponse } from "@/lib/api/errors";
 import {
+  readBoundedRequestText,
+  RequestBodyTooLargeError,
+} from "@/lib/api/request-body";
+import {
   parseBlobCallbackPayload,
   parseBlobClientPayload,
   parseUploadFailureRequest,
@@ -90,14 +94,23 @@ class UploadRequestError extends Error {
 async function parseRequestBody(
   request: Request,
 ): Promise<unknown> {
-  const rawBody = await request.text();
+  let rawBody: string;
 
-  if (new TextEncoder().encode(rawBody).byteLength > maxUploadRequestBodyBytes) {
-    throw new UploadRequestError(
-      413,
-      "PAYLOAD_TOO_LARGE",
-      "The upload request is too large.",
+  try {
+    rawBody = await readBoundedRequestText(
+      request,
+      maxUploadRequestBodyBytes,
     );
+  } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      throw new UploadRequestError(
+        413,
+        "PAYLOAD_TOO_LARGE",
+        "The upload request is too large.",
+      );
+    }
+
+    throw error;
   }
 
   try {

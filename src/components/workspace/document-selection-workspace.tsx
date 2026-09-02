@@ -57,6 +57,7 @@ const fileErrorMessages: Record<FileValidationErrorCode, string> = {
   EMPTY_FILE: "This file is empty.",
   FILE_TOO_LARGE: "This file exceeds the 10 MiB limit.",
   MIME_TYPE_MISMATCH: "The file content type does not match its extension.",
+  UNSAFE_FILENAME: "This file name contains unsupported characters.",
   UNSUPPORTED_FILE_TYPE: "This file format is not supported.",
 };
 

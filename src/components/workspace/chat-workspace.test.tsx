@@ -165,3 +165,19 @@ test("restores and persists the browser-session conversation", async () => {
       .toEqual(currentMessages);
   });
 });
+
+test("renders assistant HTML-like output as inert text", async () => {
+  const unsafeText = '<img src=x onerror="alert(1)">';
+  useChatMock.mockReturnValue(
+    chatState({
+      messages: [message("assistant-1", "assistant", unsafeText)],
+    }),
+  );
+
+  const { container } = render(
+    <ChatWorkspace batchId="batch-1" documentIds={["document-1"]} />,
+  );
+
+  expect(await screen.findByText(unsafeText)).toBeDefined();
+  expect(container.querySelector("img")).toBeNull();
+});

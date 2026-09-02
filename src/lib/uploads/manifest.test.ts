@@ -54,4 +54,23 @@ describe("batch manifest", () => {
       false,
     );
   });
+
+  test("rejects unsafe names and normalizes accepted Unicode names", () => {
+    const unsafe = createBatchRequestSchema.safeParse({
+      files: [{ ...validFile, filename: "../guide.pdf" }],
+    });
+
+    expect(unsafe.success).toBe(false);
+    if (!unsafe.success) {
+      expect(unsafe.error.issues.map((issue) => issue.message)).toContain(
+        "UNSAFE_FILENAME",
+      );
+    }
+
+    expect(
+      parseBatchManifest({
+        files: [{ ...validFile, filename: " re\u0301sume\u0301.pdf " }],
+      }).files[0].filename,
+    ).toBe("résumé.pdf");
+  });
 });

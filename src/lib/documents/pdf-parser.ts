@@ -73,6 +73,17 @@ export const pdfParser: DocumentParser = {
       throw new PdfExtractionError("EMPTY_PDF", "The PDF file is empty.");
     }
 
+    const signature = new TextDecoder("ascii").decode(
+      new Uint8Array(content, 0, Math.min(5, content.byteLength)),
+    );
+
+    if (signature !== "%PDF-") {
+      throw new PdfExtractionError(
+        "INVALID_PDF",
+        "The PDF file signature is invalid.",
+      );
+    }
+
     const parser = new PDFParse({ data: content, stopAtErrors: true });
 
     try {

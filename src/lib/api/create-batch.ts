@@ -3,6 +3,10 @@ import { randomUUID } from "node:crypto";
 import { ZodError } from "zod";
 
 import { apiErrorResponse } from "@/lib/api/errors";
+import {
+  readBoundedRequestText,
+  RequestBodyTooLargeError,
+} from "@/lib/api/request-body";
 import { SESSION_TTL_SECONDS } from "@/lib/session";
 import { createBlobPathname } from "@/lib/uploads/blob-contract";
 import { parseBatchManifest } from "@/lib/uploads/manifest";
@@ -127,16 +131,7 @@ export async function handleCreateBatch(
   const requestId = (dependencies.requestId ?? randomUUID)();
 
   try {
-    const rawBody = await request.text();
-
-    if (new TextEncoder().encode(rawBody).byteLength > maxManifestBodyBytes) {
-      return apiErrorResponse(
-        413,
-        requestId,
-        "PAYLOAD_TOO_LARGE",
-        "The batch manifest is too large.",
-      );
-    }
+    const rawBody = await readBoundedRequestText(request, maxManifestBodyBytes);
 
     let input: unknown;
 
@@ -171,6 +166,15 @@ export async function handleCreateBatch(
 
     return Response.json(response, { status: 201 });
   } catch (error) {
+    if (error instanceof RequestBodyTooLargeError) {
+      return apiErrorResponse(
+        413,
+        requestId,
+        "PAYLOAD_TOO_LARGE",
+        "The batch manifest is too large.",
+      );
+    }
+
     if (error instanceof ZodError) {
       return validationErrorResponse(error, requestId);
     }
