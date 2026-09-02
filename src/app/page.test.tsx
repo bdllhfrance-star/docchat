@@ -9,8 +9,8 @@ import {
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 import {
+  addAndUploadDocuments,
   createAndUploadBatch,
-  replaceAndUploadDocument,
   type ClientBatchUploadResult,
   type ClientUploadUpdate,
 } from "@/lib/uploads/client";
@@ -23,8 +23,8 @@ import type { BatchSummary } from "@/types/documents";
 import Home from "./page";
 
 vi.mock("@/lib/uploads/client", () => ({
+  addAndUploadDocuments: vi.fn(),
   createAndUploadBatch: vi.fn(),
-  replaceAndUploadDocument: vi.fn(),
 }));
 vi.mock("@/lib/batches/client", () => ({
   pollBatchStatus: vi.fn(),
@@ -34,16 +34,16 @@ vi.mock("@/lib/documents/client", () => ({
   retryDocument: vi.fn(),
 }));
 
+const addAndUploadDocumentsMock = vi.mocked(addAndUploadDocuments);
 const createAndUploadBatchMock = vi.mocked(createAndUploadBatch);
-const replaceAndUploadDocumentMock = vi.mocked(replaceAndUploadDocument);
 const pollBatchStatusMock = vi.mocked(pollBatchStatus);
 const deleteDocumentMock = vi.mocked(deleteDocument);
 const retryDocumentMock = vi.mocked(retryDocument);
 
 beforeEach(() => {
   sessionStorage.clear();
+  addAndUploadDocumentsMock.mockReset();
   createAndUploadBatchMock.mockReset();
-  replaceAndUploadDocumentMock.mockReset();
   pollBatchStatusMock.mockReset();
   pollBatchStatusMock.mockImplementation(
     () => new Promise<BatchSummary>(() => undefined),
@@ -147,9 +147,9 @@ test("selects, validates, and removes multiple files before upload", () => {
   expect(screen.getByText("legacy.doc")).toBeDefined();
   expect(screen.getByText("This file format is not supported.")).toBeDefined();
   expect(screen.getByText("Selected · not uploaded")).toBeDefined();
-  expect(screen.getByRole("button", { name: "Replace selection" })).toBeDefined();
+  expect(screen.getByRole("button", { name: "Add documents" })).toBeDefined();
   expect(
-    screen.getByRole("button", { name: "Upload and process" }),
+    screen.getByRole("button", { name: "Upload" }),
   ).toHaveProperty("disabled", true);
 
   fireEvent.click(screen.getByRole("button", { name: "Remove legacy.doc" }));
@@ -162,12 +162,12 @@ test("selects, validates, and removes multiple files before upload", () => {
   );
   expect(
     screen.getByText(
-      "Selected documents must be uploaded and fully processed before chatting.",
+      "Upload the new documents to update the context before chatting.",
     ),
   ).toBeDefined();
 });
 
-test("replaces the selection by drag and drop and shows batch errors", () => {
+test("adds files by drag and drop and shows session limit errors", () => {
   render(<Home />);
 
   const dropZone = screen.getByRole("group", { name: "Document drop zone" });
@@ -178,13 +178,13 @@ test("replaces the selection by drag and drop and shows batch errors", () => {
   fireEvent.dragEnter(dropZone, {
     dataTransfer: { files: oversizedBatch },
   });
-  expect(screen.getByText("Drop to replace the selection")).toBeDefined();
+  expect(screen.getByText("Drop to add documents")).toBeDefined();
 
   fireEvent.drop(dropZone, {
     dataTransfer: { files: oversizedBatch },
   });
 
-  expect(screen.getByText("11 files selected")).toBeDefined();
+  expect(screen.getByLabelText("11 documents")).toBeDefined();
   expect(
     screen.getByText("Select no more than 10 files in one batch."),
   ).toBeDefined();
@@ -212,7 +212,7 @@ test("starts one batch action and shows only real upload progress", async () => 
   });
 
   const uploadButton = screen.getByRole("button", {
-    name: "Upload and process",
+    name: "Upload",
   });
   expect(uploadButton).toHaveProperty("disabled", false);
 
@@ -221,7 +221,7 @@ test("starts one batch action and shows only real upload progress", async () => 
 
   expect(createAndUploadBatchMock).toHaveBeenCalledOnce();
   expect(screen.getByText("Creating batch")).toBeDefined();
-  expect(screen.getByRole("button", { name: "Replace selection" })).toHaveProperty(
+  expect(screen.getByRole("button", { name: "Add documents" })).toHaveProperty(
     "disabled",
     true,
   );
@@ -259,10 +259,6 @@ test("starts one batch action and shows only real upload progress", async () => 
   expect(
     screen.getByText("Documents are being processed. Chat remains unavailable."),
   ).toBeDefined();
-  expect(screen.getByRole("button", { name: "Replace selection" })).toHaveProperty(
-    "disabled",
-    true,
-  );
   expect(screen.getByRole("button", { name: "Remove guide.pdf" })).toHaveProperty(
     "disabled",
     true,
@@ -279,15 +275,15 @@ test("shows a global batch creation error and permits a safe retry", async () =>
   fireEvent.change(screen.getByLabelText("Select documents from device"), {
     target: { files: [file()] },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Upload and process" }));
+  fireEvent.click(screen.getByRole("button", { name: "Upload" }));
 
   const alert = await screen.findByRole("alert");
   expect(alert.textContent).toContain(
-    "Batch creation failed: The session could not be created.",
+    "Upload failed: The session could not be created.",
   );
   expect(screen.getByText("Selected · not uploaded")).toBeDefined();
   expect(
-    screen.getByRole("button", { name: "Upload and process" }),
+    screen.getByRole("button", { name: "Upload" }),
   ).toHaveProperty("disabled", false);
   expect(screen.getByRole("textbox", { name: "Message DocChat" })).toHaveProperty(
     "disabled",
@@ -312,7 +308,7 @@ test("shows an isolated file upload failure without opening chat", async () => {
   fireEvent.change(screen.getByLabelText("Select documents from device"), {
     target: { files: [file()] },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Upload and process" }));
+  fireEvent.click(screen.getByRole("button", { name: "Upload" }));
 
   await waitFor(() => {
     expect(screen.getByText("Upload failed")).toBeDefined();
@@ -367,7 +363,7 @@ test("keeps each file row stable while showing real processing states", async ()
   fireEvent.change(screen.getByLabelText("Select documents from device"), {
     target: { files: [file()] },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Upload and process" }));
+  fireEvent.click(screen.getByRole("button", { name: "Upload" }));
 
   expect(await screen.findByText("Extracting text")).toBeDefined();
   expect(screen.getByText("guide.pdf")).toBeDefined();
@@ -444,7 +440,7 @@ test("selects all ready documents by default and allows a chat subset", async ()
   fireEvent.change(screen.getByLabelText("Select documents from device"), {
     target: { files },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Upload and process" }));
+  fireEvent.click(screen.getByRole("button", { name: "Upload" }));
 
   const guideCheckbox = await screen.findByRole("checkbox", {
     name: "Use guide.pdf in chat",
@@ -517,7 +513,7 @@ test("retries a failed document and resumes status polling", async () => {
   fireEvent.change(screen.getByLabelText("Select documents from device"), {
     target: { files: [file()] },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Upload and process" }));
+  fireEvent.click(screen.getByRole("button", { name: "Upload" }));
 
   const retryButton = await screen.findByRole("button", {
     name: "Retry guide.pdf",
@@ -540,33 +536,32 @@ test("retries a failed document and resumes status polling", async () => {
   expect(pollBatchStatusMock).toHaveBeenCalledTimes(2);
 });
 
-test("replaces a failed document in the same row", async () => {
-  const failedDocument = {
+test("adds documents to the existing batch and updates the context", async () => {
+  const firstDocument = {
     id: "document-1",
     batchId: "batch-1",
     filename: "guide.pdf",
     fileType: "pdf",
     size: 1024,
-    status: "failed",
-    canRetry: false,
-    error: { code: "UPLOAD_FAILED", message: "Upload failed." },
+    status: "ready",
   } as const;
-  const failedBatch: BatchSummary = {
+  const initialReadyBatch: BatchSummary = {
     ...uploadResult().batch,
-    status: "failed",
-    documents: [failedDocument],
+    status: "ready",
+    documents: [firstDocument],
   };
-  const readyDocument = {
-    ...failedDocument,
-    filename: "replacement.xlsx",
+  const addedDocument = {
+    id: "document-2",
+    batchId: "batch-1",
+    filename: "appendix.xlsx",
     fileType: "xlsx" as const,
     status: "ready" as const,
-    error: undefined,
+    size: 1024,
   };
-  const readyBatch: BatchSummary = {
-    ...failedBatch,
+  const updatedReadyBatch: BatchSummary = {
+    ...initialReadyBatch,
     status: "ready",
-    documents: [readyDocument],
+    documents: [firstDocument, addedDocument],
   };
 
   createAndUploadBatchMock.mockImplementation(async (_, onUpdate) => {
@@ -575,29 +570,30 @@ test("replaces a failed document in the same row", async () => {
   });
   pollBatchStatusMock
     .mockImplementationOnce(async (_, onUpdate) => {
-      onUpdate(failedBatch);
-      return failedBatch;
+      onUpdate(initialReadyBatch);
+      return initialReadyBatch;
     })
     .mockImplementationOnce(async (_, onUpdate) => {
-      onUpdate(readyBatch);
-      return readyBatch;
+      onUpdate(updatedReadyBatch);
+      return updatedReadyBatch;
     });
-  replaceAndUploadDocumentMock.mockImplementation(
-    async (_, __, replacementFile, index, onUpdate) => {
-      onUpdate({ index, status: "preparing-replacement" });
-      onUpdate({ index, status: "uploading", progress: 45 });
-      onUpdate({ index, status: "uploaded", progress: 100 });
+  addAndUploadDocumentsMock.mockImplementation(
+    async (_, additions, onUpdate) => {
+      onUpdate({ index: additions[0].index, status: "preparing-update" });
+      onUpdate({ index: additions[0].index, status: "uploaded", progress: 100 });
 
       return {
-        document: {
-          ...failedDocument,
-          filename: replacementFile.name,
-          fileType: "xlsx",
-          size: replacementFile.size,
-          status: "queued",
-          error: undefined,
+        batch: {
+          ...initialReadyBatch,
+          status: "processing",
+          documents: [
+            firstDocument,
+            { ...addedDocument, status: "queued" },
+          ],
         },
-        status: "uploaded",
+        uploads: [
+          { index: additions[0].index, documentId: "document-2", status: "uploaded" },
+        ],
       };
     },
   );
@@ -606,29 +602,29 @@ test("replaces a failed document in the same row", async () => {
   fireEvent.change(screen.getByLabelText("Select documents from device"), {
     target: { files: [file()] },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Upload and process" }));
-  fireEvent.click(
-    await screen.findByRole("button", { name: "Replace guide.pdf" }),
-  );
+  fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+  await screen.findByRole("button", { name: "Add documents" });
 
-  const replacementFile = file(
-    "replacement.xlsx",
+  const addedFile = file(
+    "appendix.xlsx",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   );
-  fireEvent.change(screen.getByLabelText("Select replacement document"), {
-    target: { files: [replacementFile] },
+  fireEvent.change(screen.getByLabelText("Select documents from device"), {
+    target: { files: [addedFile] },
   });
+  expect(screen.getByText("guide.pdf")).toBeDefined();
+  expect(screen.getByText("appendix.xlsx")).toBeDefined();
+  fireEvent.click(screen.getByRole("button", { name: "Update context" }));
 
-  expect(await screen.findByText("replacement.xlsx")).toBeDefined();
-  expect(replaceAndUploadDocumentMock).toHaveBeenCalledWith(
-    "document-1",
+  expect(addAndUploadDocumentsMock).toHaveBeenCalledWith(
     "batch-1",
-    replacementFile,
-    0,
+    [{ file: addedFile, index: 1 }],
     expect.any(Function),
   );
-  expect(await screen.findByText("Ready")).toBeDefined();
-  expect(screen.queryByText("guide.pdf")).toBeNull();
+  expect(await screen.findByRole("checkbox", {
+    name: "Use appendix.xlsx in chat",
+  })).toBeDefined();
+  expect(screen.getByText("guide.pdf")).toBeDefined();
   expect(pollBatchStatusMock).toHaveBeenCalledTimes(2);
 });
 
@@ -669,7 +665,7 @@ test("deletes the last ready document and returns to the initial workspace", asy
   fireEvent.change(screen.getByLabelText("Select documents from device"), {
     target: { files: [file()] },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Upload and process" }));
+  fireEvent.click(screen.getByRole("button", { name: "Upload" }));
 
   const deleteButton = await screen.findByRole("button", {
     name: "Delete guide.pdf",
@@ -718,7 +714,7 @@ test("keeps a document visible when its deletion fails", async () => {
   fireEvent.change(screen.getByLabelText("Select documents from device"), {
     target: { files: [file()] },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Upload and process" }));
+  fireEvent.click(screen.getByRole("button", { name: "Upload" }));
   fireEvent.click(
     await screen.findByRole("button", { name: "Delete guide.pdf" }),
   );

@@ -32,6 +32,15 @@ function matches<T extends object>(record: T, filter: Filter<T>): boolean {
       throw new Error(`Unsupported test filter: ${key}`);
     }
 
+    if (
+      expected &&
+      typeof expected === "object" &&
+      "$in" in expected &&
+      Array.isArray(expected.$in)
+    ) {
+      return expected.$in.includes(record[key as keyof T]);
+    }
+
     return record[key as keyof T] === expected;
   });
 }
@@ -192,6 +201,56 @@ describe("batch repository", () => {
     );
     expect(batches.records).toEqual([]);
     expect(documents.records).toEqual([]);
+  });
+
+  test("appends documents to the same batch and preserves server-owned paths", async () => {
+    const { batches, documents, repository } = createMemoryRepository();
+    await repository.createBatch(createFixture());
+    const addedDocument: DocumentRecord = {
+      ...createFixture().documents[0],
+      id: "8337341e-81ba-4b21-9921-ef129cfe18f3",
+      clientId: "4a616093-d677-42d3-8379-6dbaa9bd900a",
+      filename: "appendix.pdf",
+      blobPathname: "client-controlled/appendix.pdf",
+    };
+
+    const added = await repository.appendDocuments({
+      batchId,
+      documents: [addedDocument],
+      sessionId: sessionA,
+    });
+
+    expect(added).toEqual([
+      expect.objectContaining({
+        id: addedDocument.id,
+        blobPathname: `documents/${batchId}/${addedDocument.id}.pdf`,
+      }),
+    ]);
+    expect(documents.records).toHaveLength(2);
+    expect(batches.records[0]).toMatchObject({
+      totalFiles: 2,
+      status: "processing",
+    });
+  });
+
+  test("removes partially inserted additions when appending fails", async () => {
+    const { batches, documents, repository } = createMemoryRepository();
+    await repository.createBatch(createFixture());
+    documents.failAfterInsertMany = true;
+    const addedDocument: DocumentRecord = {
+      ...createFixture().documents[0],
+      id: "8337341e-81ba-4b21-9921-ef129cfe18f3",
+    };
+
+    await expect(
+      repository.appendDocuments({
+        batchId,
+        documents: [addedDocument],
+        sessionId: sessionA,
+      }),
+    ).rejects.toThrow("simulated document insert failure");
+    expect(documents.records).toHaveLength(1);
+    expect(batches.records[0].totalFiles).toBe(1);
   });
 
   test("isolates reads and transitions between sessions", async () => {

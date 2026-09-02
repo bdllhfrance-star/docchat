@@ -81,6 +81,12 @@ export type DeleteDocumentResult = {
   deleted: boolean;
 };
 
+export type AppendDocuments = {
+  batchId: string;
+  documents: DocumentRecord[];
+  sessionId: string;
+};
+
 function hasSameFailure(
   document: DocumentRecord,
   error: NonNullable<DocumentRecord["error"]>,
@@ -223,6 +229,66 @@ export function createBatchRepository(
       }
 
       return normalizedBatch;
+    },
+
+    async appendDocuments(
+      addition: AppendDocuments,
+    ): Promise<DocumentRecord[] | null> {
+      const batchFilter = {
+        sessionId: addition.sessionId,
+        id: addition.batchId,
+      } satisfies Filter<BatchRecord>;
+      const batch = await collections.batches.findOne(batchFilter);
+
+      if (!batch) {
+        return null;
+      }
+
+      const documents = addition.documents.map((document) => {
+        if (
+          document.sessionId !== addition.sessionId ||
+          document.batchId !== addition.batchId
+        ) {
+          throw new Error("Document ownership does not match its batch");
+        }
+
+        return {
+          ...document,
+          blobPathname: createBlobPathname(
+            addition.batchId,
+            document.id,
+            document.fileType,
+          ),
+        };
+      });
+
+      try {
+        await collections.documents.insertMany(documents);
+        const update = await collections.batches.updateOne(
+          { ...batchFilter, totalFiles: batch.totalFiles },
+          {
+            $set: {
+              totalFiles: batch.totalFiles + documents.length,
+              status: "processing",
+            },
+          },
+        );
+
+        if (update.matchedCount !== 1) {
+          throw new Error("The batch changed while documents were being added");
+        }
+      } catch (error) {
+        await collections.documents
+          .deleteMany({
+            sessionId: addition.sessionId,
+            batchId: addition.batchId,
+            id: { $in: documents.map((document) => document.id) },
+          })
+          .catch(() => undefined);
+        throw error;
+      }
+
+      return documents;
     },
 
     findBatchBySession(

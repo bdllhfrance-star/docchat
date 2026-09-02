@@ -3,6 +3,7 @@ import { upload } from "@vercel/blob/client";
 
 import { validateBatchFiles } from "@/lib/uploads/validation";
 import type {
+  AddBatchDocumentsResponse,
   ApiError,
   CreateBatchResponse,
   ReplaceDocumentResponse,
@@ -13,6 +14,7 @@ const uploadConcurrency = 3;
 
 export type ClientUploadStatus =
   | "creating-batch"
+  | "preparing-update"
   | "preparing-replacement"
   | "uploading"
   | "uploaded"
@@ -70,8 +72,13 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Upload failed.";
 }
 
-async function readBatchResponse(response: Response): Promise<CreateBatchResponse> {
-  const body = (await response.json()) as CreateBatchResponse | ApiError;
+async function readBatchResponse(
+  response: Response,
+): Promise<CreateBatchResponse | AddBatchDocumentsResponse> {
+  const body = (await response.json()) as
+    | CreateBatchResponse
+    | AddBatchDocumentsResponse
+    | ApiError;
 
   if (!response.ok) {
     if ("error" in body) {
@@ -159,6 +166,96 @@ async function reportUploadFailure(
   }
 }
 
+type PreparedUpload = {
+  clientId: string;
+  file: File;
+  index: number;
+};
+
+async function uploadPreparedFiles(
+  created: CreateBatchResponse | AddBatchDocumentsResponse,
+  prepared: readonly PreparedUpload[],
+  onUpdate: (update: ClientUploadUpdate) => void,
+  dependencies: ClientUploadDependencies,
+): Promise<ClientUploadOutcome[]> {
+  const serverFiles = new Map(
+    created.files.map((file) => [file.clientId, file]),
+  );
+  const outcomes: ClientUploadOutcome[] = [];
+  let nextIndex = 0;
+
+  async function worker(): Promise<void> {
+    while (nextIndex < prepared.length) {
+      const currentIndex = nextIndex;
+      nextIndex += 1;
+      const current = prepared[currentIndex];
+      const serverFile = serverFiles.get(current.clientId);
+
+      if (!serverFile) {
+        const error = "The server did not return an upload target.";
+        outcomes.push({
+          index: current.index,
+          documentId: "",
+          status: "failed",
+          error,
+        });
+        onUpdate({ index: current.index, status: "failed", error });
+        continue;
+      }
+
+      onUpdate({ index: current.index, status: "uploading", progress: 0 });
+
+      try {
+        await uploadDocumentFile(
+          {
+            batchId: created.batch.id,
+            documentId: serverFile.documentId,
+            uploadPathname: serverFile.uploadPathname,
+          },
+          current.file,
+          (percentage) =>
+            onUpdate({
+              index: current.index,
+              status: "uploading",
+              progress: percentage,
+            }),
+          dependencies,
+        );
+
+        outcomes.push({
+          index: current.index,
+          documentId: serverFile.documentId,
+          status: "uploaded",
+        });
+        onUpdate({ index: current.index, status: "uploaded", progress: 100 });
+      } catch (error) {
+        const message = errorMessage(error);
+        await reportUploadFailure(
+          { batchId: created.batch.id, documentId: serverFile.documentId },
+          dependencies,
+        );
+
+        outcomes.push({
+          index: current.index,
+          documentId: serverFile.documentId,
+          status: "failed",
+          error: message,
+        });
+        onUpdate({ index: current.index, status: "failed", error: message });
+      }
+    }
+  }
+
+  await Promise.all(
+    Array.from(
+      { length: Math.min(uploadConcurrency, prepared.length) },
+      () => worker(),
+    ),
+  );
+
+  return outcomes.sort((left, right) => left.index - right.index);
+}
+
 export async function createAndUploadBatch(
   files: readonly File[],
   onUpdate: (update: ClientUploadUpdate) => void,
@@ -193,82 +290,66 @@ export async function createAndUploadBatch(
     }),
   });
   const created = await readBatchResponse(batchResponse);
-  const serverFiles = new Map(
-    created.files.map((file) => [file.clientId, file]),
-  );
-  const outcomes: ClientUploadOutcome[] = new Array(prepared.length);
-  let nextIndex = 0;
-
-  async function worker(): Promise<void> {
-    while (nextIndex < prepared.length) {
-      const currentIndex = nextIndex;
-      nextIndex += 1;
-      const current = prepared[currentIndex];
-      const serverFile = serverFiles.get(current.clientId);
-
-      if (!serverFile) {
-        const error = "The server did not return an upload target.";
-        outcomes[current.index] = {
-          index: current.index,
-          documentId: "",
-          status: "failed",
-          error,
-        };
-        onUpdate({ index: current.index, status: "failed", error });
-        continue;
-      }
-
-      onUpdate({ index: current.index, status: "uploading", progress: 0 });
-
-      try {
-        await uploadDocumentFile(
-          {
-            batchId: created.batch.id,
-            documentId: serverFile.documentId,
-            uploadPathname: serverFile.uploadPathname,
-          },
-          current.file,
-          (percentage) =>
-            onUpdate({
-              index: current.index,
-              status: "uploading",
-              progress: percentage,
-            }),
-          dependencies,
-        );
-
-        outcomes[current.index] = {
-          index: current.index,
-          documentId: serverFile.documentId,
-          status: "uploaded",
-        };
-        onUpdate({ index: current.index, status: "uploaded", progress: 100 });
-      } catch (error) {
-        const message = errorMessage(error);
-        await reportUploadFailure(
-          { batchId: created.batch.id, documentId: serverFile.documentId },
-          dependencies,
-        );
-
-        outcomes[current.index] = {
-          index: current.index,
-          documentId: serverFile.documentId,
-          status: "failed",
-          error: message,
-        };
-        onUpdate({ index: current.index, status: "failed", error: message });
-      }
-    }
-  }
-
-  await Promise.all(
-    Array.from(
-      { length: Math.min(uploadConcurrency, prepared.length) },
-      () => worker(),
-    ),
+  const outcomes = await uploadPreparedFiles(
+    created,
+    prepared,
+    onUpdate,
+    dependencies,
   );
 
   return { batch: created.batch, uploads: outcomes };
+}
+
+export async function addAndUploadDocuments(
+  batchId: string,
+  additions: readonly { file: File; index: number }[],
+  onUpdate: (update: ClientUploadUpdate) => void,
+  dependencies: ClientUploadDependencies = defaultDependencies,
+): Promise<ClientBatchUploadResult> {
+  if (additions.length === 0) {
+    throw new Error("Select at least one new document.");
+  }
+
+  const validation = validateBatchFiles(additions.map(({ file }) => file));
+
+  if (!validation.isValid) {
+    throw new Error("The new files must pass validation before upload.");
+  }
+
+  const prepared = additions.map(({ file, index }) => ({
+    clientId: dependencies.createId(),
+    file,
+    index,
+  }));
+
+  prepared.forEach(({ index }) =>
+    onUpdate({ index, status: "preparing-update" }),
+  );
+
+  const response = await dependencies.fetch(
+    `/api/batches/${batchId}/documents`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        files: prepared.map(({ clientId, file }) => ({
+          clientId,
+          filename: file.name,
+          size: file.size,
+          mimeType: file.type,
+        })),
+      }),
+    },
+  );
+  const updated = await readBatchResponse(response);
+  const uploads = await uploadPreparedFiles(
+    updated,
+    prepared,
+    onUpdate,
+    dependencies,
+  );
+
+  return { batch: updated.batch, uploads };
 }
 
 export async function replaceAndUploadDocument(

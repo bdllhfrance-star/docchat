@@ -1,7 +1,11 @@
 import type { PutBlobResult } from "@vercel/blob";
 import { describe, expect, test, vi } from "vitest";
 
-import { createAndUploadBatch, replaceAndUploadDocument } from "./client";
+import {
+  addAndUploadDocuments,
+  createAndUploadBatch,
+  replaceAndUploadDocument,
+} from "./client";
 
 const batchId = "9f92701f-4866-45e6-b21f-1be3decc8d7d";
 const clientIds = [
@@ -141,6 +145,47 @@ describe("client batch upload", () => {
       }),
     ).rejects.toThrow("must pass validation");
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("client context update", () => {
+  test("adds new files to the existing batch without re-uploading old files", async () => {
+    const newFile = file("appendix.pdf");
+    const response = batchResponse();
+    response.files = [response.files[0]];
+    const fetchMock = vi.fn().mockResolvedValue(
+      Response.json(response, { status: 201 }),
+    );
+    const upload = vi.fn(async (pathname: string) => blob(pathname));
+    const updates = vi.fn();
+
+    const result = await addAndUploadDocuments(
+      batchId,
+      [{ file: newFile, index: 3 }],
+      updates,
+      {
+        createId: () => clientIds[0],
+        fetch: fetchMock,
+        upload,
+      },
+    );
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      `/api/batches/${batchId}/documents`,
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(upload).toHaveBeenCalledOnce();
+    expect(result.uploads).toEqual([
+      expect.objectContaining({
+        documentId: documentIds[0],
+        index: 3,
+        status: "uploaded",
+      }),
+    ]);
+    expect(updates).toHaveBeenCalledWith({
+      index: 3,
+      status: "preparing-update",
+    });
   });
 });
 

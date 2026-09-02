@@ -141,9 +141,10 @@ lance les tests et vérifie le pipeline localement.
 | --- | --- | --- |
 | US-01 | En tant qu'utilisateur, je sélectionne plusieurs documents en une fois. | Le sélecteur accepte plusieurs fichiers supportés et affiche toute la sélection avant l'upload. |
 | US-02 | Je veux connaître les fichiers non acceptés avant l'upload. | Le type, la taille individuelle et la taille totale sont vérifiés, avec un message par fichier. Cette vérification préliminaire ne signifie pas que le fichier est déjà `ready`. |
-| US-03 | Je lance le traitement de tout le batch avec une seule action. | Un bouton crée le batch et démarre automatiquement les uploads autorisés. |
+| US-03 | Je lance le traitement de tout le batch avec une seule action. | Le bouton `Upload`, placé sous la liste des documents, crée le batch et démarre automatiquement les uploads autorisés. |
+| US-03B | Je modifie ensuite le contexte sans repartir de zéro. | Les nouveaux fichiers s'ajoutent au batch existant, chaque document peut être supprimé individuellement et le bouton devient `Update context`. La liste entière n'est jamais remplacée. |
 | US-04 | Je veux suivre le traitement de chaque fichier. | Chaque fichier affiche `queued`, `uploading`, `validating`, `extracting`, `chunking`, `embedding`, `indexing`, `ready` ou `failed`. |
-| US-05 | Je veux que les autres fichiers continuent lorsqu'un fichier échoue. | Un échec est isolé. Le chat reste bloqué jusqu'à ce que le fichier soit relancé avec succès, remplacé ou supprimé. |
+| US-05 | Je veux que les autres fichiers continuent lorsqu'un fichier échoue. | Un échec est isolé. Le chat reste bloqué jusqu'à ce que le fichier soit relancé avec succès ou supprimé. Un autre fichier peut ensuite être ajouté au même contexte. |
 | US-06 | Je pose une question après la préparation complète du batch. | Le chat est activé seulement s'il existe au moins un document `ready` et qu'aucun document conservé n'est en traitement ou en échec. Tous les documents prêts sont sélectionnés par défaut. |
 | US-07 | Je choisis les documents utilisés pour une question. | Le backend filtre réellement le retrieval par les `documentId` fournis. |
 | US-08 | Je vois la réponse au fur et à mesure. | Le contenu apparaît progressivement sans attendre la réponse LLM complète. |
@@ -206,11 +207,13 @@ Ouverture de l'application
 → création d'une session anonyme
 → écran centré d'ajout de documents
 → sélection et vérification préliminaire
-→ une action pour envoyer le batch
+→ bouton Upload sous la liste pour envoyer le batch
 → traitement et animation indépendante de chaque fichier
 → résolution des éventuels échecs
 → tous les fichiers conservés sont ready
 → activation du chat
+→ ajout ou suppression ultérieure de documents sans remplacer le batch
+→ bouton Update context pour envoyer uniquement les nouveaux fichiers
 → réponse streamée avec sources
 ```
 
@@ -475,6 +478,7 @@ Références par format :
 | Méthode et route | Responsabilité |
 | --- | --- |
 | `POST /api/batches` | Valider le manifeste et créer le batch et ses documents. |
+| `POST /api/batches/:batchId/documents` | Ajouter de nouveaux documents au batch courant après contrôle des limites cumulées. |
 | `POST /api/upload` | Autoriser l'upload Blob et traiter la fin d'upload. |
 | `GET /api/batches/:batchId` | Retourner la progression et les erreurs du batch. |
 | `POST /api/documents/:documentId/retry` | Relancer un document en erreur. |
@@ -829,8 +833,8 @@ intégrés par l'agent principal avant le lancement d'une nouvelle vague.
 | [x] | UPL-04 | ING-01 | Backend | Implémenter `GET /api/batches/:batchId` avec les états et erreurs de chaque fichier, filtrés par session. Le contrat est testé avant son utilisation par l'UI. |
 | [x] | UI-02 | UPL-04 | UI | Afficher la progression par polling borné, une ligne stable par fichier et le libellé réel de chaque opération. Aucun faux pourcentage n'est affiché. |
 | [x] | UI-03 | UI-02 | UI | Animations CSS/SVG manuelles terminées pour sélection, validation, upload réel, extraction, chunking, embeddings, indexation, succès, échec, retry, remplacement et suppression. `prefers-reduced-motion` et les annonces `aria-live` sont couverts par les tests. |
-| [~] | API-02 | ING-01 | Backend | Statut du batch, retry idempotent, remplacement en place via le flux d'upload existant et suppression terminés et testés localement. Le remplacement conserve le `documentId`, recalcule la limite de 50 MiB et nettoie l'ancien Blob et les chunks ; le parcours réel attend le smoke test déployé. |
-| [~] | UI-04 | API-02, UI-03 | UI | `Réessayer`, `Remplacer` et `Supprimer` sont reliés aux routes réelles avec validation locale, progression d'upload, erreurs par document et reprise du polling. Le gate du composer est maintenant relié à l'état `ready` de tous les documents. |
+| [~] | API-02 | ING-01 | Backend | Statut du batch, retry idempotent, ajout de documents au batch courant et suppression terminés et testés localement. L'ajout contrôle les limites cumulées de 10 fichiers et 50 MiB ; la suppression nettoie le Blob, les métadonnées et les chunks. Le parcours réel attend le smoke test déployé. |
+| [~] | UI-04 | API-02, UI-03 | UI | `Réessayer`, `Supprimer`, `Add documents` et `Update context` sont reliés aux routes réelles. Le bouton initial `Upload` reste sous la liste ; aucun contrôle ne remplace toute la sélection. Le gate du composer reste relié à l'état `ready` de tous les documents. |
 | [x] | RAG-03 | DB-01, RAG-02 | Backend/RAG | Recherche vectorielle cosinus, embedding de question, filtres `sessionId`/batch/documents, déduplication et validation défensive terminés. Une fixture temporaire a été indexée, retrouvée par Vector Search avec les trois filtres exacts puis supprimée. |
 | [~] | CHAT-01 | RAG-03 | Backend/RAG | `POST /api/chat`, validations avant stream, contexte dynamique, prompt fondé uniquement sur les documents, refus sans contexte et UI message stream sourcé sont implémentés et testés localement. Une génération réelle `gemini-3.7-flash` a réussi ; le seuil et le parcours complet attendent Atlas. |
 | [~] | UI-05 | UI-04, CHAT-01 | UI | Chat relié à `/api/chat` avec `useChat`, historique `sessionStorage` isolé par batch, annulation et affichage progressif. Le composer ne s'active que lorsque tous les documents sont `ready` ; le parcours réel attend le smoke test Vercel. |

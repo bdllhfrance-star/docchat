@@ -1,5 +1,6 @@
 export type ApiOperation =
   | "batch.create"
+  | "batch.documents.add"
   | "batch.read"
   | "chat.answer"
   | "document.delete"

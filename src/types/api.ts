@@ -58,6 +58,8 @@ export type CreateBatchResponse = BatchStatusResponse & {
   files: CreateBatchFile[];
 };
 
+export type AddBatchDocumentsResponse = CreateBatchResponse;
+
 export type BlobUploadClientPayload = {
   batchId: string;
   documentId: string;

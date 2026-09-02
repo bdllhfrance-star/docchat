@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   CircleEllipsis,
   Clock3,
-  FileUp,
   Files,
   LockKeyhole,
   MessageSquareText,
@@ -29,8 +28,8 @@ import {
   retryDocument,
 } from "@/lib/documents/client";
 import {
+  addAndUploadDocuments,
   createAndUploadBatch,
-  replaceAndUploadDocument,
   type ClientUploadUpdate,
 } from "@/lib/uploads/client";
 import {
@@ -121,7 +120,7 @@ function removeIndexedValue<T>(
 type SelectionResult = ReturnType<typeof validateBatchFiles<File>>;
 type UploadUpdates = Partial<Record<number, ClientUploadUpdate>>;
 type ProcessingDocuments = Partial<Record<number, DocumentSummary>>;
-type DocumentAction = "deleting" | "replacing" | "retrying";
+type DocumentAction = "deleting" | "retrying";
 type DocumentActions = Partial<Record<string, DocumentAction>>;
 type DocumentActionErrors = Partial<Record<string, string>>;
 
@@ -166,11 +165,18 @@ type DocumentsPanelProps = {
   isSelectionLocked: boolean;
   actionErrors: DocumentActionErrors;
   actions: DocumentActions;
+  canAddFromSidebar: boolean;
+  canSubmitChanges: boolean;
+  creationError: string | null;
+  hasContext: boolean;
+  isUploading: boolean;
   onDelete: (index: number, document: DocumentSummary) => void;
+  onOpenPicker: () => void;
   onRemove: (index: number) => void;
-  onReplace: (index: number, document: DocumentSummary) => void;
   onRetry: (document: DocumentSummary) => void;
+  onSubmitChanges: () => void;
   onToggleChatDocument: (documentId: string) => void;
+  pendingFileCount: number;
   processingDocuments: ProcessingDocuments;
   result: SelectionResult;
   selectedChatDocumentIds: readonly string[];
@@ -180,6 +186,7 @@ type DocumentsPanelProps = {
 function UploadState({ update }: { update: ClientUploadUpdate }) {
   if (
     update.status === "creating-batch" ||
+    update.status === "preparing-update" ||
     update.status === "preparing-replacement"
   ) {
     return (
@@ -191,7 +198,9 @@ function UploadState({ update }: { update: ClientUploadUpdate }) {
         <CircleEllipsis size={13} aria-hidden="true" />
         {update.status === "creating-batch"
           ? "Creating batch"
-          : "Preparing replacement"}
+          : update.status === "preparing-update"
+            ? "Preparing context update"
+            : "Preparing replacement"}
       </p>
     );
   }
@@ -266,7 +275,6 @@ type ProcessingStateProps = {
   actionsDisabled: boolean;
   document: DocumentSummary;
   onDelete: () => void;
-  onReplace: () => void;
   onRetry: () => void;
   onToggleChatDocument: () => void;
   selectedForChat: boolean;
@@ -279,7 +287,6 @@ function ProcessingState({
   actionsDisabled,
   document,
   onDelete,
-  onReplace,
   onRetry,
   onToggleChatDocument,
   selectedForChat,
@@ -343,20 +350,6 @@ function ProcessingState({
         <p className="font-medium">Processing failed</p>
         <p>{document.error?.message ?? "The document could not be processed."}</p>
         <div className="mt-2 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={onReplace}
-            disabled={actionsDisabled}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-wait disabled:opacity-50"
-            aria-label={`Replace ${document.filename}`}
-          >
-            {action === "replacing" ? (
-              <FileUp className="document-replace-once" size={13} aria-hidden="true" />
-            ) : (
-              <FileUp size={13} aria-hidden="true" />
-            )}
-            {action === "replacing" ? "Replacing" : "Replace"}
-          </button>
           {document.canRetry ? (
             <button
               type="button"
@@ -415,12 +408,19 @@ function ProcessingState({
 function DocumentsPanel({
   actionErrors,
   actions,
+  canAddFromSidebar,
+  canSubmitChanges,
+  creationError,
+  hasContext,
   isSelectionLocked,
+  isUploading,
   onDelete,
+  onOpenPicker,
   onRemove,
-  onReplace,
   onRetry,
+  onSubmitChanges,
   onToggleChatDocument,
+  pendingFileCount,
   processingDocuments,
   result,
   selectedChatDocumentIds,
@@ -529,15 +529,17 @@ function DocumentsPanel({
                         {formatFileSize(file.size)}
                       </p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => onRemove(index)}
-                      disabled={isSelectionLocked}
-                      className="grid size-8 shrink-0 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
-                      aria-label={`Remove ${file.name}`}
-                    >
-                      <Trash2 size={15} aria-hidden="true" />
-                    </button>
+                    {!processingDocument ? (
+                      <button
+                        type="button"
+                        onClick={() => onRemove(index)}
+                        disabled={isSelectionLocked}
+                        className="grid size-8 shrink-0 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent"
+                        aria-label={`Remove ${file.name}`}
+                      >
+                        <Trash2 size={15} aria-hidden="true" />
+                      </button>
+                    ) : null}
                   </div>
 
                   {errors.length > 0 ? (
@@ -557,7 +559,6 @@ function DocumentsPanel({
                       actionsDisabled={actionsDisabled}
                       document={processingDocument}
                       onDelete={() => onDelete(index, processingDocument)}
-                      onReplace={() => onReplace(index, processingDocument)}
                       onRetry={() => onRetry(processingDocument)}
                       onToggleChatDocument={() =>
                         onToggleChatDocument(processingDocument.id)
@@ -581,6 +582,53 @@ function DocumentsPanel({
         )}
       </div>
 
+      {hasFiles ? (
+        <div className="shrink-0 border-t border-slate-200 bg-white/80 px-4 py-4 sm:px-5">
+          {creationError ? (
+            <p
+              className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs leading-5 text-red-800"
+              role="alert"
+            >
+              {creationError}
+            </p>
+          ) : null}
+          {pendingFileCount > 0 ? (
+            <button
+              type="button"
+              onClick={onSubmitChanges}
+              disabled={!canSubmitChanges}
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600"
+            >
+              <Upload size={16} aria-hidden="true" />
+              {isUploading
+                ? hasContext
+                  ? "Updating context"
+                  : "Uploading documents"
+                : hasContext
+                  ? "Update context"
+                  : "Upload"}
+            </button>
+          ) : canAddFromSidebar ? (
+            <button
+              type="button"
+              onClick={onOpenPicker}
+              disabled={isSelectionLocked}
+              className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Plus size={16} aria-hidden="true" />
+              Add documents
+            </button>
+          ) : null}
+          <p className="mt-2 text-center text-xs leading-5 text-slate-500">
+            {pendingFileCount > 0
+              ? `${pendingFileCount} new ${pendingFileCount === 1 ? "document" : "documents"} waiting to be sent.`
+              : canAddFromSidebar
+                ? "Add or remove documents without replacing the full context."
+                : "Document processing is reflected here in real time."}
+          </p>
+        </div>
+      ) : null}
+
       <div className="hidden shrink-0 border-t border-slate-200 px-5 py-5 lg:block">
         <p className="text-xs font-medium text-slate-700">Session limits</p>
         <dl className="mt-3 space-y-2 text-xs text-slate-500">
@@ -603,148 +651,90 @@ function DocumentsPanel({
 }
 
 type DocumentSelectorProps = {
-  creationError: string | null;
   fileCount: number;
-  hasUploadStarted: boolean;
-  inputRef: React.RefObject<HTMLInputElement | null>;
   isDragging: boolean;
   isSelectionLocked: boolean;
-  isUploading: boolean;
-  isValid: boolean;
-  onChange: (event: ChangeEvent<HTMLInputElement>) => void;
   onDragEnter: (event: DragEvent<HTMLDivElement>) => void;
   onDragLeave: (event: DragEvent<HTMLDivElement>) => void;
   onDragOver: (event: DragEvent<HTMLDivElement>) => void;
   onDrop: (event: DragEvent<HTMLDivElement>) => void;
   onOpenPicker: () => void;
-  onUpload: () => void;
 };
 
 function DocumentSelector({
-  creationError,
   fileCount,
-  hasUploadStarted,
-  inputRef,
   isDragging,
   isSelectionLocked,
-  isUploading,
-  isValid,
-  onChange,
   onDragEnter,
   onDragLeave,
   onDragOver,
   onDrop,
   onOpenPicker,
-  onUpload,
 }: DocumentSelectorProps) {
   const hasFiles = fileCount > 0;
-  const canUpload = isValid && !isUploading && !hasUploadStarted;
 
   return (
     <section
-      className="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col items-center justify-center overflow-y-auto px-4 py-10 text-center sm:px-8 sm:py-14"
+      className="flex min-h-0 w-full flex-1 overflow-y-auto px-4 py-8 text-center sm:px-8 sm:py-10"
       aria-labelledby="workspace-title"
     >
-      <div className="grid size-12 place-items-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm">
-        <MessageSquareText size={22} strokeWidth={1.7} aria-hidden="true" />
-      </div>
-      <h1
-        id="workspace-title"
-        className="mt-5 text-balance text-2xl font-semibold tracking-[-0.025em] text-slate-950 sm:text-3xl"
-      >
-        {hasFiles ? "Review your documents" : "Start with your documents"}
-      </h1>
-      <p className="mt-3 max-w-lg text-pretty text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">
-        {hasFiles
-          ? "Check every file before continuing. Replacing the selection will remove the current list."
-          : "Add the files you want to explore. Chat becomes available only after every document is processed and indexed."}
-      </p>
-
-      <div
-        className={`mt-7 w-full rounded-2xl border border-dashed bg-white px-5 py-7 shadow-[0_1px_2px_rgba(15,23,42,0.03)] sm:px-8 sm:py-9 ${
-          isDragging
-            ? "border-slate-700 bg-slate-50"
-            : "border-slate-300"
-        }`}
-        onDragEnter={onDragEnter}
-        onDragLeave={onDragLeave}
-        onDragOver={onDragOver}
-        onDrop={onDrop}
-        role="group"
-        aria-label="Document drop zone"
-        aria-disabled={isSelectionLocked}
-      >
-        <div className="mx-auto grid size-11 place-items-center rounded-full bg-slate-100 text-slate-700">
-          <Upload size={20} strokeWidth={1.8} aria-hidden="true" />
+      <div className="mx-auto flex w-full max-w-3xl flex-col items-center justify-center">
+        <div className="grid size-12 place-items-center rounded-2xl border border-slate-200 bg-white text-slate-700 shadow-sm">
+          <MessageSquareText size={22} strokeWidth={1.7} aria-hidden="true" />
         </div>
-        <p className="mt-4 text-sm font-semibold text-slate-900">
-          {isDragging
-            ? "Drop to replace the selection"
-            : hasFiles
-              ? `${fileCount} ${fileCount === 1 ? "file" : "files"} selected`
-              : "Add up to 10 documents at once"}
-        </p>
-        <p className="mx-auto mt-1.5 max-w-md text-xs leading-5 text-slate-500 sm:text-sm">
-          {hasFiles
-            ? "Choose or drop another batch to replace your current selection."
-            : "Drag and drop your files here, or select them from your device."}
-        </p>
-        <input
-          ref={inputRef}
-          type="file"
-          multiple
-          accept={acceptedFileTypes}
-          onChange={onChange}
-          disabled={isSelectionLocked}
-          className="sr-only"
-          aria-label="Select documents from device"
-        />
-        <button
-          type="button"
-          onClick={onOpenPicker}
-          disabled={isSelectionLocked}
-          className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:bg-slate-300"
+        <h1
+          id="workspace-title"
+          className="mt-5 text-balance text-2xl font-semibold tracking-[-0.025em] text-slate-950 sm:text-3xl"
         >
-          <Plus size={16} aria-hidden="true" />
-          {hasFiles ? "Replace selection" : "Choose documents"}
-        </button>
-        <p className="mt-4 text-xs leading-5 text-slate-400">
-          {supportedFormats} · 10 MiB per file · 50 MiB per batch
+          {hasFiles ? "Review your documents" : "Start with your documents"}
+        </h1>
+        <p className="mt-3 max-w-xl text-pretty text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">
+          {hasFiles
+            ? "Add more documents if needed, then use the action under the document list. Existing files stay in your context."
+            : "Add the files you want to explore. Chat becomes available only after every document is processed and indexed."}
         </p>
-      </div>
 
-      {hasFiles ? (
-        <div className="mt-4 w-full" aria-live="polite">
-          {creationError ? (
-            <p
-              className="mx-auto mb-3 max-w-lg rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm leading-5 text-red-800"
-              role="alert"
-            >
-              {creationError}
-            </p>
-          ) : null}
+        <div
+          className={`mt-7 w-full rounded-2xl border border-dashed bg-white px-5 py-7 shadow-[0_1px_2px_rgba(15,23,42,0.03)] sm:px-8 sm:py-9 ${
+            isDragging ? "border-slate-700 bg-slate-50" : "border-slate-300"
+          }`}
+          onDragEnter={onDragEnter}
+          onDragLeave={onDragLeave}
+          onDragOver={onDragOver}
+          onDrop={onDrop}
+          role="group"
+          aria-label="Document drop zone"
+          aria-disabled={isSelectionLocked}
+        >
+          <div className="mx-auto grid size-11 place-items-center rounded-full bg-slate-100 text-slate-700">
+            <Upload size={20} strokeWidth={1.8} aria-hidden="true" />
+          </div>
+          <p className="mt-4 text-sm font-semibold text-slate-900">
+            {isDragging
+              ? "Drop to add documents"
+              : hasFiles
+                ? "Add more documents"
+                : "Add up to 10 documents at once"}
+          </p>
+          <p className="mx-auto mt-1.5 max-w-md text-xs leading-5 text-slate-500 sm:text-sm">
+            {hasFiles
+              ? "New files are added to the current list. Nothing is replaced."
+              : "Drag and drop your files here, or select them from your device."}
+          </p>
           <button
             type="button"
-            onClick={onUpload}
-            disabled={!canUpload}
-            className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-600"
+            onClick={onOpenPicker}
+            disabled={isSelectionLocked}
+            className="mt-5 inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-slate-950 px-4 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
-            <Upload size={16} aria-hidden="true" />
-            {isUploading
-              ? "Uploading documents"
-              : hasUploadStarted
-                ? "Upload attempt finished"
-                : "Upload and process"}
+            <Plus size={16} aria-hidden="true" />
+            {hasFiles ? "Add documents" : "Choose documents"}
           </button>
-          <p className="mt-2 text-xs leading-5 text-slate-500">
-            {isUploading
-              ? "Upload in progress. Keep this page open."
-              : hasUploadStarted
-                ? "The file list shows the latest real upload result."
-                : "Files are selected locally and have not been uploaded."}
+          <p className="mt-4 text-xs leading-5 text-slate-400">
+            {supportedFormats} · 10 MiB per file · 50 MiB per session
           </p>
         </div>
-      ) : null}
+      </div>
     </section>
   );
 }
@@ -753,6 +743,7 @@ type DisabledComposerProps = {
   batch: BatchSummary | null;
   hasFiles: boolean;
   isUploading: boolean;
+  pendingFileCount: number;
   uploadUpdates: UploadUpdates;
 };
 
@@ -760,6 +751,7 @@ function DisabledComposer({
   batch,
   hasFiles,
   isUploading,
+  pendingFileCount,
   uploadUpdates,
 }: DisabledComposerProps) {
   const updates = Object.values(uploadUpdates);
@@ -774,6 +766,8 @@ function DisabledComposer({
 
   if (isUploading) {
     reason = "Documents are uploading. Chat remains unavailable.";
+  } else if (pendingFileCount > 0) {
+    reason = "Upload the new documents to update the context before chatting.";
   } else if (hasFailedUpload || hasFailedProcessing) {
     reason = "A document failed. Chat remains unavailable.";
   } else if (batch?.status === "ready") {
@@ -825,11 +819,6 @@ function DisabledComposer({
 
 export function DocumentSelectionWorkspace() {
   const inputRef = useRef<HTMLInputElement>(null);
-  const replacementInputRef = useRef<HTMLInputElement>(null);
-  const replacementTargetRef = useRef<{
-    document: DocumentSummary;
-    index: number;
-  } | null>(null);
   const uploadInFlightRef = useRef(false);
   const documentActionInFlightRef = useRef(false);
   const pollingAbortRef = useRef<AbortController | null>(null);
@@ -867,8 +856,26 @@ export function DocumentSelectionWorkspace() {
       }),
     ) as ProcessingDocuments;
   }, [batch, documentIdsByIndex]);
-  const hasUploadStarted = Object.keys(uploadUpdates).length > 0;
-  const isSelectionLocked = isUploading || hasUploadStarted;
+  const pendingFiles = useMemo(
+    () =>
+      selectedFiles.flatMap((file, index) =>
+        documentIdsByIndex[index] ? [] : [{ file, index }],
+      ),
+    [documentIdsByIndex, selectedFiles],
+  );
+  const isBatchProcessing = Boolean(
+    batch?.status === "processing" ||
+      batch?.documents.some(
+        (document) =>
+          document.status !== "ready" && document.status !== "failed",
+      ),
+  );
+  const isSelectionLocked =
+    isUploading || isBatchProcessing || Object.keys(documentActions).length > 0;
+  const canSubmitChanges =
+    pendingFiles.length > 0 &&
+    validationResult.isValid &&
+    !isSelectionLocked;
   const readyDocumentIds = useMemo(
     () =>
       batch?.status === "ready" &&
@@ -878,7 +885,8 @@ export function DocumentSelectionWorkspace() {
         : [],
     [batch],
   );
-  const canChat = batch !== null && readyDocumentIds.length > 0;
+  const canChat =
+    batch !== null && pendingFiles.length === 0 && readyDocumentIds.length > 0;
   const excludedChatDocumentIdSet = new Set(excludedChatDocumentIds);
   const chatDocumentIds = readyDocumentIds.filter(
     (id) => !excludedChatDocumentIdSet.has(id),
@@ -925,29 +933,24 @@ export function DocumentSelectionWorkspace() {
     });
   }
 
-  function replaceSelection(files: FileList | readonly File[]): void {
-    if (uploadInFlightRef.current || hasUploadStarted) {
+  function addToSelection(files: FileList | readonly File[]): void {
+    if (isSelectionLocked) {
       return;
     }
 
-    setSelectedFiles(Array.from(files));
+    setSelectedFiles((current) => [...current, ...Array.from(files)]);
     setCreationError(null);
-    setUploadUpdates({});
-    setBatch(null);
-    setDocumentIdsByIndex({});
-    setDocumentActionErrors({});
-    setExcludedChatDocumentIds([]);
   }
 
   function handleInputChange(event: ChangeEvent<HTMLInputElement>): void {
-    replaceSelection(event.target.files ?? []);
+    addToSelection(event.target.files ?? []);
     event.target.value = "";
   }
 
   function handleDragOver(event: DragEvent<HTMLDivElement>): void {
     event.preventDefault();
 
-    if (uploadInFlightRef.current || hasUploadStarted) {
+    if (isSelectionLocked) {
       event.dataTransfer.dropEffect = "none";
       return;
     }
@@ -959,7 +962,7 @@ export function DocumentSelectionWorkspace() {
   function handleDragEnter(event: DragEvent<HTMLDivElement>): void {
     event.preventDefault();
 
-    if (uploadInFlightRef.current || hasUploadStarted) {
+    if (isSelectionLocked) {
       return;
     }
 
@@ -980,7 +983,7 @@ export function DocumentSelectionWorkspace() {
   function handleDrop(event: DragEvent<HTMLDivElement>): void {
     event.preventDefault();
 
-    if (uploadInFlightRef.current || hasUploadStarted) {
+    if (isSelectionLocked) {
       return;
     }
 
@@ -990,11 +993,11 @@ export function DocumentSelectionWorkspace() {
       return;
     }
 
-    replaceSelection(event.dataTransfer.files);
+    addToSelection(event.dataTransfer.files);
   }
 
   function handleRemove(indexToRemove: number): void {
-    if (uploadInFlightRef.current || hasUploadStarted) {
+    if (isSelectionLocked || documentIdsByIndex[indexToRemove]) {
       return;
     }
 
@@ -1002,11 +1005,10 @@ export function DocumentSelectionWorkspace() {
       files.filter((_, index) => index !== indexToRemove),
     );
     setCreationError(null);
-    setUploadUpdates({});
-    setBatch(null);
-    setDocumentIdsByIndex({});
-    setDocumentActionErrors({});
-    setExcludedChatDocumentIds([]);
+    setUploadUpdates((current) => removeIndexedValue(current, indexToRemove));
+    setDocumentIdsByIndex((current) =>
+      removeIndexedValue(current, indexToRemove),
+    );
   }
 
   function handleToggleChatDocument(documentId: string): void {
@@ -1021,111 +1023,6 @@ export function DocumentSelectionWorkspace() {
 
       return selectedCount === 1 ? current : [...current, documentId];
     });
-  }
-
-  function openReplacementPicker(
-    index: number,
-    document: DocumentSummary,
-  ): void {
-    if (documentActionInFlightRef.current || document.status !== "failed") {
-      return;
-    }
-
-    replacementTargetRef.current = { document, index };
-    replacementInputRef.current?.click();
-  }
-
-  async function handleReplacementChange(
-    event: ChangeEvent<HTMLInputElement>,
-  ): Promise<void> {
-    const replacementFile = event.target.files?.[0];
-    const target = replacementTargetRef.current;
-    event.target.value = "";
-    replacementTargetRef.current = null;
-
-    if (!replacementFile || !target || !batch) {
-      return;
-    }
-
-    const nextFiles = selectedFiles.map((file, index) =>
-      index === target.index ? replacementFile : file,
-    );
-    const replacementValidation = validateBatchFiles(nextFiles);
-    const validationMessages = [
-      ...replacementValidation.errors.map(
-        (error) => batchErrorMessages[error],
-      ),
-      ...(replacementValidation.files[target.index]?.errors.map(
-        (error) => fileErrorMessages[error],
-      ) ?? []),
-    ];
-
-    if (!replacementValidation.isValid) {
-      setDocumentActionError(
-        target.document.id,
-        [...new Set(validationMessages)].join(" ") ||
-          "The replacement file is invalid.",
-      );
-      return;
-    }
-
-    documentActionInFlightRef.current = true;
-    setDocumentActionError(target.document.id);
-    setDocumentActions({ [target.document.id]: "replacing" });
-
-    try {
-      const result = await replaceAndUploadDocument(
-        target.document.id,
-        batch.id,
-        replacementFile,
-        target.index,
-        (update) => {
-          setUploadUpdates((current) => ({
-            ...current,
-            [update.index]: update,
-          }));
-        },
-      );
-      setSelectedFiles(nextFiles);
-      setBatch((current) => {
-        if (!current) {
-          return current;
-        }
-
-        const documents = current.documents.map((document) =>
-          document.id === result.document.id ? result.document : document,
-        );
-
-        return {
-          ...current,
-          documents,
-          status: getBatchStatusFromDocuments(documents),
-        };
-      });
-
-      if (result.status === "failed") {
-        setUploadUpdates((current) => {
-          const next = { ...current };
-          delete next[target.index];
-          return next;
-        });
-      }
-
-      startBatchPolling(batch.id);
-    } catch (error) {
-      setUploadUpdates((current) => {
-        const next = { ...current };
-        delete next[target.index];
-        return next;
-      });
-      setDocumentActionError(
-        target.document.id,
-        error instanceof Error ? error.message : "The replacement failed.",
-      );
-    } finally {
-      documentActionInFlightRef.current = false;
-      setDocumentActions({});
-    }
   }
 
   async function handleRetryDocument(
@@ -1229,40 +1126,60 @@ export function DocumentSelectionWorkspace() {
   }
 
   async function handleUpload(): Promise<void> {
-    if (!validationResult.isValid || uploadInFlightRef.current) {
+    if (!canSubmitChanges || uploadInFlightRef.current) {
       return;
     }
 
     uploadInFlightRef.current = true;
     setIsUploading(true);
     setCreationError(null);
-    setUploadUpdates({});
 
     try {
-      const result = await createAndUploadBatch(selectedFiles, (update) => {
+      const updateProgress = (update: ClientUploadUpdate) => {
         setUploadUpdates((current) => ({
           ...current,
           [update.index]: update,
         }));
-      });
+      };
+      const result = batch
+        ? await addAndUploadDocuments(
+            batch.id,
+            pendingFiles,
+            updateProgress,
+          )
+        : await createAndUploadBatch(selectedFiles, updateProgress);
+
       setBatch(result.batch);
-      setDocumentIdsByIndex(
-        Object.fromEntries(
+      setDocumentIdsByIndex((current) => ({
+        ...(batch ? current : {}),
+        ...Object.fromEntries(
           result.uploads
             .filter((upload) => upload.documentId)
             .map((upload) => [upload.index, upload.documentId]),
         ),
-      );
+      }));
 
       startBatchPolling(result.batch.id);
     } catch (error) {
       const message =
         error instanceof Error
           ? error.message
-          : "The batch could not be created.";
+          : batch
+            ? "The context could not be updated."
+            : "The batch could not be created.";
 
-      setUploadUpdates({});
-      setCreationError(`Batch creation failed: ${message}`);
+      setUploadUpdates((current) => {
+        const next = { ...current };
+
+        for (const { index } of pendingFiles) {
+          delete next[index];
+        }
+
+        return next;
+      });
+      setCreationError(
+        `${batch ? "Context update" : "Upload"} failed: ${message}`,
+      );
     } finally {
       uploadInFlightRef.current = false;
       setIsUploading(false);
@@ -1272,25 +1189,34 @@ export function DocumentSelectionWorkspace() {
   return (
     <main className="grid min-h-0 min-w-0 w-full flex-1 grid-rows-[auto_1fr] lg:grid-cols-[280px_minmax(0,1fr)] lg:grid-rows-1 lg:overflow-hidden">
       <input
-        ref={replacementInputRef}
+        ref={inputRef}
         type="file"
+        multiple
         accept={acceptedFileTypes}
-        onChange={handleReplacementChange}
+        onChange={handleInputChange}
+        disabled={isSelectionLocked}
         className="sr-only"
-        aria-label="Select replacement document"
+        aria-label="Select documents from device"
       />
       <DocumentsPanel
         actionErrors={documentActionErrors}
         actions={documentActions}
+        canAddFromSidebar={canChat}
+        canSubmitChanges={canSubmitChanges}
+        creationError={creationError}
+        hasContext={batch !== null}
         isSelectionLocked={isSelectionLocked}
+        isUploading={isUploading}
         onDelete={handleDeleteDocument}
+        onOpenPicker={() => inputRef.current?.click()}
         processingDocuments={processingDocuments}
         result={validationResult}
         uploadUpdates={uploadUpdates}
         onRemove={handleRemove}
-        onReplace={openReplacementPicker}
         onRetry={handleRetryDocument}
+        onSubmitChanges={handleUpload}
         onToggleChatDocument={handleToggleChatDocument}
+        pendingFileCount={pendingFiles.length}
         selectedChatDocumentIds={chatDocumentIds}
       />
       <section
@@ -1306,26 +1232,20 @@ export function DocumentSelectionWorkspace() {
         ) : (
           <>
             <DocumentSelector
-              creationError={creationError}
               fileCount={validationResult.files.length}
-              hasUploadStarted={hasUploadStarted}
-              inputRef={inputRef}
               isDragging={isDragging}
               isSelectionLocked={isSelectionLocked}
-              isUploading={isUploading}
-              isValid={validationResult.isValid}
-              onChange={handleInputChange}
               onDragEnter={handleDragEnter}
               onDragLeave={handleDragLeave}
               onDragOver={handleDragOver}
               onDrop={handleDrop}
               onOpenPicker={() => inputRef.current?.click()}
-              onUpload={handleUpload}
             />
             <DisabledComposer
               batch={batch}
               hasFiles={validationResult.files.length > 0}
               isUploading={isUploading}
+              pendingFileCount={pendingFiles.length}
               uploadUpdates={uploadUpdates}
             />
           </>
