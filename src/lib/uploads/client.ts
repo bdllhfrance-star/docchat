@@ -10,7 +10,7 @@ import type {
 } from "@/types/api";
 import type { DocumentSummary } from "@/types/documents";
 
-const uploadConcurrency = 3;
+const uploadConcurrency = 2;
 
 export type ClientUploadStatus =
   | "creating-batch"

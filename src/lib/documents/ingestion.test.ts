@@ -157,6 +157,8 @@ describe("uploaded document ingestion", () => {
     expect(entry).toContain('"event":"document.ingestion.completed"');
     expect(entry).toContain('"fileType":"pdf"');
     expect(entry).toContain('"requestId":"request-1"');
+    expect(entry).toContain('"stageDurationsMs"');
+    expect(entry).toContain('"totalDurationMs"');
     expect(entry).not.toContain("First page text");
     expect(entry).not.toContain(document.sessionId);
     expect(logger.warn).not.toHaveBeenCalled();

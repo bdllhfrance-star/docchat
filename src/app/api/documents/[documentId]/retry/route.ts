@@ -10,6 +10,7 @@ import { requireSession } from "@/lib/session-request";
 import { downloadPrivateDocument } from "@/lib/uploads/blob-storage";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 type RouteContext = {
   params: Promise<{ documentId: string }>;

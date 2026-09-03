@@ -9,6 +9,7 @@ import { checkRequestRateLimit } from "@/lib/rate-limit";
 import { requireSession } from "@/lib/session-request";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 export async function POST(request: Request): Promise<Response> {
   const requestId = randomUUID();

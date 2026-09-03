@@ -60,6 +60,18 @@ export type DocumentIngestionResult =
   | { outcome: "failed"; document: DocumentRecord }
   | { outcome: "skipped" };
 
+type IngestionStage =
+  | "download"
+  | "extract"
+  | "chunk"
+  | "embed"
+  | "index";
+
+type IngestionTiming = {
+  stageDurationsMs: Partial<Record<IngestionStage, number>>;
+  totalDurationMs: number;
+};
+
 class IngestionStateError extends Error {
   readonly code = "INGESTION_STATE_CONFLICT";
 }
@@ -134,6 +146,7 @@ function logIngestion(
   document: DocumentRecord,
   dependencies: DocumentIngestionDependencies,
   outcome: "ready" | "failed",
+  timing: IngestionTiming,
   errorCode?: string,
 ): void {
   const entry = JSON.stringify({
@@ -148,6 +161,7 @@ function logIngestion(
     documentId: document.id,
     fileType: document.fileType,
     outcome,
+    ...timing,
     ...(errorCode ? { errorCode } : {}),
   });
 
@@ -163,10 +177,30 @@ export async function ingestUploadedDocument(
   }
 
   const documentOwnership = ownership(document);
+  const ingestionStartedAt = Date.now();
+  const stageDurationsMs: Partial<Record<IngestionStage, number>> = {};
+  let activeStage: IngestionStage = "download";
+  let stageStartedAt = ingestionStartedAt;
+
+  const finishStage = (nextStage?: IngestionStage): void => {
+    const finishedAt = Date.now();
+    stageDurationsMs[activeStage] = finishedAt - stageStartedAt;
+
+    if (nextStage) {
+      activeStage = nextStage;
+      stageStartedAt = finishedAt;
+    }
+  };
+
+  const timing = (): IngestionTiming => ({
+    stageDurationsMs,
+    totalDurationMs: Date.now() - ingestionStartedAt,
+  });
 
   try {
     const parser = getDocumentParser(document.fileType);
     const content = await dependencies.loadDocument(document);
+    finishStage("extract");
     const extracting = await dependencies.repository.transitionDocumentStatus(
       documentOwnership,
       "validating",
@@ -178,6 +212,7 @@ export async function ingestUploadedDocument(
     }
 
     const blocks = await (dependencies.extract ?? parser.extract)(content);
+    finishStage("chunk");
     await moveTo(
       dependencies.repository,
       documentOwnership,
@@ -186,6 +221,7 @@ export async function ingestUploadedDocument(
     );
 
     const chunks = (dependencies.chunk ?? chunkDocumentBlocks)(blocks);
+    finishStage("embed");
     await moveTo(
       dependencies.repository,
       documentOwnership,
@@ -194,6 +230,7 @@ export async function ingestUploadedDocument(
     );
 
     const embedded = await (dependencies.embed ?? embedDocumentChunks)(chunks);
+    finishStage("index");
     await moveTo(
       dependencies.repository,
       documentOwnership,
@@ -217,9 +254,11 @@ export async function ingestUploadedDocument(
       );
     }
 
-    logIngestion(ready, dependencies, "ready");
+    finishStage();
+    logIngestion(ready, dependencies, "ready", timing());
     return { outcome: "ready", document: ready };
   } catch (error) {
+    finishStage();
     const failure = processingFailure(error);
     const failed = await dependencies.repository.failDocumentProcessing({
       ...documentOwnership,
@@ -227,7 +266,7 @@ export async function ingestUploadedDocument(
     });
 
     if (failed) {
-      logIngestion(failed, dependencies, "failed", failure.code);
+      logIngestion(failed, dependencies, "failed", timing(), failure.code);
     }
 
     return failed

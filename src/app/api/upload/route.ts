@@ -11,6 +11,7 @@ import { requireSession } from "@/lib/session-request";
 import { downloadPrivateDocument } from "@/lib/uploads/blob-storage";
 
 export const runtime = "nodejs";
+export const maxDuration = 300;
 
 export async function POST(request: Request): Promise<Response> {
   const requestId = randomUUID();

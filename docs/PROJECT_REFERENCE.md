@@ -950,7 +950,7 @@ du pipeline P0.
 | État | ID | Dépend de | Responsable | Tâche et condition de fin |
 | --- | --- | --- | --- | --- |
 | [ ] | FIN-01 | GATE-02, GATE-03 | UI/QA | Vérifier responsive 320 px/desktop, clavier, focus, contrastes, lecteur d'écran et réduction de mouvement sur tout le parcours. |
-| [ ] | FIN-02 | GATE-02 | Principal/Backend | Vérifier timeouts, annulation, concurrence 2, limites de payload et durées par étape. Optimiser uniquement un défaut mesuré. |
+| [x] | FIN-02 | GATE-02 | Principal/Backend | Les routes longues déclarent une durée maximale Vercel de 300 s, les appels externes et lectures de body restent bornés, l'annulation est propagée, les uploads navigateur et embeddings sont limités à deux appels simultanés, et les logs d'ingestion exposent les durées par étape sans contenu utilisateur. Aucun test de payload maximal n'est ajouté : les limites sont déjà validées par les tests unitaires et l'upload direct évite le body serverless. |
 | [ ] | FIN-03 | GATE-02 | Documentation | Compléter README : architecture, API, variables, index Atlas, limites, sécurité, choix de persistance, absence de LangChain, tests et évaluation. |
 | [ ] | FIN-04 | FIN-01, FIN-02, FIN-03 | Principal | Exécuter `pnpm lint`, `pnpm typecheck`, `pnpm test` et `pnpm build` dans un checkout propre. Toutes les commandes réussissent. |
 | [ ] | FIN-05 | FIN-04 | Principal | Configurer la production Vercel, Atlas, Blob, Gemini et Upstash avec secrets serveur et régions confirmées. Aucun secret n'entre dans Git. |
@@ -1179,7 +1179,7 @@ Le projet est terminé uniquement lorsque :
 | 2026-09-02 | Bloquer le chat jusqu'à ce que chaque fichier conservé soit `ready`. |
 | 2026-09-02 | Utiliser une UI sobre avec des animations CSS/SVG manuelles et spécifiques à chaque opération. |
 | 2026-09-02 | Conserver trois limites indépendantes : 10 fichiers, 10 MiB par fichier et 50 MiB par batch. |
-| 2026-09-02 | Envoyer les fichiers directement vers Blob privé avec une seule action utilisateur et une concurrence navigateur limitée à trois. |
+| 2026-09-02 | Envoyer les fichiers directement vers Blob privé avec une seule action utilisateur et une concurrence navigateur limitée à deux. |
 | 2026-09-02 | Limiter le parcours PDF initial au texte natif avec `pdf-parse` 2.4.5 ; les PDF scannés sont refusés explicitement sans OCR. |
 | 2026-09-02 | Conserver provisoirement un PDF partiellement extractible si au moins une page contient du texte ; les pages sans texte sont ignorées jusqu'à la révision de cette règle. |
 | 2026-09-02 | Adapter le contexte à `gemini-3.7-flash` : 1 048 576 tokens d'entrée, 65 536 tokens de sortie, niveau `medium` et aucun plafond fixe de chunks. |
@@ -1205,4 +1205,5 @@ Le projet est terminé uniquement lorsque :
 | 2026-09-03 | Afficher les détails de citation dans un popover ancré au marqueur plutôt qu'en dessous de la réponse, et remplacer le spinner générique du chat par le logo Smartly.ai animé pendant la recherche et la génération. |
 | 2026-09-03 | Distinguer sans classifieur supplémentaire les échanges sociaux, l'aide publique, la date système sûre, les demandes internes interdites et les demandes potentiellement documentaires. Préserver le raisonnement complet de Gemini sur les documents, tout en séparant faits cités, inférences et contexte général et en redirigeant les sujets externes. |
 | 2026-09-03 | Lorsqu'un fournisseur échoue après le début du stream, afficher une erreur exploitable et journaliser uniquement un code sûr. Le quota gratuit journalier Gemini observé pour `gemini-3.7-flash` est une limite réelle du déploiement de démonstration, pas une erreur RAG. |
+| 2026-09-03 | Borner explicitement upload, retry et chat à 300 s, soit la limite Vercel Hobby avec Fluid Compute vérifiée ce jour, limiter l'upload navigateur à deux fichiers simultanés et journaliser les durées download/extract/chunk/embed/index. Ne pas introduire de queue sans timeout réellement observé. |
 | 2026-09-03 | Confier à Gemini la rédaction de toutes les réponses, y compris les échanges sociaux, l'aide publique, la date et les refus de sécurité. Le routeur local ne produit plus de texte : il limite son rôle au choix du retrieval et à l'injection de contexte système fiable. Chaque message consomme donc une génération Gemini. |
