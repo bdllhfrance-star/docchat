@@ -13,6 +13,7 @@ import {
   getVectorRetrievalLimit,
 } from "@/lib/chat/grounding";
 import type { ChatStreamInput } from "@/lib/chat/stream";
+import { classifyChatTurn } from "@/lib/chat/turn-mode";
 import { EmbeddingError } from "@/lib/rag/embeddings";
 import {
   type RetrievedChunk,
@@ -243,13 +244,14 @@ export async function handleChatRequest(
       );
     }
 
-    const documentTokenBudget = getChatDocumentTokenBudget(
-      parsed.history,
-      parsed.message,
-    );
+    const mode = classifyChatTurn(parsed.message);
+    const documentTokenBudget =
+      mode === "grounded"
+        ? getChatDocumentTokenBudget(parsed.history, parsed.message)
+        : 0;
     const retrievalLimit = getVectorRetrievalLimit(documentTokenBudget);
     const candidates =
-      retrievalLimit === 0
+      mode === "conversation" || retrievalLimit === 0
         ? []
         : await dependencies.retrieveChunks({
             sessionId,
@@ -269,6 +271,7 @@ export async function handleChatRequest(
       abortSignal: request.signal,
       context,
       history: parsed.history,
+      mode,
       question: parsed.message,
     });
   } catch (error) {

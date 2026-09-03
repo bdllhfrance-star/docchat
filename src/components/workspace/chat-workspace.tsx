@@ -6,7 +6,10 @@ import {
   FileText,
   LoaderCircle,
   Square,
+  X,
 } from "lucide-react";
+import ReactMarkdown, { type Components } from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   type FormEvent,
   type KeyboardEvent,
@@ -20,6 +23,7 @@ import {
   createDocChatTransport,
   getUIMessageText,
 } from "@/lib/chat/client";
+import { classifyChatTurn, type ChatTurnMode } from "@/lib/chat/turn-mode";
 import type { ChatSource, DocChatUIMessage } from "@/types/api";
 import { RagPipelineVisualizer } from "./rag-pipeline-visualizer";
 
@@ -77,87 +81,259 @@ function getMessageSources(message: DocChatUIMessage): ChatSource[] {
   );
 }
 
-function MessageSources({ sources }: { sources: readonly ChatSource[] }) {
-  const label = `${sources.length} ${sources.length === 1 ? "source" : "sources"}`;
+function linkDocumentCitations(markdown: string, sourceCount: number): string {
+  return markdown
+    .split(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/gu)
+    .map((block, blockIndex) => {
+      if (blockIndex % 2 === 1) {
+        return block;
+      }
 
+      return block
+        .split(/(`[^`\n]*`)/gu)
+        .map((part, partIndex) => {
+          if (partIndex % 2 === 1) {
+            return part;
+          }
+
+          return part.replace(/\[(\d+)\](?!\s*\()/gu, (match, value) => {
+            const sourceNumber = Number(value);
+
+            return sourceNumber >= 1 && sourceNumber <= sourceCount
+              ? `[${sourceNumber}](#docchat-source-${sourceNumber})`
+              : match;
+          });
+        })
+        .join("");
+    })
+    .join("");
+}
+
+function SourcePreview({
+  number,
+  onClose,
+  source,
+}: {
+  number: number;
+  onClose: () => void;
+  source: ChatSource;
+}) {
   return (
-    <details className="group mt-2 w-full overflow-hidden rounded-xl border border-slate-200 bg-white text-left shadow-sm dark:border-slate-700 dark:bg-slate-900">
-      <summary className="cursor-pointer list-none px-3 py-2.5 text-xs font-semibold text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 dark:text-slate-200 dark:focus-visible:outline-slate-200">
-        <span>{label}</span>
-        <span className="float-right font-normal text-slate-500 group-open:hidden dark:text-slate-400">
-          Show
+    <aside
+      className="mt-3 max-w-2xl rounded-xl border border-blue-200/80 bg-blue-50/80 px-3.5 py-3 text-sm dark:border-blue-900/80 dark:bg-blue-950/40"
+      aria-label={`Source ${number} details`}
+    >
+      <div className="flex items-start gap-2.5">
+        <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg bg-white text-blue-700 shadow-sm dark:bg-slate-900 dark:text-blue-300">
+          <FileText size={14} aria-hidden="true" />
         </span>
-        <span className="float-right hidden font-normal text-slate-500 group-open:inline dark:text-slate-400">
-          Hide
-        </span>
-      </summary>
-      <ol className="space-y-2 border-t border-slate-100 p-2 dark:border-slate-800">
-        {sources.map((source, index) => (
-          <li
-            key={`${source.documentId}-${source.source.label}-${index}`}
-            className="rounded-lg bg-slate-50 px-3 py-2.5 dark:bg-slate-950/70"
-          >
-            <div className="flex min-w-0 items-start justify-between gap-3">
-              <p className="min-w-0 break-words text-xs font-semibold text-slate-800 dark:text-slate-200">
-                [{index + 1}] {source.filename}
-              </p>
-              <span className="shrink-0 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-                {source.scoreKind === "rrf"
-                  ? `Hybrid score ${source.score.toFixed(4)}`
-                  : `Similarity ${Math.round(source.score * 100)}%`}
-              </span>
-            </div>
-            <p className="mt-1 text-[11px] font-medium text-slate-500 dark:text-slate-400">
-              {source.source.label}
-            </p>
-            <p className="mt-1.5 whitespace-pre-wrap text-xs leading-5 text-slate-600 dark:text-slate-300">
-              {source.excerpt}
-            </p>
-          </li>
-        ))}
-      </ol>
-    </details>
+        <div className="min-w-0 flex-1">
+          <p className="break-words font-semibold text-slate-900 dark:text-slate-100">
+            [{number}] {source.filename}
+          </p>
+          <p className="mt-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
+            {source.source.label}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          aria-label="Close source details"
+          className="grid size-7 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-white hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
+        >
+          <X size={14} aria-hidden="true" />
+        </button>
+      </div>
+      <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-slate-600 dark:text-slate-300">
+        {source.excerpt}
+      </p>
+    </aside>
   );
 }
 
 function ConversationMessage({ message }: { message: DocChatUIMessage }) {
   const text = getUIMessageText(message);
+  const [activeSourceNumber, setActiveSourceNumber] = useState<number | null>(
+    null,
+  );
+  const isUser = message.role === "user";
+  const sources = isUser ? [] : getMessageSources(message);
+  const renderedText = isUser ? text : linkDocumentCitations(text, sources.length);
+  const activeSource =
+    activeSourceNumber === null ? undefined : sources[activeSourceNumber - 1];
+  const markdownComponents: Components = {
+    a({ children, href, node: _node, ...props }) {
+      void _node;
+      const citationMatch = href?.match(/^#docchat-source-(\d+)$/u);
+
+      if (citationMatch) {
+        const sourceNumber = Number(citationMatch[1]);
+        const source = sources[sourceNumber - 1];
+
+        if (!source) {
+          return <>{children}</>;
+        }
+
+        return (
+          <button
+            type="button"
+            onClick={() =>
+              setActiveSourceNumber((current) =>
+                current === sourceNumber ? null : sourceNumber,
+              )
+            }
+            aria-expanded={activeSourceNumber === sourceNumber}
+            aria-label={`Open source ${sourceNumber}: ${source.filename}, ${source.source.label}`}
+            className="mx-0.5 inline-flex translate-y-[-1px] items-center rounded-md border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[0.72em] font-semibold leading-none text-blue-700 no-underline transition-colors hover:border-blue-300 hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300 dark:hover:border-blue-700 dark:hover:bg-blue-900"
+          >
+            [{sourceNumber}]
+          </button>
+        );
+      }
+
+      return (
+        <a
+          {...props}
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-medium text-blue-700 underline decoration-blue-300 underline-offset-2 hover:text-blue-900 dark:text-blue-300 dark:hover:text-blue-200"
+        >
+          {children}
+        </a>
+      );
+    },
+    blockquote({ children }) {
+      return (
+        <blockquote className="my-4 border-l-2 border-blue-300 pl-4 text-slate-600 dark:border-blue-700 dark:text-slate-300">
+          {children}
+        </blockquote>
+      );
+    },
+    code({ children, className, node: _node, ...props }) {
+      void _node;
+      return (
+        <code
+          {...props}
+          className={`${className ?? ""} rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[0.9em] text-slate-900 dark:bg-slate-800 dark:text-slate-100`}
+        >
+          {children}
+        </code>
+      );
+    },
+    h1({ children }) {
+      return (
+        <h1 className="mt-6 mb-3 text-xl font-semibold first:mt-0">
+          {children}
+        </h1>
+      );
+    },
+    h2({ children }) {
+      return (
+        <h2 className="mt-6 mb-3 text-lg font-semibold first:mt-0">
+          {children}
+        </h2>
+      );
+    },
+    h3({ children }) {
+      return (
+        <h3 className="mt-5 mb-2 text-base font-semibold first:mt-0">
+          {children}
+        </h3>
+      );
+    },
+    hr() {
+      return <hr className="my-5 border-slate-200 dark:border-slate-700" />;
+    },
+    img({ alt }) {
+      return (
+        <span className="text-slate-500">
+          [Image: {alt || "document image"}]
+        </span>
+      );
+    },
+    li({ children }) {
+      return <li className="pl-1">{children}</li>;
+    },
+    ol({ children }) {
+      return (
+        <ol className="my-3 list-decimal space-y-1.5 pl-6">{children}</ol>
+      );
+    },
+    p({ children }) {
+      return <p className="mb-3 last:mb-0">{children}</p>;
+    },
+    pre({ children }) {
+      return (
+        <pre className="my-4 overflow-x-auto rounded-xl bg-slate-950 p-4 text-sm leading-6 text-slate-100 [&>code]:bg-transparent [&>code]:p-0 [&>code]:text-inherit">
+          {children}
+        </pre>
+      );
+    },
+    table({ children }) {
+      return (
+        <table className="my-4 block max-w-full overflow-x-auto border-collapse text-left text-sm">
+          {children}
+        </table>
+      );
+    },
+    td({ children }) {
+      return (
+        <td className="border border-slate-200 px-3 py-2 dark:border-slate-700">
+          {children}
+        </td>
+      );
+    },
+    th({ children }) {
+      return (
+        <th className="border border-slate-200 bg-slate-100 px-3 py-2 font-semibold dark:border-slate-700 dark:bg-slate-800">
+          {children}
+        </th>
+      );
+    },
+    ul({ children }) {
+      return <ul className="my-3 list-disc space-y-1.5 pl-6">{children}</ul>;
+    },
+  };
 
   if (!text) {
     return null;
   }
-
-  const isUser = message.role === "user";
-  const sources = isUser ? [] : getMessageSources(message);
 
   return (
     <article
       className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}
       aria-label={isUser ? "Your message" : "DocChat answer"}
     >
-      {!isUser ? (
-        <span
-          className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-xl bg-slate-950 text-white dark:bg-blue-600"
-          aria-hidden="true"
-        >
-          <FileText size={15} strokeWidth={1.8} />
-        </span>
-      ) : null}
       <div
-        className={`flex max-w-[min(42rem,88%)] min-w-0 flex-col ${
-          isUser ? "items-end" : "items-start"
+        className={`flex min-w-0 flex-col ${
+          isUser ? "max-w-[min(42rem,88%)] items-end" : "w-full items-start"
         }`}
       >
-        <div
-          className={`whitespace-pre-wrap rounded-2xl px-4 py-3 text-sm leading-6 ${
-            isUser
-              ? "rounded-br-md bg-slate-900 text-white dark:bg-blue-600"
-              : "rounded-bl-md border border-slate-200 bg-white text-slate-800 shadow-sm dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
-          }`}
-        >
-          {text}
-        </div>
-        {sources.length > 0 ? <MessageSources sources={sources} /> : null}
+        {isUser ? (
+          <div className="whitespace-pre-wrap rounded-2xl rounded-br-md bg-slate-900 px-4 py-3 text-sm leading-6 text-white dark:bg-blue-600">
+            {text}
+          </div>
+        ) : (
+          <div
+            className="w-full text-[15px] leading-7 text-slate-800 dark:text-slate-100"
+            data-assistant-content
+          >
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+              components={markdownComponents}
+            >
+              {renderedText}
+            </ReactMarkdown>
+            {activeSource && activeSourceNumber ? (
+              <SourcePreview
+                number={activeSourceNumber}
+                source={activeSource}
+                onClose={() => setActiveSourceNumber(null)}
+              />
+            ) : null}
+          </div>
+        )}
       </div>
     </article>
   );
@@ -176,6 +352,7 @@ function ActiveChat({
   storageKey,
 }: ActiveChatProps) {
   const [input, setInput] = useState("");
+  const [submittedMode, setSubmittedMode] = useState<ChatTurnMode>("grounded");
   const composerRef = useRef<HTMLTextAreaElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const transport = useMemo(
@@ -221,6 +398,7 @@ function ActiveChat({
     }
 
     clearError();
+    setSubmittedMode(classifyChatTurn(message));
     setInput("");
     if (composerRef.current) {
       composerRef.current.style.height = `${COMPOSER_MIN_HEIGHT}px`;
@@ -269,7 +447,9 @@ function ActiveChat({
             <div className="flex items-center gap-2 pl-11 text-sm text-slate-500 dark:text-slate-400">
               <LoaderCircle size={15} className="animate-spin" aria-hidden="true" />
               {status === "submitted"
-                ? "Searching your documents…"
+                ? submittedMode === "conversation"
+                  ? "Thinking…"
+                  : "Searching your documents…"
                 : "Writing the answer…"}
             </div>
           ) : null}

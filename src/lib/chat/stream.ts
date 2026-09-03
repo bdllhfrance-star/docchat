@@ -9,8 +9,10 @@ import {
 import { GEMINI_CHAT_MODEL } from "@/lib/ai/model-config";
 import {
   CHAT_SYSTEM_PROMPT,
+  CONVERSATION_SYSTEM_PROMPT,
   type GroundedChatContext,
 } from "@/lib/chat/grounding";
+import type { ChatTurnMode } from "@/lib/chat/turn-mode";
 import type {
   ChatHistoryMessage,
   DocChatUIMessage,
@@ -22,6 +24,7 @@ export type ChatStreamInput = {
   abortSignal?: AbortSignal;
   context: GroundedChatContext;
   history: readonly ChatHistoryMessage[];
+  mode: ChatTurnMode;
   question: string;
 };
 
@@ -59,6 +62,10 @@ function toModelMessages(
   ];
 }
 
+function toConversationMessages(question: string): ModelMessage[] {
+  return [{ role: "user", content: question.trim() }];
+}
+
 export function createChatStreamResponse(
   input: ChatStreamInput,
   options: ChatStreamOptions = {},
@@ -70,7 +77,7 @@ export function createChatStreamResponse(
         data: input.context.sources,
       });
 
-      if (input.context.chunks.length === 0) {
+      if (input.mode === "grounded" && input.context.chunks.length === 0) {
         const textId = "grounded-refusal";
         writer.write({ type: "text-start", id: textId });
         writer.write({
@@ -84,8 +91,14 @@ export function createChatStreamResponse(
 
       const result = (options.streamModel ?? streamText)({
         model: google(GEMINI_CHAT_MODEL.id),
-        system: CHAT_SYSTEM_PROMPT,
-        messages: toModelMessages(input.history, input.context.prompt),
+        system:
+          input.mode === "conversation"
+            ? CONVERSATION_SYSTEM_PROMPT
+            : CHAT_SYSTEM_PROMPT,
+        messages:
+          input.mode === "conversation"
+            ? toConversationMessages(input.question)
+            : toModelMessages(input.history, input.context.prompt),
         maxOutputTokens: GEMINI_CHAT_MODEL.outputTokenLimit,
         maxRetries: 2,
         abortSignal: input.abortSignal,

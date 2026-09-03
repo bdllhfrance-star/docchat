@@ -34,6 +34,7 @@ describe("chat UI stream", () => {
       {
         context,
         history: [],
+        mode: "grounded",
         question: "Que dit le document ?",
       },
       { streamModel: streamModel as unknown as typeof streamText },
@@ -68,6 +69,7 @@ describe("chat UI stream", () => {
       {
         context,
         history: [{ role: "assistant", content: "Earlier answer" }],
+        mode: "grounded",
         question: "What is required?",
       },
       { streamModel: streamModel as unknown as typeof streamText },
@@ -101,5 +103,33 @@ describe("chat UI stream", () => {
       body.indexOf("Grounded answer."),
     );
     expect(body).toContain('"score":0.93');
+  });
+
+  test("lets Gemini answer a greeting without retrieval context or sources", async () => {
+    const context = buildGroundedChatContext("Hello!", [], []);
+    const toUIMessageStream = vi.fn(() => modelStream());
+    const streamModel = vi.fn((settings: unknown) => {
+      void settings;
+      return { toUIMessageStream };
+    });
+    const response = createChatStreamResponse(
+      {
+        context,
+        history: [{ role: "assistant", content: "An earlier document answer." }],
+        mode: "conversation",
+        question: "Hello!",
+      },
+      { streamModel: streamModel as unknown as typeof streamText },
+    );
+    const body = await response.text();
+    const settings = streamModel.mock.calls[0][0] as {
+      messages: unknown[];
+      system: string;
+    };
+
+    expect(settings.system).toContain("brief social or interface-level message");
+    expect(settings.messages).toEqual([{ role: "user", content: "Hello!" }]);
+    expect(body).toContain('"data":[]');
+    expect(body).not.toContain("I could not find this information");
   });
 });

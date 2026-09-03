@@ -101,10 +101,26 @@ describe("chat API", () => {
       expect.objectContaining({
         question: "What does the guide require?",
         history: [{ role: "user", content: "Earlier question" }],
+        mode: "grounded",
         context: expect.objectContaining({
           chunks: [expect.objectContaining({ id: "chunk-1" })],
           sources: [expect.objectContaining({ score: 0.93 })],
         }),
+      }),
+    );
+  });
+
+  test("streams a social greeting without running document retrieval", async () => {
+    const deps = dependencies();
+    const response = await handleChatRequest(request({ message: "Hello!" }), deps);
+
+    expect(response.status).toBe(200);
+    expect(deps.retrieveChunks).not.toHaveBeenCalled();
+    expect(deps.streamResponse).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: "conversation",
+        question: "Hello!",
+        context: expect.objectContaining({ chunks: [], sources: [] }),
       }),
     );
   });

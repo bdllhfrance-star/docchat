@@ -27,6 +27,8 @@ sélectionner plusieurs documents en une fois, de suivre leur traitement, puis
 de poser des questions sur tout ou partie de ces documents. Les réponses sont
 générées par un LLM uniquement à partir des passages retrouvés par un pipeline
 RAG et sont affichées progressivement avec leurs sources.
+Les salutations et autres échanges sociaux courts restent naturels et ne
+déclenchent pas une recherche documentaire artificielle.
 
 ## 3. Objectifs
 
@@ -46,7 +48,9 @@ testable sans installation et accompagnée d'un repository GitHub propre.
 - Rechercher les passages pertinents dans les documents sélectionnés.
 - Répondre uniquement à partir de ces passages.
 - Afficher la réponse en streaming côté frontend.
-- Afficher le fichier, l'emplacement, l'extrait et le score de chaque source.
+- Intégrer dans la réponse les citations réellement utilisées ; au clic,
+  afficher le fichier, l'emplacement et l'extrait. Le score reste interne au
+  classement du retrieval.
 - Continuer le batch lorsqu'un fichier échoue et permettre sa relance.
 - Ne déclarer un fichier `ready` qu'après upload, extraction, chunking,
   génération des vecteurs et persistance complète dans MongoDB Atlas.
@@ -69,7 +73,7 @@ testable sans installation et accompagnée d'un repository GitHub propre.
 
 | Priorité | Contenu | Règle de livraison |
 | --- | --- | --- |
-| P0 - Obligatoire | PDF natif, upload sécurisé, extraction, chunking, embeddings, recherche cosinus, chat fondé sur les documents, refus explicite, historique de session, sources et scores, API, streaming, TypeScript strict et déploiement Vercel. | Doit être déployé et testé avant toute extension. |
+| P0 - Obligatoire | PDF natif, upload sécurisé, extraction, chunking, embeddings, recherche cosinus, chat fondé sur les documents, refus explicite, historique de session, citations sourcées, API, streaming, TypeScript strict et déploiement Vercel. | Doit être déployé et testé avant toute extension. |
 | P1 - Bonus retenus | Multi-PDF, recherche hybride, rate limiting, logs structurés, tests, français/arabe et jeu d'évaluation. | Fait partie de l'objectif de la journée, sans fragiliser P0. |
 | P2 - Extension décidée | DOCX, PPTX, XLSX, TXT, Markdown et CSV dans le même batch. | Ne doit jamais bloquer P0, P1 ou le déploiement. |
 
@@ -85,7 +89,7 @@ fonctionnelle si un format supplémentaire révèle un problème imprévu.
 - Documents PDF à texte natif en français et en arabe.
 - Chat multi-documents avec sélection des documents interrogés.
 - Streaming de la réponse du LLM.
-- Sources et scores de similarité.
+- Citations et sources par réponse ; scores de retrieval conservés en interne.
 - Recherche vectorielle puis recherche hybride.
 - Rate limiting, logs structurés, tests et jeu d'évaluation.
 - Session anonyme sans création de compte.
@@ -148,7 +152,7 @@ lance les tests et vérifie le pipeline localement.
 | US-06 | Je pose une question après la préparation complète du batch. | Le chat est activé seulement s'il existe au moins un document `ready` et qu'aucun document conservé n'est en traitement ou en échec. Tous les documents prêts sont sélectionnés par défaut. |
 | US-07 | Je choisis les documents utilisés pour une question. | Le backend filtre réellement le retrieval par les `documentId` fournis. |
 | US-08 | Je vois la réponse au fur et à mesure. | Le contenu apparaît progressivement sans attendre la réponse LLM complète. |
-| US-09 | Je peux vérifier l'origine d'une réponse. | Chaque réponse présente le fichier, l'emplacement, un extrait et le score. |
+| US-09 | Je peux vérifier l'origine d'une réponse. | Les marqueurs de citation apparaissent auprès des affirmations concernées. Un clic affiche le fichier, l'emplacement et l'extrait de cette source, sans exposer le score technique. |
 | US-10 | Je ne veux pas de réponse inventée. | Si le contexte est insuffisant, l'assistant indique que l'information n'est pas présente. |
 | US-11 | Je conserve le fil de la conversation pendant ma session. | Les questions et réponses restent visibles jusqu'à la fin de la session. |
 | US-12 | Je peux retirer un document. | Le document, ses chunks et son fichier sont supprimés ou marqués pour suppression de façon cohérente. |
@@ -164,7 +168,7 @@ lance les tests et vérifie le pipeline localement.
 | F1 - Upload PDF | Upload batch étendu à plusieurs formats, validation et progression par étape. |
 | F2 - Pipeline RAG | Extraction, chunking justifié, embeddings Gemini, persistance et recherche cosinus. |
 | F3 - Chat Q&A | Historique de session, réponses limitées au contexte et refus explicite. |
-| F4 - Sources | Extrait, fichier, emplacement et score pour chaque réponse. |
+| F4 - Sources | Citations propres à chaque réponse avec fichier, emplacement et extrait consultables au clic. |
 | F5 - API REST | `POST /api/upload`, `POST /api/chat` et endpoints complémentaires documentés. |
 | F6 - Streaming | Réponse LLM transmise progressivement au frontend. |
 
@@ -285,16 +289,17 @@ de son traitement.
   conversation, y compris derrière le composer, sans bande blanche ni bordure
   de séparation. Après le premier message, la conversation se pose sur cette
   même toile au lieu de remplacer son arrière-plan.
-- **Information non répétée** : le panneau gauche ne contient pas un second
-  bloc `Session limits`; les formats et limites sont affichés une seule fois
-  dans la surface centrale avant la conversation.
+- **Information non répétée** : le panneau gauche présente une seule remarque
+  compacte avec les formats et limites ; aucun second bloc `Session limits`
+  n'est ajouté.
 - **Composer** : fixé au bas de la zone de conversation, désactivé avec une
   raison visible tant que `canSendMessage` vaut `false`.
 - **Mutation du contexte** : pendant un retry ou une suppression, la zone de
   conversation reste montée sans flash vers le sélecteur. Seul le composer est
   temporairement verrouillé jusqu'à confirmation du nouveau contexte.
-- **Sources** : présentées sous la réponse dans une liste compacte et
-  dépliable, avec fichier, emplacement, extrait et score.
+- **Sources** : les citations réellement utilisées sont intégrées dans le texte
+  de la réponse. Un clic ouvre un aperçu compact du fichier, de l'emplacement
+  et de l'extrait ; aucune grande liste globale ni score technique n'est exposé.
 
 ### 8.4 Animations manuelles et personnalisées
 
@@ -619,8 +624,9 @@ Paramètres initiaux :
 - La fusion hybride utilise RRF côté application avec la constante standard 60.
   Ce choix combine deux pipelines Atlas simples, reste testable et ne dépend
   pas de l'étage serveur `$rankFusion` ni d'une version MongoDB imposée. Le
-  score affiché est nommé `Hybrid score`, distinct de la similarité
-  cosinus affichée lors d'une recherche vectorielle seule.
+  score RRF reste une métrique interne de classement, distincte de la
+  similarité cosinus. Aucun de ces nombres n'est présenté comme une confiance
+  utilisateur.
 - Le budget documentaire vaut la limite d'entrée de 1 048 576 tokens moins les
   instructions, l'historique, la question et une marge de sécurité de 16 384
   tokens.
@@ -635,6 +641,12 @@ Paramètres initiaux :
 - Les custom data parts de sources restent dans l'historique UI mais ne sont pas
   reconverties en contexte modèle. Le serveur reconstruit explicitement le
   contexte RAG autorisé à chaque question.
+- L'UI n'affiche parmi ces candidats que les numéros effectivement cités par la
+  réponse courante ; deux réponses peuvent donc avoir chacune leur propre `[1]`.
+- Un routeur déterministe minimal reconnaît uniquement les salutations et
+  acquittements sociaux complets. Ces tours évitent embeddings et retrieval et
+  reçoivent une réponse Gemini courte sans source ; toute question métier ou
+  documentaire reste dans le pipeline RAG strict.
 - L'historique navigateur est séparé par batch et par combinaison de documents
   sélectionnés. Changer la sélection démarre donc un contexte de chat distinct
   et ne réinjecte pas les réponses obtenues depuis un document ensuite exclu.
@@ -865,9 +877,9 @@ intégrés par l'agent principal avant le lancement d'une nouvelle vague.
 | [~] | API-02 | ING-01 | Backend | Statut du batch, retry idempotent, ajout de documents au batch courant et suppression terminés et testés localement. L'ajout contrôle les limites cumulées de 10 fichiers et 50 MiB ; la suppression nettoie le Blob, les métadonnées et les chunks. Le parcours réel attend le smoke test déployé. |
 | [~] | UI-04 | API-02, UI-03 | UI | `Réessayer`, `Supprimer` et `Add documents` sont reliés aux routes réelles. Le bouton initial `Upload` reste sous la liste ; après création du contexte, tout ajout valide est envoyé automatiquement sans second clic. Aucun contrôle ne remplace toute la sélection. Le gate du composer reste relié à l'état `ready` de tous les documents. |
 | [x] | RAG-03 | DB-01, RAG-02 | Backend/RAG | Recherche vectorielle cosinus, embedding de question, filtres `sessionId`/batch/documents, déduplication et validation défensive terminés. Une fixture temporaire a été indexée, retrouvée par Vector Search avec les trois filtres exacts puis supprimée. |
-| [~] | CHAT-01 | RAG-03 | Backend/RAG | `POST /api/chat`, validations avant stream, contexte dynamique, prompt fondé uniquement sur les documents, refus sans contexte et UI message stream sourcé sont implémentés et testés localement. Une génération réelle `gemini-3.7-flash` a réussi ; le seuil et le parcours complet attendent Atlas. |
+| [~] | CHAT-01 | RAG-03 | Backend/RAG | `POST /api/chat`, validations avant stream, contexte dynamique, prompt fondé uniquement sur les documents, refus sans contexte et UI message stream sourcé sont implémentés et testés localement. Un routage déterministe limité aux échanges sociaux évite une recherche et un refus artificiels sur `hello` sans relâcher le RAG des questions documentaires. Une génération réelle `gemini-3.7-flash` a réussi ; le parcours déployé reste à valider. |
 | [~] | UI-05 | UI-04, CHAT-01 | UI | Chat relié à `/api/chat` avec `useChat`, historique `sessionStorage` isolé par batch, annulation et affichage progressif. Le composer ne s'active que lorsque tous les documents sont `ready` ; le parcours réel attend le smoke test Vercel. |
-| [~] | UI-06 | UI-05 | UI | Sources dépliables affichées sous chaque réponse avec numéro de citation, fichier, emplacement, extrait et score : `Similarity` pour le cosinus seul ou `Hybrid score` pour RRF. Le contrôle natif est utilisable au clavier et responsive ; le flux réel Atlas/Gemini reste à valider dans `GATE-01`. |
+| [~] | UI-06 | UI-05 | UI | Markdown rendu sans HTML brut, réponse assistant directement sur la surface et citations intégrées par réponse. Chaque citation ouvre au clic un aperçu clavier-accessible du fichier, de l'emplacement et de l'extrait ; les scores RRF/cosinus et la liste globale de candidats restent internes. Le flux réel Atlas/Gemini reste à valider dans `GATE-01`. |
 | [x] | UI-07 | UI-05 | UI | Avant le premier message, la surface centrale présente le pipeline complet avec six scènes SVG/CSS personnalisées : vue explicative avant upload, état actif pendant traitement et replay lorsque le contexte est prêt. La séquence couvre les thèmes clair/sombre et `prefers-reduced-motion`, puis disparaît dès le premier message. |
 | [x] | SEC-01 | UPL-03, CHAT-01 | Backend/QA | Extension, MIME, signature PDF, limites de fichiers et requêtes, noms, sessions, propriété des ressources, prompt injection, rendu HTML inerte, headers et absence de logs sensibles sont vérifiés localement avec cas négatifs. |
 | [x] | TST-01 | SEC-01, UI-06 | QA | Les tests unitaires et d'intégration P0 couvrent contrats, upload, parser, chunker, statuts, retrieval, refus, streaming, sources, sécurité et erreurs. `lint`, `typecheck`, tests et build réussissent localement. |
@@ -1109,7 +1121,8 @@ Le projet est terminé uniquement lorsque :
 - Le chat multi-documents répond en streaming.
 - Le chat reste bloqué tant qu'un fichier conservé n'est pas `ready`.
 - Les réponses absentes sont refusées explicitement.
-- Les sources affichent le fichier, l'emplacement, l'extrait et le score.
+- Les affirmations documentaires citent leurs sources dans la réponse ; le
+  fichier, l'emplacement et l'extrait sont consultables au clic.
 - Les secrets ne sont pas exposés au client.
 - Le rate limiting et les logs structurés sont actifs.
 - `pnpm check` et `pnpm build` réussissent.
@@ -1158,3 +1171,5 @@ Le projet est terminé uniquement lorsque :
 | 2026-09-03 | Valider en production les sept formats dans un même contexte : tous passent à `ready`, une question croisée retrouve les faits TXT/DOCX/PPTX/XLSX/Markdown/CSV et les sources exposent lignes, section, slide, feuille/plage et page. Un lot TXT + faux PDF conserve le TXT prêt, expose l'erreur PDF et récupère après suppression du fichier invalide. |
 | 2026-09-03 | Présenter les formats et limites comme une remarque compacte dans le panneau Documents, masquer `Add documents` pendant les opérations qui le bloquent puis le rendre visuellement actif, et conserver la même signature Gemini avant, pendant et après l'upload sans anciens badges de pipeline. |
 | 2026-09-03 | Faire croître le composer du chat de une à trois lignes, puis conserver sa hauteur et activer un défilement interne fin ; réserver une colonne au bouton d'envoi afin que le texte et la scrollbar ne passent jamais dessous. |
+| 2026-09-03 | Rendre le Markdown assistant directement sur la surface de conversation, intégrer les citations auprès des affirmations et n'afficher le détail d'une source qu'au clic. Les scores RRF/cosinus restent internes au retrieval. |
+| 2026-09-03 | Router seulement les salutations et acquittements sociaux complets vers une réponse Gemini brève sans retrieval ni source ; toute question documentaire conserve le pipeline RAG strict et son refus si le contexte ne suffit pas. |

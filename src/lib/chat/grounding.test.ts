@@ -114,5 +114,8 @@ describe("grounded chat context", () => {
     expect(CHAT_SYSTEM_PROMPT).toContain(
       "table rows, column names, formulas, slide titles",
     );
+    expect(CHAT_SYSTEM_PROMPT).toContain(
+      "never add a separate Sources or References section",
+    );
   });
 });

@@ -159,7 +159,7 @@ test("renders progressive text and allows the request to be stopped", async () =
   expect(stop).toHaveBeenCalledOnce();
 });
 
-test("shows grounded sources in an accessible disclosure", async () => {
+test("renders assistant Markdown directly on the surface with inline citations", async () => {
   const answer: DocChatUIMessage = {
     id: "assistant-1",
     role: "assistant",
@@ -176,57 +176,112 @@ test("shows grounded sources in an accessible disclosure", async () => {
           },
         ],
       },
-      { type: "text", text: "The answer is supported by [1]." },
+      {
+        type: "text",
+        text: "### Profile\n\nThe answer is **grounded** by [1].\n\n- First fact\n- Second fact",
+      },
     ],
   };
   useChatMock.mockReturnValue(chatState({ messages: [answer] }));
 
-  render(
+  const { container } = render(
     <ChatWorkspace batchId="batch-1" documentIds={["document-1"]} />,
   );
 
-  const summary = await screen.findByText("1 source");
-  const details = summary.closest("details");
+  expect(await screen.findByRole("heading", { name: "Profile" })).toBeDefined();
+  expect(screen.getByText("grounded").tagName).toBe("STRONG");
+  expect(screen.getAllByRole("listitem")).toHaveLength(2);
+  expect(screen.queryByText(/\*\*grounded\*\*/u)).toBeNull();
+  expect(screen.queryByText("1 source")).toBeNull();
+  expect(screen.queryByText(/Similarity|Hybrid score/u)).toBeNull();
 
-  expect(details).toHaveProperty("open", false);
-  fireEvent.click(summary.closest("summary") as HTMLElement);
-  expect(details).toHaveProperty("open", true);
+  const assistantSurface = container.querySelector("[data-assistant-content]");
+  expect(assistantSurface).not.toBeNull();
+  expect(assistantSurface?.className).not.toContain("bg-white");
+  expect(assistantSurface?.className).not.toContain("rounded-2xl");
+
+  const citation = screen.getByRole("button", {
+    name: "Open source 1: guide.pdf, Page 2",
+  });
+  expect(citation.getAttribute("aria-expanded")).toBe("false");
+  expect(screen.queryByLabelText("Source 1 details")).toBeNull();
+
+  fireEvent.click(citation);
+  expect(
+    screen
+      .getByRole("button", { name: "Open source 1: guide.pdf, Page 2" })
+      .getAttribute("aria-expanded"),
+  ).toBe("true");
+  expect(screen.getByLabelText("Source 1 details")).toBeDefined();
   expect(screen.getByText("[1] guide.pdf")).toBeDefined();
   expect(screen.getByText("Page 2")).toBeDefined();
-  expect(screen.getByText("Similarity 93%")).toBeDefined();
   expect(
     screen.getByText("The guide requires grounded answers."),
   ).toBeDefined();
+
+  fireEvent.click(screen.getByRole("button", { name: "Close source details" }));
+  expect(screen.queryByLabelText("Source 1 details")).toBeNull();
 });
 
-test("labels an RRF source score as hybrid relevance", async () => {
-  const answer: DocChatUIMessage = {
-    id: "assistant-rrf",
-    role: "assistant",
-    parts: [
-      {
-        type: "data-sources",
-        data: [
-          {
-            documentId: "document-1",
-            filename: "guide.pdf",
-            excerpt: "A hybrid retrieval result.",
-            score: 0.0325,
-            scoreKind: "rrf",
-            source: { label: "Page 3", page: 3 },
-          },
-        ],
-      },
-      { type: "text", text: "Hybrid answer." },
-    ],
-  };
-  useChatMock.mockReturnValue(chatState({ messages: [answer] }));
+test("keeps citations attached to the sources of their own answer", async () => {
+  const answers: DocChatUIMessage[] = [
+    {
+      id: "assistant-first",
+      role: "assistant",
+      parts: [
+        {
+          type: "data-sources",
+          data: [
+            {
+              documentId: "document-1",
+              filename: "first.pdf",
+              excerpt: "First answer evidence.",
+              score: 0.0325,
+              scoreKind: "rrf",
+              source: { label: "Page 3", page: 3 },
+            },
+          ],
+        },
+        { type: "text", text: "First answer [1]." },
+      ],
+    },
+    {
+      id: "assistant-second",
+      role: "assistant",
+      parts: [
+        {
+          type: "data-sources",
+          data: [
+            {
+              documentId: "document-2",
+              filename: "second.docx",
+              excerpt: "Second answer evidence.",
+              score: 0.0161,
+              scoreKind: "rrf",
+              source: { label: "Section Experience", section: "Experience" },
+            },
+          ],
+        },
+        { type: "text", text: "Second answer [1]." },
+      ],
+    },
+  ];
+  useChatMock.mockReturnValue(chatState({ messages: answers }));
 
   render(
-    <ChatWorkspace batchId="batch-1" documentIds={["document-1"]} />,
+    <ChatWorkspace batchId="batch-1" documentIds={["document-1", "document-2"]} />,
   );
 
-  expect(await screen.findByText("Hybrid score 0.0325")).toBeDefined();
+  const citations = await screen.findAllByRole("button", {
+    name: /Open source 1:/u,
+  });
+  expect(citations).toHaveLength(2);
+  fireEvent.click(citations[1]);
+
+  expect(screen.getByText("[1] second.docx")).toBeDefined();
+  expect(screen.getByText("Second answer evidence.")).toBeDefined();
+  expect(screen.queryByText("First answer evidence.")).toBeNull();
+  expect(screen.queryByText(/0\.0325|0\.0161|Hybrid score/u)).toBeNull();
 });
 
 test("restores and persists the browser-session conversation", async () => {
