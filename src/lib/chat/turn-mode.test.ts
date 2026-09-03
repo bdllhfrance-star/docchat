@@ -49,6 +49,33 @@ describe("chat turn routing", () => {
   });
 
   test.each([
+    "Who won the Premier League?",
+    "Qui a remporté la Ligue des champions ?",
+    "What is the weather in Rabat today?",
+    "Quel est le taux de change actuel ?",
+    "من فاز بالدوري؟",
+  ])("fast-routes the obvious standalone external request %j", (turn) => {
+    expect(classifyChatTurn(turn)).toBe("external");
+  });
+
+  test.each([
+    "According to the PDF, who won the Premier League?",
+    "Who won the Premier League in my uploaded files?",
+    "Selon le document, qui a remporté le championnat ?",
+    "Qui a gagné la ligue dans mes fichiers ?",
+    "What does the spreadsheet say about the exchange rate?",
+    "حسب المستند، من فاز بالدوري؟",
+  ])("keeps explicit document requests grounded: %j", (turn) => {
+    expect(classifyChatTurn(turn)).toBe("grounded");
+  });
+
+  test("keeps an external-looking follow-up grounded", () => {
+    expect(
+      classifyChatTurn("Who won the Premier League?", { hasHistory: true }),
+    ).toBe("grounded");
+  });
+
+  test.each([
     "What does the document say?",
     "Hello, what experience does the CV mention?",
     "Résume le deuxième fichier",

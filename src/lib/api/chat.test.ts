@@ -144,6 +144,37 @@ describe("chat API", () => {
     },
   );
 
+  test("fast-routes an obvious first-turn external request without retrieval", async () => {
+    const deps = dependencies();
+    const message = "Who won the Premier League?";
+    const response = await handleChatRequest(
+      request({ message, history: [] }),
+      deps,
+    );
+
+    expect(response.status).toBe(200);
+    expect(deps.retrieveChunks).not.toHaveBeenCalled();
+    expect(deps.streamResponse).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: "external",
+        question: message,
+        context: expect.objectContaining({ chunks: [], sources: [] }),
+      }),
+    );
+  });
+
+  test("does not fast-route the same request inside an existing conversation", async () => {
+    const deps = dependencies();
+    const message = "Who won the Premier League?";
+    const response = await handleChatRequest(request({ message }), deps);
+
+    expect(response.status).toBe(200);
+    expect(deps.retrieveChunks).toHaveBeenCalledOnce();
+    expect(deps.streamResponse).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: "grounded", question: message }),
+    );
+  });
+
   test("restricts a ready multi-document batch to the user's selection", async () => {
     const secondDocumentId = "75f9d4bc-c530-43dd-a30f-91dad3ab8ff4";
     const secondDocument: DocumentRecord = {

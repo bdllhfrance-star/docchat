@@ -1,6 +1,7 @@
 export type ChatTurnMode =
   | "app_help"
   | "conversation"
+  | "external"
   | "grounded"
   | "restricted"
   | "safe_system";
@@ -52,6 +53,32 @@ const internalProductTurns = [
   /(?:اعرض|اكشف|أظهر|أعطني).{0,80}(?:مفتاح|سر|رمز|كلمة المرور|تعليمات النظام|الكود المصدري|الإعدادات)/u,
 ] as const;
 
+const explicitDocumentTurns = [
+  /\b(?:documents?|files?|pdfs?|docx|pptx|xlsx|spreadsheets?|presentations?|cvs?|résumés?|attachments?|uploaded)\b/iu,
+  /\b(?:documents?|fichiers?|pdfs?|présentations?|tableurs?|feuilles?|cvs?|pièces? jointes?|téléversés?|chargés?)\b/iu,
+  /(?:المستندات?|الوثائق?|الملفات?|العروض?|الجداول?|المرفقات?)/u,
+  /\b(?:according to|based on|in|from)\b.{0,60}\b(?:the )?(?:document|file|pdf|docx|pptx|xlsx|spreadsheet|presentation)\b/iu,
+  /\b(?:document|file|pdf|docx|pptx|xlsx|spreadsheet|presentation)\b.{0,80}\b(?:say|mention|contain|show|state|explain|report|list|compare)\b/iu,
+  /\b(?:selon|d'après|dans|depuis)\b.{0,60}\b(?:le |la |les )?(?:document|fichier|pdf|présentation|feuille|tableur)\b/iu,
+  /\b(?:document|fichier|pdf|présentation|feuille|tableur)\b.{0,80}\b(?:dit|mentionne|contient|montre|indique|explique|compare|liste)\b/iu,
+  /(?:حسب|وفق|في).{0,60}(?:المستند|الوثيقة|الملف|العرض|الجدول)/u,
+] as const;
+
+// Deliberately narrow: these are standalone live/general requests for which
+// document retrieval adds latency but cannot provide current external data.
+const obviousExternalTurns = [
+  /^(?:who|which (?:team|club)) (?:won|has won)\b.{0,80}\b(?:league|cup|championship|tournament|match|game)\b/iu,
+  /^(?:qui|quelle équipe|quel club) (?:a |avait )?(?:gagné|remporté)(?:\s|$).{0,80}\b(?:ligue|coupe|championnat|tournoi|match)\b/iu,
+  /\b(?:weather|weather forecast|temperature)\b.{0,80}\b(?:today|tomorrow|now|this week|in [\p{L}\s-]+)$/iu,
+  /\b(?:météo|prévisions? météo|température)\b.{0,80}\b(?:aujourd'hui|demain|maintenant|cette semaine|à [\p{L}\s-]+)$/iu,
+  /\b(?:latest|breaking|today's|current)\b.{0,80}\b(?:news|headlines|sports? scores?|standings|stock price|exchange rate|crypto price)\b/iu,
+  /\b(?:dernières?|actualité|actuelles?|aujourd'hui)\b.{0,80}\b(?:nouvelles|actualités|résultats? sportifs?|classement|cours|taux de change|prix)\b/iu,
+  /\b(?:stock price|exchange rate|bitcoin price|crypto price)\b/iu,
+  /\b(?:cours de l'action|taux de change|prix du bitcoin|prix d'une crypto)\b/iu,
+  /(?:من فاز).{0,80}(?:الدوري|الكأس|البطولة|المباراة)/u,
+  /(?:الطقس|درجة الحرارة|آخر الأخبار|سعر السهم|سعر البيتكوين|سعر الصرف)/u,
+] as const;
+
 function normalizeTurn(question: string): string {
   return question
     .trim()
@@ -81,7 +108,10 @@ export function detectChatLanguage(question: string): ChatLanguage {
   return "en";
 }
 
-export function classifyChatTurn(question: string): ChatTurnMode {
+export function classifyChatTurn(
+  question: string,
+  options: { hasHistory?: boolean } = {},
+): ChatTurnMode {
   const normalized = normalizeTurn(question);
 
   if (!normalized) {
@@ -109,6 +139,14 @@ export function classifyChatTurn(question: string): ChatTurnMode {
 
   if (matchesAny(normalized, internalProductTurns)) {
     return "restricted";
+  }
+
+  if (
+    !options.hasHistory &&
+    !matchesAny(normalized, explicitDocumentTurns) &&
+    matchesAny(normalized, obviousExternalTurns)
+  ) {
+    return "external";
   }
 
   return "grounded";

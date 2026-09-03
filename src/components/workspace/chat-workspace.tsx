@@ -605,7 +605,9 @@ function ActiveChat({
     }
 
     clearError();
-    setSubmittedMode(classifyChatTurn(message));
+    setSubmittedMode(
+      classifyChatTurn(message, { hasHistory: messages.length > 0 }),
+    );
     setInput("");
     if (composerRef.current) {
       composerRef.current.style.height = `${COMPOSER_MIN_HEIGHT}px`;

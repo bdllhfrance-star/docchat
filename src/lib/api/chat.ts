@@ -244,7 +244,9 @@ export async function handleChatRequest(
       );
     }
 
-    const mode = classifyChatTurn(parsed.message);
+    const mode = classifyChatTurn(parsed.message, {
+      hasHistory: parsed.history.length > 0,
+    });
     const documentTokenBudget =
       mode === "grounded"
         ? getChatDocumentTokenBudget(parsed.history, parsed.message)

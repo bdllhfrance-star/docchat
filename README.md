@@ -188,7 +188,7 @@ flowchart TD
     Stream[Stream texte + citations interactives]
 
     Q --> Validate --> Mode
-    Mode -->|social, aide publique, date sûre, demande interdite| NoRag
+    Mode -->|social, aide publique, date sûre, demande interdite ou externe évidente| NoRag
     NoRag --> Model
     Mode -->|question potentiellement documentaire| Embed
     Embed --> Vector
@@ -205,6 +205,12 @@ question documentaire, le modèle peut comparer plusieurs fichiers, calculer,
 évaluer et utiliser des connaissances générales pour interpréter les preuves,
 mais il doit distinguer explicitement faits cités, contexte général et
 inférences.
+
+Le fast path externe est volontairement étroit : uniquement certaines demandes
+autonomes et manifestement live/générales (résultat sportif, météo, actualité,
+prix ou taux en direct). Une référence explicite au document ou la présence d’un
+historique désactive ce raccourci et conserve le RAG, afin de ne pas écarter une
+question documentaire ambiguë.
 
 ### 3. Mise à jour du contexte
 
