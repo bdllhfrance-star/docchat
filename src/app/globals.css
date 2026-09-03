@@ -50,46 +50,44 @@ textarea {
 }
 
 .chat-composer-textarea {
-  scrollbar-color: rgba(100, 116, 139, 0.7) transparent;
-  scrollbar-width: thin;
+  scrollbar-gutter: stable;
 }
 
 .chat-composer-textarea::-webkit-scrollbar {
-  width: 6px;
+  width: 10px;
 }
 
 .chat-composer-textarea::-webkit-scrollbar-track {
   background: transparent;
+  margin-block: 10px;
 }
 
 .chat-composer-textarea::-webkit-scrollbar-button {
   display: none;
+  width: 0;
+  height: 0;
 }
 
 .chat-composer-textarea::-webkit-scrollbar-thumb {
-  border: 1px solid transparent;
+  border: 3px solid transparent;
   border-radius: 999px;
   background: rgba(100, 116, 139, 0.65);
-  background-clip: padding-box;
+  background-clip: content-box;
 }
 
 .chat-composer-textarea::-webkit-scrollbar-thumb:hover {
   background: rgba(71, 85, 105, 0.85);
-  background-clip: padding-box;
-}
-
-.dark .chat-composer-textarea {
-  scrollbar-color: rgba(96, 165, 250, 0.7) transparent;
+  background-clip: content-box;
 }
 
 .dark .chat-composer-textarea::-webkit-scrollbar-thumb {
   background: rgba(96, 165, 250, 0.65);
-  background-clip: padding-box;
+  background-clip: content-box;
 }
 
 .dark .chat-composer-textarea::-webkit-scrollbar-thumb:hover {
   background: rgba(147, 197, 253, 0.85);
-  background-clip: padding-box;
+  background-clip: content-box;
 }
 
 ::selection {

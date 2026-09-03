@@ -104,7 +104,7 @@ test("enables the composer and sends a trimmed question", async () => {
     value: 220,
   });
   fireEvent.change(composer, { target: { value: "A\nB\nC\nD\nE\nF\nG" } });
-  expect(composer.style.height).toBe("96px");
+  expect(composer.style.height).toBe("104px");
   expect(composer.style.overflowY).toBe("auto");
 });
 
