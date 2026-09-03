@@ -64,6 +64,12 @@ test("enables the composer and sends a trimmed question", async () => {
     await screen.findByRole("heading", { name: "Your documents are ready" }),
   ).toBeDefined();
   expect(screen.getByTestId("rag-pipeline-visualizer")).toBeDefined();
+  expect(screen.queryByText("Process replay")).toBeNull();
+  expect(
+    screen.getByLabelText(
+      "Powered by Gemini 3.7 Flash. 1,048,576 input tokens, 65,536 output tokens, medium reasoning.",
+    ),
+  ).toBeDefined();
   expect(container.querySelectorAll("[data-rag-stage]")).toHaveLength(6);
   expect(container.querySelectorAll("[data-vector-value]")).toHaveLength(12);
   expect(container.querySelectorAll("[data-vector-point]")).toHaveLength(6);

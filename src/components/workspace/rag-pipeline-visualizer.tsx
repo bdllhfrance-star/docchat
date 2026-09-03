@@ -166,11 +166,9 @@ export function RagPipelineVisualizer({
   documentCount: number;
   mode?: RagPipelineMode;
 }) {
-  const showsGeminiSignature = mode !== "ready";
   const content =
     mode === "ready"
       ? {
-          badge: "Process replay",
           heading: "Your documents are ready",
           description: `See how ${documentCount} ready ${
             documentCount === 1 ? "document becomes" : "documents become"
@@ -179,7 +177,6 @@ export function RagPipelineVisualizer({
         }
       : mode === "processing"
         ? {
-            badge: "Pipeline active",
             heading: "Building your document context",
             description: `${documentCount} ${
               documentCount === 1 ? "document is" : "documents are"
@@ -187,7 +184,6 @@ export function RagPipelineVisualizer({
             footer: "Processing securely in your private workspace",
           }
         : {
-            badge: "Pipeline overview",
             heading: "From files to searchable knowledge",
             description:
               "Your documents become reliable knowledge, ready to answer your questions.",
@@ -202,22 +198,14 @@ export function RagPipelineVisualizer({
     >
       <div className="rag-ambient-orb rag-ambient-orb-left" aria-hidden="true" />
       <div className="rag-ambient-orb rag-ambient-orb-right" aria-hidden="true" />
-      {showsGeminiSignature ? (
-        <div className="absolute top-5 left-1/2 z-20 w-full -translate-x-1/2 px-4 sm:top-6">
-          <GeminiPoweredBadge />
-        </div>
-      ) : null}
+      <div className="absolute top-5 left-1/2 z-20 w-full -translate-x-1/2 px-4 sm:top-6">
+        <GeminiPoweredBadge />
+      </div>
 
       <div className="relative z-10 w-full max-w-6xl">
-        {mode === "ready" ? (
-          <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50/90 px-3 py-1 text-[10px] font-bold tracking-[0.2em] text-blue-700 uppercase dark:border-blue-900 dark:bg-blue-950/70 dark:text-blue-300">
-            <span className="rag-replay-dot size-1.5 rounded-full bg-blue-500" aria-hidden="true" />
-            {content.badge}
-          </div>
-        ) : null}
         <h1
           id="rag-pipeline-heading"
-          className={`${showsGeminiSignature ? "mt-0" : "mt-4"} text-2xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-3xl`}
+          className="mt-0 text-2xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-3xl"
         >
           {content.heading}
         </h1>

@@ -6,6 +6,7 @@ import {
   CircleEllipsis,
   Clock3,
   Files,
+  Info,
   LockKeyhole,
   Plus,
   RotateCcw,
@@ -472,9 +473,20 @@ function DocumentsPanel({
           {result.files.length}
         </span>
       </div>
-      <p className="-mt-2 px-4 pb-4 text-[11px] leading-4 text-slate-500 dark:text-slate-400 sm:px-5">
-        PDF · DOCX · PPTX · XLSX · TXT · MD · CSV · up to 10 files · 10 MiB each · 50 MiB total
-      </p>
+      <div
+        className="mx-4 -mt-2 mb-4 flex items-start gap-2 rounded-xl border border-blue-100 bg-blue-50/70 px-3 py-2.5 text-[11px] leading-4 text-slate-600 dark:border-blue-950 dark:bg-blue-950/30 dark:text-slate-300 sm:mx-5"
+        role="note"
+        aria-label="Supported files and limits"
+      >
+        <Info
+          size={14}
+          className="mt-px shrink-0 text-blue-600 dark:text-blue-400"
+          aria-hidden="true"
+        />
+        <p>
+          PDF · DOCX · PPTX · XLSX · TXT · MD · CSV · up to 10 files · 10 MiB each · 50 MiB total
+        </p>
+      </div>
 
       {result.errors.length > 0 ? (
         <div
@@ -669,12 +681,11 @@ function DocumentsPanel({
                   : "Upload"}
             </button>
           ) : null}
-          {canAddFromSidebar ? (
+          {canAddFromSidebar && !isSelectionLocked ? (
             <button
               type="button"
               onClick={onOpenPicker}
-              disabled={isSelectionLocked}
-              className={`inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus-visible:outline-slate-200 ${
+              className={`inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-blue-200 bg-blue-50 px-4 text-sm font-semibold text-blue-700 shadow-sm transition-colors hover:border-blue-300 hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300 dark:hover:border-blue-700 dark:hover:bg-blue-950/70 dark:focus-visible:outline-blue-300 ${
                 pendingFileCount > 0 ? "mt-2" : ""
               }`}
             >

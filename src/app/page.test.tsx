@@ -133,6 +133,11 @@ test("renders the initial document workspace", () => {
     name: "Documents",
   });
   expect(
+    within(documentsPanel).getByRole("note", {
+      name: "Supported files and limits",
+    }),
+  ).toBeDefined();
+  expect(
     within(documentsPanel).getByText(
       "PDF · DOCX · PPTX · XLSX · TXT · MD · CSV · up to 10 files · 10 MiB each · 50 MiB total",
     ),
@@ -299,10 +304,9 @@ test("starts one batch action and shows only real upload progress", async () => 
     ),
   ).toBeDefined();
   expect(screen.queryByText("Pipeline active")).toBeNull();
-  expect(screen.getByRole("button", { name: "Add documents" })).toHaveProperty(
-    "disabled",
-    true,
-  );
+  expect(
+    screen.queryByRole("button", { name: "Add documents" }),
+  ).toBeNull();
   expect(screen.getByRole("button", { name: "Remove guide.pdf" })).toHaveProperty(
     "disabled",
     true,
@@ -467,6 +471,12 @@ test("keeps each file row stable while showing real processing states", async ()
   ).not.toBeNull();
   expect(
     await screen.findByRole("heading", { name: "Your documents are ready" }),
+  ).toBeDefined();
+  expect(screen.queryByText("Process replay")).toBeNull();
+  expect(
+    screen.getByLabelText(
+      "Powered by Gemini 3.7 Flash. 1,048,576 input tokens, 65,536 output tokens, medium reasoning.",
+    ),
   ).toBeDefined();
   expect(screen.getByRole("textbox", { name: "Message DocChat" })).toHaveProperty(
     "disabled",
