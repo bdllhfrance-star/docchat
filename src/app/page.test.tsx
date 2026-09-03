@@ -293,6 +293,12 @@ test("starts one batch action and shows only real upload progress", async () => 
 
   expect(createAndUploadBatchMock).toHaveBeenCalledOnce();
   expect(screen.getByText("Creating batch")).toBeDefined();
+  expect(
+    screen.getByLabelText(
+      "Powered by Gemini 3.7 Flash. 1,048,576 input tokens, 65,536 output tokens, medium reasoning.",
+    ),
+  ).toBeDefined();
+  expect(screen.queryByText("Pipeline active")).toBeNull();
   expect(screen.getByRole("button", { name: "Add documents" })).toHaveProperty(
     "disabled",
     true,
