@@ -511,6 +511,11 @@ route générique, opération, statut, durée, `requestId` et codes d’erreur s
 La fin d’une ingestion ajoute `totalDurationMs` et les durées
 `download/extract/chunk/embed/index`.
 
+Le cycle Gemini ajoute `chat.stream.completed` avec la raison de fin et les
+compteurs de tokens, ou `chat.stream.aborted` si le client interrompt le flux.
+Une raison différente de `stop` marque la réponse comme incomplète dans le
+frontend et propose de la régénérer, sans modifier le pipeline RAG.
+
 Les logs ne contiennent ni texte du document, question, réponse, vecteur, clé,
 IP brute ou valeur du cookie de session.
 
@@ -682,8 +687,8 @@ déploiement doit conserver cet alias.
   réel mesuré.
 - Les TTL MongoDB ne déclenchent pas la suppression automatique de l’original
   Blob; la suppression utilisateur, elle, efface les deux stockages.
-- Les quotas gratuits Gemini, Atlas, Blob et Upstash sont des limites externes
-  de la démonstration.
+- Les quotas Gemini dépendent du compte et de sa facturation; ceux d’Atlas,
+  Blob et Upstash restent des limites externes de la démonstration.
 - Le chat répond sur les documents, les interactions sociales courtes, l’aide
   publique et une date système sûre. Pour les sujets généraux sans rapport, il
   redirige vers un assistant conversationnel généraliste.

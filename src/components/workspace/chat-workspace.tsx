@@ -7,6 +7,7 @@ import {
   ExternalLink,
   FileText,
   LoaderCircle,
+  RotateCcw,
   Square,
   X,
 } from "lucide-react";
@@ -581,6 +582,7 @@ function ActiveChat({
     clearError,
     error,
     messages,
+    regenerate,
     sendMessage,
     status,
     stop,
@@ -592,6 +594,11 @@ function ActiveChat({
   const isResponding = status === "submitted" || status === "streaming";
   const canSend =
     input.trim().length > 0 && !isResponding && !isContextUpdating;
+  const lastMessage = messages.at(-1);
+  const hasIncompleteResponse =
+    status === "ready" &&
+    lastMessage?.role === "assistant" &&
+    lastMessage.metadata?.incomplete === true;
 
   useEffect(() => {
     endRef.current?.scrollIntoView?.({ block: "end" });
@@ -638,6 +645,15 @@ function ActiveChat({
     }
   }
 
+  function retryIncompleteResponse(): void {
+    if (isResponding || isContextUpdating) {
+      return;
+    }
+
+    clearError();
+    void regenerate();
+  }
+
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-transparent">
       <div
@@ -672,6 +688,22 @@ function ActiveChat({
 
       <footer className="shrink-0 bg-transparent px-3 pt-2 pb-3 sm:px-6 sm:pt-3 sm:pb-4">
         <form className="mx-auto w-full max-w-3xl" onSubmit={handleSubmit}>
+          {hasIncompleteResponse ? (
+            <div
+              className="mb-2 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/95 px-3 py-2 text-sm text-amber-950 shadow-sm dark:border-amber-900 dark:bg-amber-950/80 dark:text-amber-100"
+              role="alert"
+            >
+              <span>The response stopped before it was complete.</span>
+              <button
+                type="button"
+                onClick={retryIncompleteResponse}
+                className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 font-semibold text-amber-900 hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700 dark:text-amber-100 dark:hover:bg-amber-900"
+              >
+                <RotateCcw size={13} aria-hidden="true" />
+                Try again
+              </button>
+            </div>
+          ) : null}
           {error ? (
             <div
               className="mb-2 flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/60 dark:text-red-300"

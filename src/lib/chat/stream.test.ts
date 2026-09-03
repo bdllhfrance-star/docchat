@@ -25,7 +25,10 @@ function modelStream(): ReadableStream<never> {
 
 describe("chat UI stream", () => {
   test("lets Gemini apply the refusal policy when retrieval finds no context", async () => {
-    const toUIMessageStream = vi.fn(() => modelStream());
+    const toUIMessageStream = vi.fn((options?: unknown) => {
+      void options;
+      return modelStream();
+    });
     const streamModel = vi.fn((settings: unknown) => {
       void settings;
       return { toUIMessageStream };
@@ -73,7 +76,10 @@ describe("chat UI stream", () => {
         score: 0.93,
       },
     ]);
-    const toUIMessageStream = vi.fn(() => modelStream());
+    const toUIMessageStream = vi.fn((options?: unknown) => {
+      void options;
+      return modelStream();
+    });
     const streamModel = vi.fn((settings: unknown) => {
       void settings;
       return { toUIMessageStream };
@@ -111,8 +117,24 @@ describe("chat UI stream", () => {
       }),
     ]);
     expect(toUIMessageStream).toHaveBeenCalledWith({
+      messageMetadata: expect.any(Function),
       onError: expect.any(Function),
     });
+    const streamOptions = toUIMessageStream.mock.calls[0][0] as {
+      messageMetadata: (input: { part: { finishReason: string; type: string } }) =>
+        | { finishReason: string; incomplete: boolean }
+        | undefined;
+    };
+    expect(
+      streamOptions.messageMetadata({
+        part: { type: "finish", finishReason: "length" },
+      }),
+    ).toEqual({ finishReason: "length", incomplete: true });
+    expect(
+      streamOptions.messageMetadata({
+        part: { type: "finish", finishReason: "stop" },
+      }),
+    ).toEqual({ finishReason: "stop", incomplete: false });
     expect(body.indexOf('"type":"data-sources"')).toBeLessThan(
       body.indexOf("Grounded answer."),
     );
@@ -274,5 +296,61 @@ describe("chat UI stream", () => {
     });
     expect(log).not.toContain("What is required?");
     expect(log).not.toContain("GenerateRequestsPerDay");
+  });
+
+  test("logs safe completion and abort telemetry for the full Gemini stream", async () => {
+    const context = buildGroundedChatContext("Summarize the document", [], []);
+    const toUIMessageStream = vi.fn((options?: unknown) => {
+      void options;
+      return modelStream();
+    });
+    const streamModel = vi.fn((settings?: unknown) => {
+      void settings;
+      return { toUIMessageStream };
+    });
+    const logger = { error: vi.fn(), info: vi.fn() };
+    const response = createChatStreamResponse(
+      {
+        context,
+        history: [],
+        mode: "grounded",
+        question: "Summarize the document",
+        requestId: "request-stream-lifecycle",
+      },
+      {
+        logger,
+        streamModel: streamModel as unknown as typeof streamText,
+      },
+    );
+
+    await response.text();
+    const settings = streamModel.mock.calls[0][0] as {
+      onAbort: () => void;
+      onEnd: (event: unknown) => void;
+    };
+    settings.onEnd({
+      finishReason: "length",
+      rawFinishReason: "MAX_TOKENS",
+      usage: { inputTokens: 120, outputTokens: 80, totalTokens: 200 },
+    });
+    settings.onAbort();
+
+    expect(logger.info).toHaveBeenCalledTimes(2);
+    expect(JSON.parse(logger.info.mock.calls[0][0])).toMatchObject({
+      event: "chat.stream.completed",
+      requestId: "request-stream-lifecycle",
+      finishReason: "length",
+      rawFinishReason: "MAX_TOKENS",
+      inputTokens: 120,
+      outputTokens: 80,
+      totalTokens: 200,
+    });
+    expect(JSON.parse(logger.info.mock.calls[1][0])).toMatchObject({
+      event: "chat.stream.aborted",
+      requestId: "request-stream-lifecycle",
+    });
+    expect(logger.info.mock.calls.flat().join(" ")).not.toContain(
+      "Summarize the document",
+    );
   });
 });

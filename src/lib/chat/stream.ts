@@ -28,7 +28,7 @@ export type ChatStreamInput = {
 };
 
 export type ChatStreamOptions = {
-  logger?: Pick<Console, "error">;
+  logger?: Pick<Console, "error"> & Partial<Pick<Console, "info">>;
   now?: () => Date;
   streamModel?: typeof streamText;
 };
@@ -64,6 +64,7 @@ export function createChatStreamResponse(
   options: ChatStreamOptions = {},
 ): Response {
   const logger = options.logger ?? console;
+  const generationStartedAt = Date.now();
   let failureLogged = false;
   const onStreamError = (error: unknown): string => {
     const failure = getChatStreamFailure(error, input.question);
@@ -116,10 +117,48 @@ export function createChatStreamResponse(
             },
           },
         },
+        onEnd({ finishReason, rawFinishReason, usage }) {
+          logger.info?.(
+            JSON.stringify({
+              timestamp: new Date().toISOString(),
+              level: "info",
+              event: "chat.stream.completed",
+              requestId: input.requestId ?? "unknown",
+              provider: "gemini",
+              model: GEMINI_CHAT_MODEL.id,
+              finishReason,
+              rawFinishReason,
+              inputTokens: usage.inputTokens,
+              outputTokens: usage.outputTokens,
+              totalTokens: usage.totalTokens,
+              durationMs: Date.now() - generationStartedAt,
+            }),
+          );
+        },
+        onAbort() {
+          logger.info?.(
+            JSON.stringify({
+              timestamp: new Date().toISOString(),
+              level: "info",
+              event: "chat.stream.aborted",
+              requestId: input.requestId ?? "unknown",
+              provider: "gemini",
+              model: GEMINI_CHAT_MODEL.id,
+              durationMs: Date.now() - generationStartedAt,
+            }),
+          );
+        },
       });
 
       writer.merge(
         result.toUIMessageStream<DocChatUIMessage>({
+          messageMetadata: ({ part }) =>
+            part.type === "finish"
+              ? {
+                  finishReason: part.finishReason,
+                  incomplete: part.finishReason !== "stop",
+                }
+              : undefined,
           onError: onStreamError,
         }),
       );

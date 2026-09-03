@@ -4,7 +4,7 @@ import type {
   DocumentSource,
   SupportedFileType,
 } from "@/types/documents";
-import type { UIMessage } from "ai";
+import type { FinishReason, UIMessage } from "ai";
 
 export const apiErrorCodes = [
   "INVALID_REQUEST",
@@ -102,7 +102,12 @@ export type ChatSource = {
   source: DocumentSource;
 };
 
+export type ChatStreamMetadata = {
+  finishReason?: FinishReason;
+  incomplete?: boolean;
+};
+
 export type DocChatUIMessage = UIMessage<
-  unknown,
+  ChatStreamMetadata,
   { sources: ChatSource[] }
 >;

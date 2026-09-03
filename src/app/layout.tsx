@@ -12,7 +12,7 @@ const themeInitializer = `
 `;
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://docchat-bdllhfrance-star.vercel.app"),
+  metadataBase: new URL("https://docchat-lyart.vercel.app"),
   title: "Smartly.ai — Chat with your documents",
   description:
     "Upload multiple documents and get streamed, source-grounded answers from your private workspace.",

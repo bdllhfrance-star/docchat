@@ -14,6 +14,7 @@ vi.mock("@ai-sdk/react", () => ({
 const useChatMock = vi.mocked(useChat);
 const sendMessage = vi.fn().mockResolvedValue(undefined);
 const stop = vi.fn().mockResolvedValue(undefined);
+const regenerate = vi.fn().mockResolvedValue(undefined);
 const clearError = vi.fn();
 
 function chatState(
@@ -28,7 +29,7 @@ function chatState(
     stop,
     clearError,
     setMessages: vi.fn(),
-    regenerate: vi.fn(),
+    regenerate,
     resumeStream: vi.fn(),
     addToolResult: vi.fn(),
     addToolOutput: vi.fn(),
@@ -41,14 +42,16 @@ function message(
   id: string,
   role: "user" | "assistant",
   text: string,
+  metadata?: DocChatUIMessage["metadata"],
 ): DocChatUIMessage {
-  return { id, role, parts: [{ type: "text", text }] };
+  return { id, role, parts: [{ type: "text", text }], metadata };
 }
 
 beforeEach(() => {
   sessionStorage.clear();
   sendMessage.mockClear();
   stop.mockClear();
+  regenerate.mockClear();
   clearError.mockClear();
   useChatMock.mockReset();
   useChatMock.mockReturnValue(chatState());
@@ -163,6 +166,31 @@ test("renders progressive text and allows the request to be stopped", async () =
 
   fireEvent.click(screen.getByRole("button", { name: "Stop response" }));
   expect(stop).toHaveBeenCalledOnce();
+});
+
+test("offers a retry when Gemini reports an incomplete response", async () => {
+  useChatMock.mockReturnValue(
+    chatState({
+      messages: [
+        message("user-1", "user", "Summarize the document"),
+        message("assistant-1", "assistant", "The document contains (", {
+          finishReason: "length",
+          incomplete: true,
+        }),
+      ],
+    }),
+  );
+
+  render(
+    <ChatWorkspace batchId="batch-1" documentIds={["document-1"]} />,
+  );
+
+  expect(
+    await screen.findByText("The response stopped before it was complete."),
+  ).toBeDefined();
+  fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+  expect(clearError).toHaveBeenCalledOnce();
+  expect(regenerate).toHaveBeenCalledOnce();
 });
 
 test("renders assistant Markdown directly on the surface with inline citations", async () => {
