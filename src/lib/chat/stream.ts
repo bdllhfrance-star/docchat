@@ -8,13 +8,11 @@ import {
 
 import { GEMINI_CHAT_MODEL } from "@/lib/ai/model-config";
 import {
-  CHAT_SYSTEM_PROMPT,
-  CONVERSATION_SYSTEM_PROMPT,
+  buildChatSystemPrompt,
   type GroundedChatContext,
 } from "@/lib/chat/grounding";
-import { getLocalChatResponse } from "@/lib/chat/local-response";
 import { getChatStreamFailure } from "@/lib/chat/stream-error";
-import { detectChatLanguage, type ChatTurnMode } from "@/lib/chat/turn-mode";
+import type { ChatTurnMode } from "@/lib/chat/turn-mode";
 import type {
   ChatHistoryMessage,
   DocChatUIMessage,
@@ -34,20 +32,6 @@ export type ChatStreamOptions = {
   now?: () => Date;
   streamModel?: typeof streamText;
 };
-
-function refusalMessage(question: string): string {
-  const language = detectChatLanguage(question);
-
-  if (language === "ar") {
-    return "لم أجد هذه المعلومة في المستندات المقدمة. Smartly.ai مخصص لتحليل مستنداتك؛ للمحادثة العامة استخدم ChatGPT أو Claude أو Gemini.";
-  }
-
-  if (language === "fr") {
-    return "Je n’ai pas trouvé cette information dans les documents fournis. Smartly.ai est dédié à leur analyse ; pour une discussion générale, utilisez ChatGPT, Claude ou Gemini.";
-  }
-
-  return "I could not find this information in the provided documents. Smartly.ai is dedicated to document analysis; for general conversation, use ChatGPT, Claude, or Gemini.";
-}
 
 function toModelMessages(
   history: readonly ChatHistoryMessage[],
@@ -108,44 +92,16 @@ export function createChatStreamResponse(
         data: input.context.sources,
       });
 
-      if (input.mode !== "grounded" && input.mode !== "conversation") {
-        const textId = `local-${input.mode}`;
-        writer.write({ type: "text-start", id: textId });
-        writer.write({
-          type: "text-delta",
-          id: textId,
-          delta: getLocalChatResponse(
-            input.mode,
-            input.question,
-            options.now,
-          ),
-        });
-        writer.write({ type: "text-end", id: textId });
-        return;
-      }
-
-      if (input.mode === "grounded" && input.context.chunks.length === 0) {
-        const textId = "grounded-refusal";
-        writer.write({ type: "text-start", id: textId });
-        writer.write({
-          type: "text-delta",
-          id: textId,
-          delta: refusalMessage(input.question),
-        });
-        writer.write({ type: "text-end", id: textId });
-        return;
-      }
-
       const result = (options.streamModel ?? streamText)({
         model: google(GEMINI_CHAT_MODEL.id),
-        system:
-          input.mode === "conversation"
-            ? CONVERSATION_SYSTEM_PROMPT
-            : CHAT_SYSTEM_PROMPT,
+        system: buildChatSystemPrompt(
+          input.mode,
+          (options.now ?? (() => new Date()))(),
+        ),
         messages:
-          input.mode === "conversation"
-            ? toConversationMessages(input.history, input.question)
-            : toModelMessages(input.history, input.context.prompt),
+          input.mode === "grounded"
+            ? toModelMessages(input.history, input.context.prompt)
+            : toConversationMessages(input.history, input.question),
         maxOutputTokens: GEMINI_CHAT_MODEL.outputTokenLimit,
         maxRetries: 2,
         abortSignal: input.abortSignal,

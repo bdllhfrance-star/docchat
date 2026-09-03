@@ -4,6 +4,7 @@ import { GEMINI_CHAT_MODEL } from "@/lib/ai/model-config";
 import type { RetrievedChunk } from "@/lib/rag/vector-search";
 
 import {
+  buildChatSystemPrompt,
   buildGroundedChatContext,
   CHAT_CONTEXT_CONFIG,
   CHAT_SYSTEM_PROMPT,
@@ -120,5 +121,17 @@ describe("grounded chat context", () => {
     expect(CHAT_SYSTEM_PROMPT).toContain("Reason fully");
     expect(CHAT_SYSTEM_PROMPT).toContain("general background");
     expect(CHAT_SYSTEM_PROMPT).toContain("internal architecture");
+  });
+
+  test("gives Gemini trusted public product and runtime context for every turn", () => {
+    const system = buildChatSystemPrompt(
+      "safe_system",
+      new Date("2026-09-03T23:59:00.000Z"),
+    );
+
+    expect(system).toContain("PUBLIC_PRODUCT_FACTS");
+    expect(system).toContain("Current UTC date: 2026-09-03");
+    expect(system).toContain("Router hint: safe_system");
+    expect(system).toContain("Determine the latest user's intent yourself");
   });
 });

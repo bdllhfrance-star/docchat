@@ -654,9 +654,9 @@ Paramètres initiaux :
 - Un routeur déterministe minimal distingue cinq comportements sans ajouter de
   classifieur LLM : échange social, aide publique d'utilisation, information
   système sûre, demande interne interdite et question potentiellement
-  documentaire. Les quatre premiers évitent embeddings et retrieval ; toute
-  autre demande passe par le RAG afin qu'un sujet reste interrogeable lorsqu'il
-  est réellement présent dans les documents.
+  documentaire. Le routeur décide uniquement si un retrieval documentaire est
+  nécessaire et quelles données système fiables doivent accompagner le tour ;
+  il ne rédige aucune réponse visible. Toute réponse est générée par Gemini.
 - Les échanges sociaux et réactions reçoivent une réponse naturelle dans la
   langue de l'utilisateur par Gemini, avec l'historique utile mais sans
   retrieval ni citation. Les questions d'utilisation décrivent uniquement le
@@ -1205,3 +1205,4 @@ Le projet est terminé uniquement lorsque :
 | 2026-09-03 | Afficher les détails de citation dans un popover ancré au marqueur plutôt qu'en dessous de la réponse, et remplacer le spinner générique du chat par le logo Smartly.ai animé pendant la recherche et la génération. |
 | 2026-09-03 | Distinguer sans classifieur supplémentaire les échanges sociaux, l'aide publique, la date système sûre, les demandes internes interdites et les demandes potentiellement documentaires. Préserver le raisonnement complet de Gemini sur les documents, tout en séparant faits cités, inférences et contexte général et en redirigeant les sujets externes. |
 | 2026-09-03 | Lorsqu'un fournisseur échoue après le début du stream, afficher une erreur exploitable et journaliser uniquement un code sûr. Le quota gratuit journalier Gemini observé pour `gemini-3.7-flash` est une limite réelle du déploiement de démonstration, pas une erreur RAG. |
+| 2026-09-03 | Confier à Gemini la rédaction de toutes les réponses, y compris les échanges sociaux, l'aide publique, la date et les refus de sécurité. Le routeur local ne produit plus de texte : il limite son rôle au choix du retrieval et à l'injection de contexte système fiable. Chaque message consomme donc une génération Gemini. |
