@@ -107,7 +107,7 @@ describe("chat UI stream", () => {
     expect(body).toContain('"score":0.93');
   });
 
-  test("answers a greeting locally without retrieval, sources, or Gemini quota", async () => {
+  test("lets Gemini answer a social turn without retrieval context or sources", async () => {
     const context = buildGroundedChatContext("Hello!", [], []);
     const toUIMessageStream = vi.fn(() => modelStream());
     const streamModel = vi.fn((settings: unknown) => {
@@ -124,10 +124,19 @@ describe("chat UI stream", () => {
       { streamModel: streamModel as unknown as typeof streamText },
     );
     const body = await response.text();
+    const settings = streamModel.mock.calls[0][0] as {
+      messages: unknown[];
+      system: string;
+    };
 
-    expect(streamModel).not.toHaveBeenCalled();
+    expect(settings.system).toContain("brief social message or reaction");
+    expect(settings.system).toContain("ordinary social conversation is welcome");
+    expect(settings.messages).toEqual([
+      { role: "assistant", content: "An earlier document answer." },
+      { role: "user", content: "Hello!" },
+    ]);
     expect(body).toContain('"data":[]');
-    expect(body).toContain("ready to help you explore and analyze");
+    expect(body).toContain("Grounded answer.");
     expect(body).not.toContain("I could not find this information");
   });
 

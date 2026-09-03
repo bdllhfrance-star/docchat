@@ -4,61 +4,7 @@ import {
   type ChatTurnMode,
 } from "@/lib/chat/turn-mode";
 
-type LocalChatTurnMode = Exclude<ChatTurnMode, "grounded">;
-
-function socialMessage(question: string, language: ChatLanguage): string {
-  const isRudenessReaction = /\b(?:rude|impoli)\b/iu.test(question);
-  const isThanks =
-    /\b(?:thanks|thank you|merci)\b/iu.test(question) || /شكرا/u.test(question);
-  const isBye =
-    /\b(?:bye|goodbye|au revoir)\b/iu.test(question) || /مع السلامة/u.test(question);
-
-  if (language === "ar") {
-    if (isRudenessReaction) {
-      return "معك حق في الإشارة إلى ذلك، وأعتذر. يمكنني التفاعل معك بشكل طبيعي، وأنا هنا لمساعدتك في تحليل مستنداتك.";
-    }
-
-    if (isThanks) {
-      return "على الرحب والسعة. أنا جاهز لأي سؤال حول مستنداتك.";
-    }
-
-    if (isBye) {
-      return "إلى اللقاء! يمكنك العودة في أي وقت لمتابعة تحليل مستنداتك.";
-    }
-
-    return "مرحباً! أنا جاهز لمساعدتك في استكشاف مستنداتك وتحليلها.";
-  }
-
-  if (language === "fr") {
-    if (isRudenessReaction) {
-      return "Tu as raison de le signaler, désolé. Je peux échanger naturellement avec toi et je suis là pour t’aider à analyser tes documents.";
-    }
-
-    if (isThanks) {
-      return "Avec plaisir. Je suis prêt pour tes questions sur les documents.";
-    }
-
-    if (isBye) {
-      return "À bientôt ! Tu peux revenir quand tu veux pour poursuivre l’analyse de tes documents.";
-    }
-
-    return "Bonjour ! Je suis prêt à t’aider à explorer et analyser tes documents.";
-  }
-
-  if (isRudenessReaction) {
-    return "You’re right to flag that—sorry. I can respond naturally, and I’m here to help you analyze your documents.";
-  }
-
-  if (isThanks) {
-    return "You’re welcome. I’m ready for any questions about your documents.";
-  }
-
-  if (isBye) {
-    return "See you! You can come back anytime to continue analyzing your documents.";
-  }
-
-  return "Hello! I’m ready to help you explore and analyze your documents.";
-}
+type LocalChatTurnMode = Exclude<ChatTurnMode, "conversation" | "grounded">;
 
 function appHelpMessage(language: ChatLanguage): string {
   if (language === "ar") {
@@ -113,8 +59,6 @@ export function getLocalChatResponse(
   switch (mode) {
     case "app_help":
       return appHelpMessage(language);
-    case "conversation":
-      return socialMessage(question, language);
     case "restricted":
       return restrictedMessage(language);
     case "safe_system":

@@ -658,7 +658,8 @@ Paramètres initiaux :
   autre demande passe par le RAG afin qu'un sujet reste interrogeable lorsqu'il
   est réellement présent dans les documents.
 - Les échanges sociaux et réactions reçoivent une réponse naturelle dans la
-  langue de l'utilisateur. Les questions d'utilisation décrivent uniquement le
+  langue de l'utilisateur par Gemini, avec l'historique utile mais sans
+  retrieval ni citation. Les questions d'utilisation décrivent uniquement le
   parcours public visible. La date courante peut être fournie comme valeur
   système sûre et explicitement localisée.
 - Les demandes sans rapport avec les documents ne reçoivent pas une réponse de
