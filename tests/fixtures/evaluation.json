@@ -38,6 +38,16 @@
       "shouldRefuse": false
     },
     {
+      "id": "eval-txt-01",
+      "language": "en",
+      "question": "What are the approval code and the payment window?",
+      "expectedAnswer": "The approval code is TXT-7319 and the payment window is 30 days.",
+      "expectedDocument": "multiformat-smoke.txt",
+      "expectedLineStart": 1,
+      "expectedLineEnd": 7,
+      "shouldRefuse": false
+    },
+    {
       "id": "eval-absent-01",
       "language": "fr",
       "question": "Quel est le taux de TVA appliqué au Maroc en 2026 ?",

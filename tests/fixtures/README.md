@@ -57,3 +57,6 @@ documents does not imply endorsement of DocChat.
 
 All locally authored fixture metadata and invalid fixture content in this
 directory are dedicated to the public domain under CC0 1.0.
+
+`documents/multiformat-smoke.txt` is a locally authored, non-sensitive TXT
+fixture used to verify deployed text ingestion and precise fact retrieval.

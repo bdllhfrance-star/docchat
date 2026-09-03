@@ -1,0 +1,1 @@
+tests/fixtures/documents/*.txt text eol=lf

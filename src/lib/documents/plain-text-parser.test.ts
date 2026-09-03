@@ -1,5 +1,8 @@
 // @vitest-environment node
 
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
 import { describe, expect, test } from "vitest";
 
 import { markdownParser, txtParser } from "./plain-text-parser";
@@ -18,6 +21,36 @@ describe("plain text parsers", () => {
       {
         text: "Account\nReference: ZX-104\n\nAmount: 120.50 EUR",
         source: { label: "Lines 2-6", lineStart: 2, lineEnd: 6 },
+      },
+    ]);
+  });
+
+  test("extracts the deployed TXT retrieval fixture with its location", async () => {
+    const fixture = await readFile(
+      path.join(
+        process.cwd(),
+        "tests",
+        "fixtures",
+        "documents",
+        "multiformat-smoke.txt",
+      ),
+    );
+    const bytes = fixture.buffer.slice(
+      fixture.byteOffset,
+      fixture.byteOffset + fixture.byteLength,
+    ) as ArrayBuffer;
+
+    await expect(txtParser.extract(bytes)).resolves.toEqual([
+      {
+        text: [
+          "DocChat multi-format validation",
+          "",
+          "Project: Orion",
+          "Approval code: TXT-7319",
+          "Payment window: 30 days",
+          "Responsible team: Quality Engineering",
+        ].join("\n"),
+        source: { label: "Lines 1-7", lineStart: 1, lineEnd: 7 },
       },
     ]);
   });

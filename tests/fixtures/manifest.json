@@ -16,6 +16,14 @@
       "expectedSizeBytes": 3073424,
       "sha256": "B0D6F503038CE9E661787C56AB8680DEA9E748E3A577C3473D9552FA3273DCE2",
       "expectedOutcome": "ready"
+    },
+    {
+      "path": "documents/multiformat-smoke.txt",
+      "language": "en",
+      "expectedLineCount": 7,
+      "expectedSizeBytes": 134,
+      "sha256": "01B126390C3A19A0388E8B471782A17362570D1EAFAB6B226677BCEF2944743B",
+      "expectedOutcome": "ready"
     }
   ],
   "invalidDocuments": [

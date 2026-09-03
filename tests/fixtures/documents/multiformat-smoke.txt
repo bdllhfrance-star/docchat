@@ -1,0 +1,6 @@
+DocChat multi-format validation
+
+Project: Orion
+Approval code: TXT-7319
+Payment window: 30 days
+Responsible team: Quality Engineering
