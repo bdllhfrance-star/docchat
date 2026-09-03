@@ -752,7 +752,7 @@ function DisabledComposer({
   return (
     <footer className="shrink-0 bg-transparent px-3 pt-2 pb-3 sm:px-6 sm:pt-3 sm:pb-4">
       <div className="mx-auto w-full max-w-3xl">
-        <div className="relative rounded-2xl border border-white/80 bg-white/80 shadow-[0_12px_35px_-20px_rgba(15,23,42,0.45)] backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/80">
+        <div className="flex items-end overflow-hidden rounded-2xl border border-white/80 bg-white/80 shadow-[0_12px_35px_-20px_rgba(15,23,42,0.45)] backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/80">
           <label htmlFor="message" className="sr-only">
             Message DocChat
           </label>
@@ -762,13 +762,13 @@ function DisabledComposer({
             disabled
             aria-describedby="composer-reason"
             placeholder="Ask a question about your documents"
-            className="block min-h-14 w-full resize-none overflow-hidden bg-transparent py-4 pr-14 pl-4 text-sm text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed dark:text-slate-100 dark:placeholder:text-slate-500"
+            className="block h-14 min-h-14 min-w-0 flex-1 resize-none overflow-hidden bg-transparent py-[18px] pr-2 pl-4 text-sm leading-5 text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed dark:text-slate-100 dark:placeholder:text-slate-500"
           />
           <button
             type="button"
             disabled
             aria-label="Send message"
-            className="absolute right-2.5 bottom-2.5 grid size-9 cursor-not-allowed place-items-center rounded-xl bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-500"
+            className="m-2.5 ml-0 grid size-9 shrink-0 cursor-not-allowed place-items-center rounded-xl bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-500"
           >
             <ArrowUp size={17} strokeWidth={2} aria-hidden="true" />
           </button>

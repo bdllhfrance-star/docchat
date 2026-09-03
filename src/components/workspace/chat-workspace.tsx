@@ -29,6 +29,22 @@ type ChatWorkspaceProps = {
   isContextUpdating?: boolean;
 };
 
+const COMPOSER_MIN_HEIGHT = 56;
+const COMPOSER_MAX_HEIGHT = 96;
+
+function resizeComposer(element: HTMLTextAreaElement): void {
+  element.style.height = "0px";
+  const contentHeight = element.scrollHeight;
+  const height = Math.min(
+    COMPOSER_MAX_HEIGHT,
+    Math.max(COMPOSER_MIN_HEIGHT, contentHeight),
+  );
+
+  element.style.height = `${height}px`;
+  element.style.overflowY =
+    contentHeight > COMPOSER_MAX_HEIGHT ? "auto" : "hidden";
+}
+
 function readStoredMessages(storageKey: string): DocChatUIMessage[] {
   try {
     const value: unknown = JSON.parse(sessionStorage.getItem(storageKey) ?? "[]");
@@ -160,6 +176,7 @@ function ActiveChat({
   storageKey,
 }: ActiveChatProps) {
   const [input, setInput] = useState("");
+  const composerRef = useRef<HTMLTextAreaElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const transport = useMemo(
     () => createDocChatTransport(batchId, documentIds),
@@ -205,6 +222,10 @@ function ActiveChat({
 
     clearError();
     setInput("");
+    if (composerRef.current) {
+      composerRef.current.style.height = `${COMPOSER_MIN_HEIGHT}px`;
+      composerRef.current.style.overflowY = "hidden";
+    }
     void sendMessage({ text: message });
   }
 
@@ -273,26 +294,30 @@ function ActiveChat({
               </button>
             </div>
           ) : null}
-          <div className="relative rounded-2xl border border-white/80 bg-white/85 shadow-[0_12px_35px_-20px_rgba(15,23,42,0.5)] backdrop-blur-xl focus-within:border-slate-500 focus-within:ring-2 focus-within:ring-slate-200 dark:border-slate-700/80 dark:bg-slate-900/85 dark:focus-within:border-blue-500 dark:focus-within:ring-blue-950">
+          <div className="flex items-end overflow-hidden rounded-2xl border border-white/80 bg-white/85 shadow-[0_12px_35px_-20px_rgba(15,23,42,0.5)] backdrop-blur-xl focus-within:border-slate-500 focus-within:ring-2 focus-within:ring-slate-200 dark:border-slate-700/80 dark:bg-slate-900/85 dark:focus-within:border-blue-500 dark:focus-within:ring-blue-950">
             <label htmlFor="message" className="sr-only">
               Message DocChat
             </label>
             <textarea
+              ref={composerRef}
               id="message"
               rows={1}
               value={input}
-              onChange={(event) => setInput(event.target.value)}
+              onChange={(event) => {
+                setInput(event.target.value);
+                resizeComposer(event.currentTarget);
+              }}
               onKeyDown={handleKeyDown}
               disabled={isResponding || isContextUpdating}
               placeholder="Ask a question about your documents"
-              className="block min-h-14 max-h-36 w-full resize-none overflow-y-auto bg-transparent py-4 pr-14 pl-4 text-sm text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed dark:text-slate-100 dark:placeholder:text-slate-500"
+              className="chat-composer-textarea block h-14 min-h-14 max-h-24 min-w-0 flex-1 resize-none overflow-y-hidden bg-transparent py-[18px] pr-2 pl-4 text-sm leading-5 text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed dark:text-slate-100 dark:placeholder:text-slate-500"
             />
             {isResponding ? (
               <button
                 type="button"
                 onClick={() => void stop()}
                 aria-label="Stop response"
-                className="absolute right-2.5 bottom-2.5 grid size-9 place-items-center rounded-xl bg-slate-900 text-white hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 dark:bg-blue-600 dark:hover:bg-blue-500 dark:focus-visible:outline-slate-200"
+                className="m-2.5 ml-0 grid size-9 shrink-0 place-items-center rounded-xl bg-slate-900 text-white hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 dark:bg-blue-600 dark:hover:bg-blue-500 dark:focus-visible:outline-slate-200"
               >
                 <Square size={13} fill="currentColor" aria-hidden="true" />
               </button>
@@ -301,7 +326,7 @@ function ActiveChat({
                 type="submit"
                 disabled={!canSend}
                 aria-label="Send message"
-                className="absolute right-2.5 bottom-2.5 grid size-9 place-items-center rounded-xl bg-slate-950 text-white hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 dark:bg-blue-600 dark:hover:bg-blue-500 dark:focus-visible:outline-slate-200 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
+                className="m-2.5 ml-0 grid size-9 shrink-0 place-items-center rounded-xl bg-slate-950 text-white hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 dark:bg-blue-600 dark:hover:bg-blue-500 dark:focus-visible:outline-slate-200 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
               >
                 <ArrowUp size={17} strokeWidth={2} aria-hidden="true" />
               </button>

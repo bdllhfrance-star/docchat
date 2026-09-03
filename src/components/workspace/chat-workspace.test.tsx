@@ -84,13 +84,28 @@ test("enables the composer and sends a trimmed question", async () => {
     expect(screen.getByText(stage)).toBeDefined();
   }
   const composer = screen.getByRole("textbox", { name: "Message DocChat" });
+  Object.defineProperty(composer, "scrollHeight", {
+    configurable: true,
+    value: 88,
+  });
 
   fireEvent.change(composer, { target: { value: "  What is required?  " } });
+  expect(composer.style.height).toBe("88px");
+  expect(composer.style.overflowY).toBe("hidden");
   fireEvent.click(screen.getByRole("button", { name: "Send message" }));
 
   expect(clearError).toHaveBeenCalledOnce();
   expect(sendMessage).toHaveBeenCalledWith({ text: "What is required?" });
   expect(composer).toHaveProperty("value", "");
+  expect(composer.style.height).toBe("56px");
+
+  Object.defineProperty(composer, "scrollHeight", {
+    configurable: true,
+    value: 220,
+  });
+  fireEvent.change(composer, { target: { value: "A\nB\nC\nD\nE\nF\nG" } });
+  expect(composer.style.height).toBe("96px");
+  expect(composer.style.overflowY).toBe("auto");
 });
 
 test("keeps the chat mounted while its document context is updating", async () => {

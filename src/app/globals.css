@@ -49,6 +49,49 @@ textarea {
   font: inherit;
 }
 
+.chat-composer-textarea {
+  scrollbar-color: rgba(100, 116, 139, 0.7) transparent;
+  scrollbar-width: thin;
+}
+
+.chat-composer-textarea::-webkit-scrollbar {
+  width: 6px;
+}
+
+.chat-composer-textarea::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.chat-composer-textarea::-webkit-scrollbar-button {
+  display: none;
+}
+
+.chat-composer-textarea::-webkit-scrollbar-thumb {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: rgba(100, 116, 139, 0.65);
+  background-clip: padding-box;
+}
+
+.chat-composer-textarea::-webkit-scrollbar-thumb:hover {
+  background: rgba(71, 85, 105, 0.85);
+  background-clip: padding-box;
+}
+
+.dark .chat-composer-textarea {
+  scrollbar-color: rgba(96, 165, 250, 0.7) transparent;
+}
+
+.dark .chat-composer-textarea::-webkit-scrollbar-thumb {
+  background: rgba(96, 165, 250, 0.65);
+  background-clip: padding-box;
+}
+
+.dark .chat-composer-textarea::-webkit-scrollbar-thumb:hover {
+  background: rgba(147, 197, 253, 0.85);
+  background-clip: padding-box;
+}
+
 ::selection {
   background: #dbeafe;
   color: #172554;
