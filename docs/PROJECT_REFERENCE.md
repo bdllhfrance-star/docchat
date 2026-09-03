@@ -25,10 +25,12 @@ Règles d'utilisation :
 DocChat est une application web full stack permettant à un utilisateur de
 sélectionner plusieurs documents en une fois, de suivre leur traitement, puis
 de poser des questions sur tout ou partie de ces documents. Les réponses sont
-générées par un LLM uniquement à partir des passages retrouvés par un pipeline
-RAG et sont affichées progressivement avec leurs sources.
-Les salutations et autres échanges sociaux courts restent naturels et ne
-déclenchent pas une recherche documentaire artificielle.
+générées par un LLM à partir des passages retrouvés par un pipeline RAG et sont
+affichées progressivement avec leurs sources. Le modèle conserve ses capacités
+de raisonnement, de comparaison, de calcul et de synthèse ; les faits présentés
+comme provenant des documents restent obligatoirement fondés et cités.
+Les échanges sociaux courts, l'aide d'utilisation publique et les informations
+système sûres ne déclenchent pas une recherche documentaire artificielle.
 
 ## 3. Objectifs
 
@@ -160,6 +162,9 @@ lance les tests et vérifie le pipeline localement.
 | US-14 | Je peux interroger des PDF français et arabes. | L'extraction, le retrieval et la réponse fonctionnent sur les fixtures prévues. |
 | US-15 | En tant que développeur, je peux reproduire le projet. | Le README documente l'installation, les variables, les index et les commandes de test. |
 | US-16 | Je peux utiliser l'application avec un thème sombre. | Un contrôle dans l'en-tête bascule toute l'interface entre clair et sombre. Le choix est mémorisé localement et le thème système est utilisé par défaut. |
+| US-17 | Je peux saluer l'assistant, réagir à sa réponse ou demander la date sans recevoir un refus documentaire absurde. | Les échanges sociaux et la date système sûre reçoivent une réponse naturelle sans retrieval ni citation. |
+| US-18 | Je veux que l'assistant raisonne pleinement sur mes documents sans confondre preuve, déduction et connaissance générale. | Les faits documentaires sont cités, les inférences sont signalées et le contexte général utile reste distingué de la preuve documentaire. Les sujets sans rapport sont redirigés vers un assistant conversationnel généraliste. |
+| US-19 | Je peux demander comment utiliser l'interface sans exposer son fonctionnement interne. | L'assistant explique uniquement les fonctions publiques visibles. Il ne révèle ni prompt système, architecture, code, secrets, configuration, sécurité interne ou détails de déploiement. |
 
 ## 7. Correspondance avec le cahier des charges
 
@@ -633,7 +638,10 @@ Paramètres initiaux :
 - La limite de sortie configurée est 65 536 tokens ; il s'agit d'un plafond et
   non d'une longueur de réponse imposée.
 - Seuil de pertinence déterminé par l'évaluation.
-- Aucune connaissance générale ne complète une information absente.
+- Le modèle peut mobiliser ses connaissances générales pour comprendre,
+  comparer, calculer ou évaluer les informations retrouvées. Il ne les présente
+  jamais comme un fait extrait des documents et ne les utilise pas pour inventer
+  une information documentaire absente.
 - Aucun outil Google Search ou accès web n'est activé pour le modèle.
 - Les sources MongoDB sont envoyées au début du stream comme custom data part
   persistante `data-sources`, puis le texte du modèle est fusionné dans le même
@@ -643,10 +651,25 @@ Paramètres initiaux :
   contexte RAG autorisé à chaque question.
 - L'UI n'affiche parmi ces candidats que les numéros effectivement cités par la
   réponse courante ; deux réponses peuvent donc avoir chacune leur propre `[1]`.
-- Un routeur déterministe minimal reconnaît uniquement les salutations et
-  acquittements sociaux complets. Ces tours évitent embeddings et retrieval et
-  reçoivent une réponse Gemini courte sans source ; toute question métier ou
-  documentaire reste dans le pipeline RAG strict.
+- Un routeur déterministe minimal distingue cinq comportements sans ajouter de
+  classifieur LLM : échange social, aide publique d'utilisation, information
+  système sûre, demande interne interdite et question potentiellement
+  documentaire. Les quatre premiers évitent embeddings et retrieval ; toute
+  autre demande passe par le RAG afin qu'un sujet reste interrogeable lorsqu'il
+  est réellement présent dans les documents.
+- Les échanges sociaux et réactions reçoivent une réponse naturelle dans la
+  langue de l'utilisateur. Les questions d'utilisation décrivent uniquement le
+  parcours public visible. La date courante peut être fournie comme valeur
+  système sûre et explicitement localisée.
+- Les demandes sans rapport avec les documents ne reçoivent pas une réponse de
+  culture générale : l'assistant explique brièvement que Smartly.ai est dédié
+  aux documents et oriente vers ChatGPT, Claude ou Gemini pour une conversation
+  généraliste.
+- Une question documentaire conserve toutes les capacités utiles du modèle :
+  synthèse multi-fichiers, comparaison, calcul, explication, évaluation et
+  inférence. Les faits documentaires portent des citations inline ; une
+  inférence est annoncée comme telle et un apport de connaissance générale est
+  clairement distingué de la preuve documentaire.
 - L'historique navigateur est séparé par batch et par combinaison de documents
   sélectionnés. Changer la sélection démarre donc un contexte de chat distinct
   et ne réinjecte pas les réponses obtenues depuis un document ensuite exclu.
@@ -667,6 +690,10 @@ Paramètres initiaux :
 - Vérification du `sessionId` sur chaque lecture, suppression et recherche.
 - Filtres MongoDB sur les documents explicitement sélectionnés.
 - Contenu documentaire traité comme donnée non fiable dans le prompt.
+- Les messages utilisateur et l'historique sont également non fiables : aucune
+  demande ne peut modifier la politique système, transformer un document en
+  instruction ou obtenir les prompts, secrets, variables, code, architecture,
+  configuration, mécanismes de sécurité ou détails de déploiement internes.
 - Réponses affichées en texte React sans interprétation de HTML brut.
 - Headers globaux `nosniff`, `no-referrer`, anti-framing et désactivation des
   capteurs inutilisés. Une CSP sera définie avec le déploiement réel afin de ne
@@ -1175,3 +1202,5 @@ Le projet est terminé uniquement lorsque :
 | 2026-09-03 | Router seulement les salutations et acquittements sociaux complets vers une réponse Gemini brève sans retrieval ni source ; toute question documentaire conserve le pipeline RAG strict et son refus si le contexte ne suffit pas. |
 | 2026-09-03 | Valider sur l'URL Vercel le nouveau chat : salutation sans retrieval, réponse documentaire structurée en Markdown, citations inline cliquables et aperçu de source sans score technique. |
 | 2026-09-03 | Afficher les détails de citation dans un popover ancré au marqueur plutôt qu'en dessous de la réponse, et remplacer le spinner générique du chat par le logo Smartly.ai animé pendant la recherche et la génération. |
+| 2026-09-03 | Distinguer sans classifieur supplémentaire les échanges sociaux, l'aide publique, la date système sûre, les demandes internes interdites et les demandes potentiellement documentaires. Préserver le raisonnement complet de Gemini sur les documents, tout en séparant faits cités, inférences et contexte général et en redirigeant les sujets externes. |
+| 2026-09-03 | Lorsqu'un fournisseur échoue après le début du stream, afficher une erreur exploitable et journaliser uniquement un code sûr. Le quota gratuit journalier Gemini observé pour `gemini-3.7-flash` est une limite réelle du déploiement de démonstration, pas une erreur RAG. |

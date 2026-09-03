@@ -251,7 +251,7 @@ export async function handleChatRequest(
         : 0;
     const retrievalLimit = getVectorRetrievalLimit(documentTokenBudget);
     const candidates =
-      mode === "conversation" || retrievalLimit === 0
+      mode !== "grounded" || retrievalLimit === 0
         ? []
         : await dependencies.retrieveChunks({
             sessionId,
@@ -273,6 +273,7 @@ export async function handleChatRequest(
       history: parsed.history,
       mode,
       question: parsed.message,
+      requestId,
     });
   } catch (error) {
     if (error instanceof RateLimitExceededError) {

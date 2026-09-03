@@ -231,9 +231,9 @@ function ThinkingIndicator({
   const label =
     status === "streaming"
       ? "Writing the answer…"
-      : mode === "conversation"
-        ? "Thinking…"
-        : "Searching your documents…";
+      : mode === "grounded"
+        ? "Searching your documents…"
+        : "Responding…";
 
   return (
     <div
