@@ -30,7 +30,7 @@ type ChatWorkspaceProps = {
 };
 
 const COMPOSER_MIN_HEIGHT = 56;
-const COMPOSER_MAX_HEIGHT = 104;
+const COMPOSER_MAX_HEIGHT = 108;
 
 function resizeComposer(element: HTMLTextAreaElement): void {
   element.style.height = "0px";
@@ -310,7 +310,7 @@ function ActiveChat({
               onKeyDown={handleKeyDown}
               disabled={isResponding || isContextUpdating}
               placeholder="Ask a question about your documents"
-              className="chat-composer-textarea block h-14 min-h-14 max-h-[104px] min-w-0 flex-1 resize-none overflow-y-hidden bg-transparent py-[18px] pr-2 pl-4 text-sm leading-5 text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed dark:text-slate-100 dark:placeholder:text-slate-500"
+              className="chat-composer-textarea block h-14 min-h-14 max-h-[108px] min-w-0 flex-1 resize-none overflow-y-hidden bg-transparent py-[18px] pr-2 pl-4 text-sm leading-5 text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed dark:text-slate-100 dark:placeholder:text-slate-500"
             />
             {isResponding ? (
               <button
