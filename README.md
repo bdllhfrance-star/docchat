@@ -12,6 +12,8 @@ citations ouvrant l’extrait et la localisation d’origine.
 - Périmètre, décisions et état détaillé :
   [docs/PROJECT_REFERENCE.md](docs/PROJECT_REFERENCE.md)
 - Fixtures et jeu d’évaluation : [tests/fixtures](tests/fixtures)
+- Résultats réels en production :
+  [docs/EVALUATION_RESULTS.md](docs/EVALUATION_RESULTS.md)
 
 ## Fonctionnalités
 
@@ -654,10 +656,11 @@ La suite couvre notamment :
 - rate limiting, logs sans données sensibles et interactions UI.
 
 Les tests unitaires et d’intégration sont déterministes et ne consomment pas les
-free tiers. `tests/fixtures/evaluation.json` décrit les questions attendues en
-français, arabe et pour chaque format. Les connexions réelles et smoke tests
-déployés sont suivis séparément dans `docs/PROJECT_REFERENCE.md` afin de ne pas
-présenter un mock comme un E2E réel.
+services externes. `tests/fixtures/evaluation.json` décrit les questions
+attendues en français, arabe et pour chaque format. Cinq résultats Q&A réels,
+leurs citations, latences et scores ainsi que le smoke test français/arabe sont
+enregistrés dans `docs/EVALUATION_RESULTS.md`, séparément des mocks afin de ne
+pas présenter un test déterministe comme un E2E réel.
 
 ## Déploiement Vercel
 
