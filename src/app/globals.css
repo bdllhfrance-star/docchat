@@ -531,6 +531,58 @@ textarea {
   }
 }
 
+@keyframes smartly-thinking-pop {
+  0%,
+  100% {
+    transform: translateY(1px) scale(0.92) rotate(-2deg);
+  }
+  38% {
+    transform: translateY(-3px) scale(1.1) rotate(2deg);
+  }
+  62% {
+    transform: translateY(0) scale(0.99) rotate(0);
+  }
+}
+
+@keyframes smartly-thinking-halo {
+  0% {
+    opacity: 0;
+    transform: scale(0.55);
+  }
+  32% {
+    opacity: 0.65;
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.45);
+  }
+}
+
+@keyframes smartly-thinking-label {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.smartly-thinking-mark {
+  isolation: isolate;
+}
+
+.smartly-thinking-logo {
+  filter: drop-shadow(0 5px 9px rgb(59 130 246 / 0.28));
+  transform-origin: center;
+  animation: smartly-thinking-pop 1.45s cubic-bezier(0.34, 1.56, 0.64, 1)
+    infinite;
+}
+
+.smartly-thinking-halo {
+  animation: smartly-thinking-halo 1.45s ease-out infinite;
+}
+
+.smartly-thinking-label {
+  animation: smartly-thinking-label 1.45s ease-in-out infinite;
+}
+
 .conversation-surface {
   background:
     linear-gradient(rgb(148 163 184 / 0.08) 1px, transparent 1px),
@@ -941,6 +993,12 @@ textarea {
   .document-queue-dot {
     animation: none !important;
     transition: none !important;
+  }
+
+  .smartly-thinking-logo,
+  .smartly-thinking-halo,
+  .smartly-thinking-label {
+    animation: none !important;
   }
 
   .document-row-deleting {

@@ -150,6 +150,11 @@ test("renders progressive text and allows the request to be stopped", async () =
   expect(await screen.findByText("Partial answer")).toBeDefined();
   expect(screen.queryByTestId("rag-pipeline-visualizer")).toBeNull();
   expect(screen.getByText("Writing the answer…")).toBeDefined();
+  expect(
+    screen
+      .getByTestId("thinking-indicator")
+      .querySelector('img[src*="smartly-ai-mark.png"]'),
+  ).not.toBeNull();
   expect(screen.getByRole("textbox", { name: "Message DocChat" })).toHaveProperty(
     "disabled",
     true,
@@ -205,6 +210,17 @@ test("renders assistant Markdown directly on the surface with inline citations",
   });
   expect(citation.getAttribute("aria-expanded")).toBe("false");
   expect(screen.queryByLabelText("Source 1 details")).toBeNull();
+  vi.spyOn(citation, "getBoundingClientRect").mockReturnValue({
+    bottom: 318,
+    height: 18,
+    left: 240,
+    right: 260,
+    top: 300,
+    width: 20,
+    x: 240,
+    y: 300,
+    toJSON: () => ({}),
+  });
 
   fireEvent.click(citation);
   expect(
@@ -212,7 +228,12 @@ test("renders assistant Markdown directly on the surface with inline citations",
       .getByRole("button", { name: "Open source 1: guide.pdf, Page 2" })
       .getAttribute("aria-expanded"),
   ).toBe("true");
-  expect(screen.getByLabelText("Source 1 details")).toBeDefined();
+  const sourcePopover = screen.getByLabelText("Source 1 details");
+  expect(sourcePopover.className).toContain("fixed");
+  expect(sourcePopover.style.left).toBe("240px");
+  expect(sourcePopover.style.top).toBe("326px");
+  expect(sourcePopover.getAttribute("data-placement")).toBe("below");
+  expect(sourcePopover.parentElement).toBe(document.body);
   expect(screen.getByText("[1] guide.pdf")).toBeDefined();
   expect(screen.getByText("Page 2")).toBeDefined();
   expect(

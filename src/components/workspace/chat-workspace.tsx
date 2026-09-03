@@ -1,6 +1,7 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
+import Image from "next/image";
 import {
   ArrowUp,
   FileText,
@@ -10,6 +11,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { createPortal } from "react-dom";
 import {
   type FormEvent,
   type KeyboardEvent,
@@ -109,66 +111,172 @@ function linkDocumentCitations(markdown: string, sourceCount: number): string {
     .join("");
 }
 
+type CitationPopoverPosition = {
+  left: number;
+  placement: "above" | "below";
+  top: number;
+  width: number;
+};
+
+type ActiveCitation = {
+  id: string;
+  position: CitationPopoverPosition;
+  sourceNumber: number;
+};
+
+function getCitationPopoverPosition(
+  anchor: HTMLButtonElement,
+): CitationPopoverPosition {
+  const viewportPadding = 16;
+  const gap = 8;
+  const expectedHeight = 190;
+  const rect = anchor.getBoundingClientRect();
+  const width = Math.min(352, window.innerWidth - viewportPadding * 2);
+  const left = Math.min(
+    window.innerWidth - width - viewportPadding,
+    Math.max(viewportPadding, rect.left),
+  );
+  const spaceBelow = window.innerHeight - rect.bottom;
+  const placement =
+    spaceBelow < expectedHeight && rect.top > spaceBelow ? "above" : "below";
+
+  return {
+    left,
+    placement,
+    top: placement === "above" ? rect.top - gap : rect.bottom + gap,
+    width,
+  };
+}
+
 function SourcePreview({
   number,
   onClose,
+  position,
   source,
 }: {
   number: number;
   onClose: () => void;
+  position: CitationPopoverPosition;
   source: ChatSource;
 }) {
-  return (
-    <aside
-      className="mt-3 max-w-2xl rounded-xl border border-blue-200/80 bg-blue-50/80 px-3.5 py-3 text-sm dark:border-blue-900/80 dark:bg-blue-950/40"
-      aria-label={`Source ${number} details`}
-    >
-      <div className="flex items-start gap-2.5">
-        <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg bg-white text-blue-700 shadow-sm dark:bg-slate-900 dark:text-blue-300">
-          <FileText size={14} aria-hidden="true" />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="break-words font-semibold text-slate-900 dark:text-slate-100">
-            [{number}] {source.filename}
-          </p>
-          <p className="mt-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
-            {source.source.label}
-          </p>
+  useEffect(() => {
+    function closeOnEscape(event: globalThis.KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    window.addEventListener("keydown", closeOnEscape);
+    return () => window.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
+
+  return createPortal(
+    <>
+      <button
+        type="button"
+        tabIndex={-1}
+        aria-hidden="true"
+        onClick={onClose}
+        className="fixed inset-0 z-40 cursor-default bg-transparent"
+      />
+      <aside
+        className="fixed z-50 max-h-[min(16rem,calc(100vh-2rem))] overflow-y-auto rounded-xl border border-blue-200/80 bg-white/95 px-3.5 py-3 text-sm shadow-[0_18px_50px_-18px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-blue-900/80 dark:bg-slate-900/95"
+        aria-label={`Source ${number} details`}
+        data-placement={position.placement}
+        style={{
+          left: position.left,
+          top: position.top,
+          width: position.width,
+          transform:
+            position.placement === "above" ? "translateY(-100%)" : undefined,
+        }}
+      >
+        <div className="flex items-start gap-2.5">
+          <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+            <FileText size={14} aria-hidden="true" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="break-words font-semibold text-slate-900 dark:text-slate-100">
+              [{number}] {source.filename}
+            </p>
+            <p className="mt-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
+              {source.source.label}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close source details"
+            className="grid size-7 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+          >
+            <X size={14} aria-hidden="true" />
+          </button>
         </div>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close source details"
-          className="grid size-7 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-white hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:text-slate-400 dark:hover:bg-slate-900 dark:hover:text-white"
-        >
-          <X size={14} aria-hidden="true" />
-        </button>
-      </div>
-      <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-slate-600 dark:text-slate-300">
-        {source.excerpt}
-      </p>
-    </aside>
+        <p className="mt-2 whitespace-pre-wrap text-xs leading-5 text-slate-600 dark:text-slate-300">
+          {source.excerpt}
+        </p>
+      </aside>
+    </>,
+    document.body,
+  );
+}
+
+function ThinkingIndicator({
+  mode,
+  status,
+}: {
+  mode: ChatTurnMode;
+  status: "submitted" | "streaming";
+}) {
+  const label =
+    status === "streaming"
+      ? "Writing the answer…"
+      : mode === "conversation"
+        ? "Thinking…"
+        : "Searching your documents…";
+
+  return (
+    <div
+      className="flex items-center gap-3 text-sm font-medium text-slate-600 dark:text-slate-300"
+      role="status"
+      aria-label={label}
+      data-testid="thinking-indicator"
+    >
+      <span className="smartly-thinking-mark relative grid size-9 shrink-0 place-items-center" aria-hidden="true">
+        <span className="smartly-thinking-halo absolute inset-0 rounded-full border border-blue-400/40" />
+        <Image
+          src="/smartly-ai-mark.png"
+          alt=""
+          width={87}
+          height={80}
+          className="smartly-thinking-logo relative h-6 w-auto"
+        />
+      </span>
+      <span className="smartly-thinking-label">{label}</span>
+    </div>
   );
 }
 
 function ConversationMessage({ message }: { message: DocChatUIMessage }) {
   const text = getUIMessageText(message);
-  const [activeSourceNumber, setActiveSourceNumber] = useState<number | null>(
+  const [activeCitation, setActiveCitation] = useState<ActiveCitation | null>(
     null,
   );
   const isUser = message.role === "user";
   const sources = isUser ? [] : getMessageSources(message);
   const renderedText = isUser ? text : linkDocumentCitations(text, sources.length);
   const activeSource =
-    activeSourceNumber === null ? undefined : sources[activeSourceNumber - 1];
+    activeCitation === null
+      ? undefined
+      : sources[activeCitation.sourceNumber - 1];
   const markdownComponents: Components = {
-    a({ children, href, node: _node, ...props }) {
-      void _node;
+    a({ children, href, node, ...props }) {
       const citationMatch = href?.match(/^#docchat-source-(\d+)$/u);
 
       if (citationMatch) {
         const sourceNumber = Number(citationMatch[1]);
         const source = sources[sourceNumber - 1];
+        const citationId = `${sourceNumber}:${node?.position?.start.offset ?? 0}`;
 
         if (!source) {
           return <>{children}</>;
@@ -177,12 +285,18 @@ function ConversationMessage({ message }: { message: DocChatUIMessage }) {
         return (
           <button
             type="button"
-            onClick={() =>
-              setActiveSourceNumber((current) =>
-                current === sourceNumber ? null : sourceNumber,
+            onClick={(event) =>
+              setActiveCitation((current) =>
+                current?.id === citationId
+                  ? null
+                  : {
+                      id: citationId,
+                      position: getCitationPopoverPosition(event.currentTarget),
+                      sourceNumber,
+                    },
               )
             }
-            aria-expanded={activeSourceNumber === sourceNumber}
+            aria-expanded={activeCitation?.id === citationId}
             aria-label={`Open source ${sourceNumber}: ${source.filename}, ${source.source.label}`}
             className="mx-0.5 inline-flex translate-y-[-1px] items-center rounded-md border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[0.72em] font-semibold leading-none text-blue-700 no-underline transition-colors hover:border-blue-300 hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300 dark:hover:border-blue-700 dark:hover:bg-blue-900"
           >
@@ -325,11 +439,12 @@ function ConversationMessage({ message }: { message: DocChatUIMessage }) {
             >
               {renderedText}
             </ReactMarkdown>
-            {activeSource && activeSourceNumber ? (
+            {activeSource && activeCitation ? (
               <SourcePreview
-                number={activeSourceNumber}
+                number={activeCitation.sourceNumber}
                 source={activeSource}
-                onClose={() => setActiveSourceNumber(null)}
+                position={activeCitation.position}
+                onClose={() => setActiveCitation(null)}
               />
             ) : null}
           </div>
@@ -444,14 +559,7 @@ function ActiveChat({
           )}
 
           {isResponding ? (
-            <div className="flex items-center gap-2 pl-11 text-sm text-slate-500 dark:text-slate-400">
-              <LoaderCircle size={15} className="animate-spin" aria-hidden="true" />
-              {status === "submitted"
-                ? submittedMode === "conversation"
-                  ? "Thinking…"
-                  : "Searching your documents…"
-                : "Writing the answer…"}
-            </div>
+            <ThinkingIndicator mode={submittedMode} status={status} />
           ) : null}
           <div ref={endRef} />
         </div>
