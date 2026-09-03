@@ -55,8 +55,12 @@ documents does not imply endorsement of DocChat.
 - The oversized case is generated in the test temporary directory as
   `10 MiB + 1 byte`; it is not committed to avoid repository bloat.
 
-All locally authored fixture metadata and invalid fixture content in this
-directory are dedicated to the public domain under CC0 1.0.
+## Locally authored multi-format fixtures
 
-`documents/multiformat-smoke.txt` is a locally authored, non-sensitive TXT
-fixture used to verify deployed text ingestion and precise fact retrieval.
+The small `*-smoke.*` files cover TXT, Markdown, CSV, DOCX, PPTX, and XLSX.
+They contain deterministic, non-sensitive facts and source structures used by
+the parser tests and the deployed cross-format retrieval smoke test. Expected
+locations and answers are recorded in `manifest.json` and `evaluation.json`.
+
+All locally authored fixture metadata and fixture content in this directory
+are dedicated to the public domain under CC0 1.0.

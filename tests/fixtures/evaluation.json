@@ -48,6 +48,51 @@
       "shouldRefuse": false
     },
     {
+      "id": "eval-md-01",
+      "language": "en",
+      "question": "Who owns escalation and what is the target response?",
+      "expectedAnswer": "Nadia Benali owns escalation and the target response is 4 hours.",
+      "expectedDocument": "operations-smoke.md",
+      "expectedSource": "Operations › Escalation · Lines 3-5",
+      "shouldRefuse": false
+    },
+    {
+      "id": "eval-csv-01",
+      "language": "en",
+      "question": "What are the North target and code?",
+      "expectedAnswer": "The North target is 7842 and the code is CSV-661.",
+      "expectedDocument": "regions-smoke.csv",
+      "expectedSource": "Lines 2-3",
+      "shouldRefuse": false
+    },
+    {
+      "id": "eval-docx-01",
+      "language": "en",
+      "question": "What are the contract reference and renewal owner?",
+      "expectedAnswer": "The contract reference is DOCX-104 and the renewal owner is Amina.",
+      "expectedDocument": "contract-smoke.docx",
+      "expectedSource": "Section Contract Terms",
+      "shouldRefuse": false
+    },
+    {
+      "id": "eval-pptx-01",
+      "language": "en",
+      "question": "What are the presentation code and revenue growth?",
+      "expectedAnswer": "The presentation code is PPTX-882 and revenue increased by 18 percent.",
+      "expectedDocument": "quarterly-smoke.pptx",
+      "expectedSource": "Slide 1 - Quarterly Review",
+      "shouldRefuse": false
+    },
+    {
+      "id": "eval-xlsx-01",
+      "language": "en",
+      "question": "What record, product, and amount appear in the Sales sheet?",
+      "expectedAnswer": "Record XLSX-553 contains product Widget with amount 42.",
+      "expectedDocument": "sales-smoke.xlsx",
+      "expectedSource": "Sales - A2:C3",
+      "shouldRefuse": false
+    },
+    {
       "id": "eval-absent-01",
       "language": "fr",
       "question": "Quel est le taux de TVA appliqué au Maroc en 2026 ?",

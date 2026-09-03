@@ -902,8 +902,8 @@ du pipeline P0.
 | [x] | FMT-05 | FMT-04 | Ingestion | Ajouter XLSX : feuilles, en-têtes, cellules non vides et plages sources, avec limite de 50 000 cellules. Fixtures et tests passent. |
 | [x] | FMT-06 | FMT-03, FMT-04, FMT-05 | Backend/QA | Vérifier signatures ZIP OOXML, nombre d'entrées, taille décompressée, fichiers chiffrés et formats macro-enabled. Les ZIP bombs sont refusées. |
 | [x] | UI-07 | FMT-06 | UI | Afficher correctement les formats, statuts et labels de source page/section/slide/feuille/lignes sans modifier le parcours principal. |
-| [ ] | TST-02 | UI-07 | QA | Exécuter ingestion et question sourcée sur une fixture de chaque format, plus les erreurs partielles d'un batch mixte. |
-| [ ] | GATE-03 | TST-02 | Principal | Rejouer le parcours multi-format complet sans régression de P0/P1. Chaque format conservé possède une preuve d'extraction et de retrieval. |
+| [x] | TST-02 | UI-07 | QA | Le parcours production valide un lot de 7 documents couvrant PDF, DOCX, PPTX, XLSX, TXT, Markdown et CSV, puis une question unique retrouve six micro-informations avec leurs positions exactes. Un lot TXT + faux PDF confirme aussi le succès partiel, l'erreur localisée, puis la récupération après suppression. |
+| [x] | GATE-03 | TST-02 | Principal | Le parcours multi-format complet est rejoué en production sans régression P0/P1. Chaque format possède une preuve d'extraction et de retrieval, et un échec isolé ne supprime pas le document valide. |
 
 ### 19.8 Tâches de finition et livraison
 
@@ -1155,3 +1155,4 @@ Le projet est terminé uniquement lorsque :
 | 2026-09-03 | Remplacer le symbole Gemini redessiné par l'asset RGB officiel `Gemini_SparkIcon_4C.original.png` du Press Corner Google. |
 | 2026-09-03 | Activer les sept parseurs annoncés avec un registre direct, conserver la position métier dans les sources et enrichir les embeddings avec cette anatomie sans modifier le texte affiché. |
 | 2026-09-03 | Lire les formats Office comme des archives OOXML bornées avec `fflate` et `fast-xml-parser`, sans service payant ni nouvelle couche d'infrastructure. |
+| 2026-09-03 | Valider en production les sept formats dans un même contexte : tous passent à `ready`, une question croisée retrouve les faits TXT/DOCX/PPTX/XLSX/Markdown/CSV et les sources exposent lignes, section, slide, feuille/plage et page. Un lot TXT + faux PDF conserve le TXT prêt, expose l'erreur PDF et récupère après suppression du fichier invalide. |

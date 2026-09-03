@@ -1,1 +1,3 @@
 tests/fixtures/documents/*.txt text eol=lf
+tests/fixtures/documents/*.md text eol=lf
+tests/fixtures/documents/*.csv text eol=lf

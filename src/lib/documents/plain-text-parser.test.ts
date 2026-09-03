@@ -11,6 +11,17 @@ function utf8(value: string): ArrayBuffer {
   return new TextEncoder().encode(value).buffer;
 }
 
+async function fixture(filename: string): Promise<ArrayBuffer> {
+  const file = await readFile(
+    path.join(process.cwd(), "tests", "fixtures", "documents", filename),
+  );
+
+  return file.buffer.slice(
+    file.byteOffset,
+    file.byteOffset + file.byteLength,
+  ) as ArrayBuffer;
+}
+
 describe("plain text parsers", () => {
   test("keeps exact TXT line ranges and readable content", async () => {
     const blocks = await txtParser.extract(
@@ -26,21 +37,9 @@ describe("plain text parsers", () => {
   });
 
   test("extracts the deployed TXT retrieval fixture with its location", async () => {
-    const fixture = await readFile(
-      path.join(
-        process.cwd(),
-        "tests",
-        "fixtures",
-        "documents",
-        "multiformat-smoke.txt",
-      ),
-    );
-    const bytes = fixture.buffer.slice(
-      fixture.byteOffset,
-      fixture.byteOffset + fixture.byteLength,
-    ) as ArrayBuffer;
-
-    await expect(txtParser.extract(bytes)).resolves.toEqual([
+    await expect(
+      txtParser.extract(await fixture("multiformat-smoke.txt")),
+    ).resolves.toEqual([
       {
         text: [
           "DocChat multi-format validation",
@@ -53,6 +52,20 @@ describe("plain text parsers", () => {
         source: { label: "Lines 1-7", lineStart: 1, lineEnd: 7 },
       },
     ]);
+  });
+
+  test("extracts the deployed Markdown fixture with heading ancestry", async () => {
+    await expect(
+      markdownParser.extract(await fixture("operations-smoke.md")),
+    ).resolves.toContainEqual({
+      text: "## Escalation\nEscalation owner: Nadia Benali. Target response: 4 hours.",
+      source: {
+        label: "Operations › Escalation · Lines 3-5",
+        section: "Operations › Escalation",
+        lineStart: 3,
+        lineEnd: 5,
+      },
+    });
   });
 
   test("supports UTF-16 text with a byte-order mark", async () => {

@@ -24,6 +24,46 @@
       "expectedSizeBytes": 134,
       "sha256": "01B126390C3A19A0388E8B471782A17362570D1EAFAB6B226677BCEF2944743B",
       "expectedOutcome": "ready"
+    },
+    {
+      "path": "documents/operations-smoke.md",
+      "language": "en",
+      "expectedSource": "Operations › Escalation · Lines 3-5",
+      "expectedSizeBytes": 86,
+      "sha256": "55842C20214F5743A965263F639086F3274DAB294A1086913EF9F493CA57EE26",
+      "expectedOutcome": "ready"
+    },
+    {
+      "path": "documents/regions-smoke.csv",
+      "language": "en",
+      "expectedSource": "Lines 2-3",
+      "expectedSizeBytes": 57,
+      "sha256": "599D6A5882F1FC8AFEAF8EF1E07E9B611C67409A493AA0617EACEA5F46464F8C",
+      "expectedOutcome": "ready"
+    },
+    {
+      "path": "documents/contract-smoke.docx",
+      "language": "en",
+      "expectedSource": "Section Contract Terms",
+      "expectedSizeBytes": 971,
+      "sha256": "D811CE932AB14E7E129EEFC5A875E00EBD5114CE868EE1C66B4DB4DF5C38A18A",
+      "expectedOutcome": "ready"
+    },
+    {
+      "path": "documents/quarterly-smoke.pptx",
+      "language": "en",
+      "expectedSource": "Slide 1 - Quarterly Review",
+      "expectedSizeBytes": 1232,
+      "sha256": "F90608D2AC90DFFE6F09CFD19DC6948E584BB5823FB8666527A45160C584429D",
+      "expectedOutcome": "ready"
+    },
+    {
+      "path": "documents/sales-smoke.xlsx",
+      "language": "en",
+      "expectedSource": "Sales - A2:C3",
+      "expectedSizeBytes": 1479,
+      "sha256": "333B67C507E57BE824BC4008F8957C19DC77973953FC3C1F9D9CCA6AC08A4E65",
+      "expectedOutcome": "ready"
     }
   ],
   "invalidDocuments": [

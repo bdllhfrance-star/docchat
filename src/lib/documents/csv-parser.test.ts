@@ -1,5 +1,8 @@
 // @vitest-environment node
 
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
 import { describe, expect, test } from "vitest";
 
 import { csvParser } from "./csv-parser";
@@ -23,6 +26,30 @@ describe("CSV parser", () => {
     );
     expect(blocks[0].text).toContain(
       "Row 3: Name: Bob | Note: Two lines | Amount: 7",
+    );
+  });
+
+  test("extracts the deployed CSV fixture with rows and columns", async () => {
+    const file = await readFile(
+      path.join(
+        process.cwd(),
+        "tests",
+        "fixtures",
+        "documents",
+        "regions-smoke.csv",
+      ),
+    );
+    const bytes = file.buffer.slice(
+      file.byteOffset,
+      file.byteOffset + file.byteLength,
+    ) as ArrayBuffer;
+    const blocks = await csvParser.extract(bytes);
+
+    expect(blocks[0]).toMatchObject({
+      source: { label: "Lines 2-3", lineStart: 2, lineEnd: 3 },
+    });
+    expect(blocks[0].text).toContain(
+      "Row 2: Region: North | Target: 7842 | Code: CSV-661",
     );
   });
 
