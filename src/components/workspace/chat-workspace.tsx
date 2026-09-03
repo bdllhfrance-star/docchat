@@ -91,10 +91,19 @@ function getMessageSources(message: DocChatUIMessage): ChatSource[] {
   );
 }
 
-const destinationDotClasses = {
-  chatgpt: "bg-emerald-500",
-  claude: "bg-orange-500",
-  gemini: "bg-gradient-to-br from-blue-500 via-violet-500 to-fuchsia-500",
+const destinationLogos = {
+  chatgpt: {
+    className: "dark:invert",
+    src: "/chatgpt-logo.svg",
+  },
+  claude: {
+    className: "",
+    src: "/claude-spark-logo.svg",
+  },
+  gemini: {
+    className: "",
+    src: "/gemini-spark-logo.png",
+  },
 } as const;
 
 function GeneralAiDestinations() {
@@ -106,27 +115,35 @@ function GeneralAiDestinations() {
       <span className="mr-1 text-xs font-medium tracking-wide text-slate-500 dark:text-slate-400">
         Continue with
       </span>
-      {GENERAL_AI_DESTINATIONS.map((destination) => (
-        <a
-          key={destination.id}
-          href={destination.href}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={`Open ${destination.label} in a new tab`}
-          className="group inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold leading-none text-slate-800 no-underline shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-blue-600"
-        >
-          <span
-            aria-hidden="true"
-            className={`h-2.5 w-2.5 rounded-full ${destinationDotClasses[destination.id]}`}
-          />
-          {destination.label}
-          <ExternalLink
-            aria-hidden="true"
-            className="h-3.5 w-3.5 text-slate-400 transition group-hover:text-blue-600 dark:group-hover:text-blue-400"
-            strokeWidth={1.8}
-          />
-        </a>
-      ))}
+      {GENERAL_AI_DESTINATIONS.map((destination) => {
+        const logo = destinationLogos[destination.id];
+
+        return (
+          <a
+            key={destination.id}
+            href={destination.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Open ${destination.label} in a new tab`}
+            className="group inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold leading-none text-slate-800 no-underline shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-blue-600"
+          >
+            <Image
+              src={logo.src}
+              alt=""
+              width={20}
+              height={20}
+              aria-hidden="true"
+              className={`size-5 shrink-0 object-contain ${logo.className}`}
+            />
+            {destination.label}
+            <ExternalLink
+              aria-hidden="true"
+              className="h-3.5 w-3.5 text-slate-400 transition group-hover:text-blue-600 dark:group-hover:text-blue-400"
+              strokeWidth={1.8}
+            />
+          </a>
+        );
+      })}
     </nav>
   );
 }

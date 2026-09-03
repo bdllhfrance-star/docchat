@@ -410,10 +410,10 @@ test("renders trusted general AI destinations only for an explicit redirect", as
     }),
   ).toBeDefined();
 
-  for (const [label, href] of [
-    ["ChatGPT", "https://chatgpt.com/"],
-    ["Claude", "https://claude.ai/"],
-    ["Gemini", "https://gemini.google.com/"],
+  for (const [label, href, logo] of [
+    ["ChatGPT", "https://chatgpt.com/", "chatgpt-logo.svg"],
+    ["Claude", "https://claude.ai/", "claude-spark-logo.svg"],
+    ["Gemini", "https://gemini.google.com/", "gemini-spark-logo.png"],
   ] as const) {
     const link = screen.getByRole("link", {
       name: `Open ${label} in a new tab`,
@@ -421,6 +421,7 @@ test("renders trusted general AI destinations only for an explicit redirect", as
     expect(link.getAttribute("href")).toBe(href);
     expect(link.getAttribute("target")).toBe("_blank");
     expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+    expect(link.querySelector("img")?.getAttribute("src")).toContain(logo);
   }
 
   expect(
