@@ -1,5 +1,6 @@
 import { DefaultChatTransport } from "ai";
 
+import { extractGeneralAiRedirect } from "@/lib/chat/general-ai-redirect";
 import type {
   ChatHistoryMessage,
   ChatRequest,
@@ -32,7 +33,11 @@ export function buildChatRequest(
   }
 
   const history = messages.slice(0, -1).flatMap<ChatHistoryMessage>((item) => {
-    const content = getUIMessageText(item);
+    const rawContent = getUIMessageText(item);
+    const content =
+      item.role === "assistant"
+        ? extractGeneralAiRedirect(rawContent).text
+        : rawContent;
 
     return content && (item.role === "user" || item.role === "assistant")
       ? [{ role: item.role, content }]

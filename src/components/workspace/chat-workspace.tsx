@@ -4,6 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import Image from "next/image";
 import {
   ArrowUp,
+  ExternalLink,
   FileText,
   LoaderCircle,
   Square,
@@ -26,6 +27,10 @@ import {
   createDocChatTransport,
   getUIMessageText,
 } from "@/lib/chat/client";
+import {
+  extractGeneralAiRedirect,
+  GENERAL_AI_DESTINATIONS,
+} from "@/lib/chat/general-ai-redirect";
 import { classifyChatTurn, type ChatTurnMode } from "@/lib/chat/turn-mode";
 import type { ChatSource, DocChatUIMessage } from "@/types/api";
 import { RagPipelineVisualizer } from "./rag-pipeline-visualizer";
@@ -81,6 +86,46 @@ function getMessageSources(message: DocChatUIMessage): ChatSource[] {
     part.type === "data-sources" && Array.isArray(part.data)
       ? part.data
       : [],
+  );
+}
+
+const destinationDotClasses = {
+  chatgpt: "bg-emerald-500",
+  claude: "bg-orange-500",
+  gemini: "bg-gradient-to-br from-blue-500 via-violet-500 to-fuchsia-500",
+} as const;
+
+function GeneralAiDestinations() {
+  return (
+    <nav
+      aria-label="Continue with a general AI assistant"
+      className="mt-5 flex flex-wrap items-center gap-2 border-t border-slate-200/80 pt-4 dark:border-slate-800"
+    >
+      <span className="mr-1 text-xs font-medium tracking-wide text-slate-500 dark:text-slate-400">
+        Continue with
+      </span>
+      {GENERAL_AI_DESTINATIONS.map((destination) => (
+        <a
+          key={destination.id}
+          href={destination.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Open ${destination.label} in a new tab`}
+          className="group inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold leading-none text-slate-800 no-underline shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-blue-600"
+        >
+          <span
+            aria-hidden="true"
+            className={`h-2.5 w-2.5 rounded-full ${destinationDotClasses[destination.id]}`}
+          />
+          {destination.label}
+          <ExternalLink
+            aria-hidden="true"
+            className="h-3.5 w-3.5 text-slate-400 transition group-hover:text-blue-600 dark:group-hover:text-blue-400"
+            strokeWidth={1.8}
+          />
+        </a>
+      ))}
+    </nav>
   );
 }
 
@@ -284,13 +329,23 @@ function ConversationMessage({ message }: { message: DocChatUIMessage }) {
     null,
   );
   const isUser = message.role === "user";
+  const presentation = useMemo(
+    () =>
+      isUser
+        ? { text, showDestinations: false }
+        : extractGeneralAiRedirect(text),
+    [isUser, text],
+  );
   const sources = useMemo(
     () => (isUser ? [] : getMessageSources(message)),
     [isUser, message],
   );
   const renderedText = useMemo(
-    () => (isUser ? text : linkDocumentCitations(text, sources.length)),
-    [isUser, sources.length, text],
+    () =>
+      isUser
+        ? presentation.text
+        : linkDocumentCitations(presentation.text, sources.length),
+    [isUser, presentation.text, sources.length],
   );
   const activeSource =
     activeCitation === null
@@ -475,6 +530,7 @@ function ConversationMessage({ message }: { message: DocChatUIMessage }) {
             data-assistant-content
           >
             {markdownContent}
+            {presentation.showDestinations ? <GeneralAiDestinations /> : null}
             {activeSource && activeCitation ? (
               <SourcePreview
                 number={activeCitation.sourceNumber}

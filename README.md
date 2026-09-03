@@ -28,6 +28,8 @@ citations ouvrant l’extrait et la localisation d’origine.
   arbitraire de cinq chunks.
 - Réponse Gemini streamée avec citations inline, aperçu de source et
   localisation métier.
+- Redirection hors périmètre vers les sites officiels ChatGPT, Claude et Gemini
+  au moyen de boutons contrôlés par l’interface, jamais de liens arbitraires.
 - Sessions anonymes signées, isolation de chaque batch, rate limiting distribué
   et logs JSON sans contenu utilisateur.
 - Interface responsive, thèmes clair/sombre et animations SVG/CSS écrites pour

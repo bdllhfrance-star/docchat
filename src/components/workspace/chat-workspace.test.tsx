@@ -3,6 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
 
 import type { DocChatUIMessage } from "@/types/api";
+import { GENERAL_AI_REDIRECT_MARKER } from "@/lib/chat/general-ai-redirect";
 
 import { ChatWorkspace } from "./chat-workspace";
 
@@ -350,4 +351,51 @@ test("renders assistant HTML-like output as inert text", async () => {
 
   expect(await screen.findByText(unsafeText)).toBeDefined();
   expect(container.querySelector("img")).toBeNull();
+});
+
+test("renders trusted general AI destinations only for an explicit redirect", async () => {
+  useChatMock.mockReturnValue(
+    chatState({
+      messages: [
+        message(
+          "assistant-redirect",
+          "assistant",
+          `This topic is outside document analysis.\n\n${GENERAL_AI_REDIRECT_MARKER}`,
+        ),
+        message(
+          "assistant-comparison",
+          "assistant",
+          "The document compares ChatGPT, Claude and Gemini.",
+        ),
+      ],
+    }),
+  );
+
+  render(
+    <ChatWorkspace batchId="batch-1" documentIds={["document-1"]} />,
+  );
+
+  expect(screen.queryByText(GENERAL_AI_REDIRECT_MARKER)).toBeNull();
+  expect(
+    screen.getByRole("navigation", {
+      name: "Continue with a general AI assistant",
+    }),
+  ).toBeDefined();
+
+  for (const [label, href] of [
+    ["ChatGPT", "https://chatgpt.com/"],
+    ["Claude", "https://claude.ai/"],
+    ["Gemini", "https://gemini.google.com/"],
+  ] as const) {
+    const link = screen.getByRole("link", {
+      name: `Open ${label} in a new tab`,
+    });
+    expect(link.getAttribute("href")).toBe(href);
+    expect(link.getAttribute("target")).toBe("_blank");
+    expect(link.getAttribute("rel")).toBe("noopener noreferrer");
+  }
+
+  expect(
+    screen.getAllByText("The document compares ChatGPT, Claude and Gemini."),
+  ).toHaveLength(1);
 });

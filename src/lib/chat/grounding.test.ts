@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vitest";
 
 import { GEMINI_CHAT_MODEL } from "@/lib/ai/model-config";
+import { GENERAL_AI_REDIRECT_MARKER } from "@/lib/chat/general-ai-redirect";
 import type { RetrievedChunk } from "@/lib/rag/vector-search";
 
 import {
@@ -121,6 +122,8 @@ describe("grounded chat context", () => {
     expect(CHAT_SYSTEM_PROMPT).toContain("Reason fully");
     expect(CHAT_SYSTEM_PROMPT).toContain("general background");
     expect(CHAT_SYSTEM_PROMPT).toContain("internal architecture");
+    expect(CHAT_SYSTEM_PROMPT).toContain(GENERAL_AI_REDIRECT_MARKER);
+    expect(CHAT_SYSTEM_PROMPT).toContain("trusted UI links");
   });
 
   test("gives Gemini trusted public product and runtime context for every turn", () => {

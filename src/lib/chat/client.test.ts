@@ -1,5 +1,6 @@
 import { describe, expect, test } from "vitest";
 
+import { GENERAL_AI_REDIRECT_MARKER } from "@/lib/chat/general-ai-redirect";
 import type { DocChatUIMessage } from "@/types/api";
 
 import { buildChatRequest, getUIMessageText } from "./client";
@@ -56,6 +57,22 @@ describe("chat client request", () => {
     };
 
     expect(getUIMessageText(value)).toBe("First\npart");
+  });
+
+  test("does not send the presentation marker back in chat history", () => {
+    const request = buildChatRequest("batch-1", ["document-1"], [
+      message(
+        "assistant-1",
+        "assistant",
+        `Use a general assistant.\n\n${GENERAL_AI_REDIRECT_MARKER}`,
+      ),
+      message("user-1", "user", "Why?"),
+    ]);
+
+    expect(request.history).toEqual([
+      { role: "assistant", content: "Use a general assistant." },
+    ]);
+    expect(JSON.stringify(request)).not.toContain(GENERAL_AI_REDIRECT_MARKER);
   });
 
   test("rejects a request without a final user question", () => {
