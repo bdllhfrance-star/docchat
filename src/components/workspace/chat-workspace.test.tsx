@@ -399,3 +399,37 @@ test("renders trusted general AI destinations only for an explicit redirect", as
     screen.getAllByText("The document compares ChatGPT, Claude and Gemini."),
   ).toHaveLength(1);
 });
+
+test("recovers trusted links when Gemini omits the redirect marker", async () => {
+  useChatMock.mockReturnValue(
+    chatState({
+      messages: [
+        message(
+          "assistant-redirect-without-marker",
+          "assistant",
+          "Smartly.ai is dedicated to document analysis. For general knowledge topics, I recommend using general conversational assistants such as ChatGPT, Claude, or Gemini.",
+        ),
+      ],
+    }),
+  );
+
+  render(
+    <ChatWorkspace batchId="batch-1" documentIds={["document-1"]} />,
+  );
+
+  expect(
+    screen.getByRole("navigation", {
+      name: "Continue with a general AI assistant",
+    }),
+  ).toBeDefined();
+
+  for (const [label, href] of [
+    ["ChatGPT", "https://chatgpt.com/"],
+    ["Claude", "https://claude.ai/"],
+    ["Gemini", "https://gemini.google.com/"],
+  ] as const) {
+    const links = screen.getAllByRole("link", { name: label });
+    expect(links).toHaveLength(1);
+    expect(links[0].getAttribute("href")).toBe(href);
+  }
+});

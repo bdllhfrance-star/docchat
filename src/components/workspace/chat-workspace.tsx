@@ -30,6 +30,7 @@ import {
 import {
   extractGeneralAiRedirect,
   GENERAL_AI_DESTINATIONS,
+  linkTrustedGeneralAiNames,
 } from "@/lib/chat/general-ai-redirect";
 import { classifyChatTurn, type ChatTurnMode } from "@/lib/chat/turn-mode";
 import type { ChatSource, DocChatUIMessage } from "@/types/api";
@@ -341,11 +342,21 @@ function ConversationMessage({ message }: { message: DocChatUIMessage }) {
     [isUser, message],
   );
   const renderedText = useMemo(
-    () =>
-      isUser
-        ? presentation.text
-        : linkDocumentCitations(presentation.text, sources.length),
-    [isUser, presentation.text, sources.length],
+    () => {
+      if (isUser) {
+        return presentation.text;
+      }
+
+      const textWithCitations = linkDocumentCitations(
+        presentation.text,
+        sources.length,
+      );
+
+      return presentation.showDestinations
+        ? linkTrustedGeneralAiNames(textWithCitations)
+        : textWithCitations;
+    },
+    [isUser, presentation.showDestinations, presentation.text, sources.length],
   );
   const activeSource =
     activeCitation === null

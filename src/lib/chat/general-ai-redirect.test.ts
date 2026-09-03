@@ -4,6 +4,7 @@ import {
   extractGeneralAiRedirect,
   GENERAL_AI_DESTINATIONS,
   GENERAL_AI_REDIRECT_MARKER,
+  linkTrustedGeneralAiNames,
 } from "./general-ai-redirect";
 
 describe("general AI redirect presentation", () => {
@@ -40,5 +41,35 @@ describe("general AI redirect presentation", () => {
       text: "The document compares ChatGPT, Claude and Gemini.",
       showDestinations: false,
     });
+  });
+
+  test("recovers a clear model-written redirect when the marker is missing", () => {
+    const text =
+      "Smartly.ai is dedicated to document analysis. For general knowledge topics, I recommend using general conversational assistants such as ChatGPT, Claude, or Gemini.";
+
+    expect(extractGeneralAiRedirect(text)).toEqual({
+      text,
+      showDestinations: true,
+    });
+  });
+
+  test("does not mistake a document recommendation for a product redirect", () => {
+    const text =
+      "The document recommends ChatGPT, Claude, or Gemini for general knowledge topics [1].";
+
+    expect(extractGeneralAiRedirect(text)).toEqual({
+      text,
+      showDestinations: false,
+    });
+  });
+
+  test("turns trusted assistant names into allowlisted Markdown links", () => {
+    expect(
+      linkTrustedGeneralAiNames(
+        "Use ChatGPT, Claude, or Gemini. Keep `ChatGPT` literal.",
+      ),
+    ).toBe(
+      "Use [ChatGPT](https://chatgpt.com/), [Claude](https://claude.ai/), or [Gemini](https://gemini.google.com/). Keep `ChatGPT` literal.",
+    );
   });
 });
