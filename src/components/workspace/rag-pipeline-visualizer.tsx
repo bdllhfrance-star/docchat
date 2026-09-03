@@ -201,19 +201,22 @@ export function RagPipelineVisualizer({
     >
       <div className="rag-ambient-orb rag-ambient-orb-left" aria-hidden="true" />
       <div className="rag-ambient-orb rag-ambient-orb-right" aria-hidden="true" />
+      {mode === "waiting" ? (
+        <div className="absolute top-5 left-1/2 z-20 w-full -translate-x-1/2 px-4 sm:top-6">
+          <GeminiPoweredBadge />
+        </div>
+      ) : null}
 
       <div className="relative z-10 w-full max-w-6xl">
-        {mode === "waiting" ? (
-          <GeminiPoweredBadge />
-        ) : (
+        {mode !== "waiting" ? (
           <div className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50/90 px-3 py-1 text-[10px] font-bold tracking-[0.2em] text-blue-700 uppercase dark:border-blue-900 dark:bg-blue-950/70 dark:text-blue-300">
             <span className="rag-replay-dot size-1.5 rounded-full bg-blue-500" aria-hidden="true" />
             {content.badge}
           </div>
-        )}
+        ) : null}
         <h1
           id="rag-pipeline-heading"
-          className={`${mode === "waiting" ? "mt-8" : "mt-4"} text-2xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-3xl`}
+          className={`${mode === "waiting" ? "mt-0" : "mt-4"} text-2xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-3xl`}
         >
           {content.heading}
         </h1>
