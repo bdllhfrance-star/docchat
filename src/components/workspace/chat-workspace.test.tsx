@@ -208,7 +208,7 @@ test("renders assistant Markdown directly on the surface with inline citations",
   const citation = screen.getByRole("button", {
     name: "Open source 1: guide.pdf, Page 2",
   });
-  expect(citation.getAttribute("aria-expanded")).toBe("false");
+  expect(citation.getAttribute("aria-haspopup")).toBe("dialog");
   expect(screen.queryByLabelText("Source 1 details")).toBeNull();
   vi.spyOn(citation, "getBoundingClientRect").mockReturnValue({
     bottom: 318,
@@ -223,11 +223,6 @@ test("renders assistant Markdown directly on the surface with inline citations",
   });
 
   fireEvent.click(citation);
-  expect(
-    screen
-      .getByRole("button", { name: "Open source 1: guide.pdf, Page 2" })
-      .getAttribute("aria-expanded"),
-  ).toBe("true");
   const sourcePopover = screen.getByLabelText("Source 1 details");
   expect(sourcePopover.className).toContain("fixed");
   expect(sourcePopover.style.left).toBe("240px");
@@ -240,6 +235,11 @@ test("renders assistant Markdown directly on the surface with inline citations",
     screen.getByText("The guide requires grounded answers."),
   ).toBeDefined();
 
+  fireEvent.scroll(window);
+  expect(screen.queryByLabelText("Source 1 details")).toBeNull();
+
+  fireEvent.click(citation);
+  expect(screen.getByLabelText("Source 1 details")).toBeDefined();
   fireEvent.click(screen.getByRole("button", { name: "Close source details" }));
   expect(screen.queryByLabelText("Source 1 details")).toBeNull();
 });

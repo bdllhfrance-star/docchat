@@ -15,6 +15,7 @@ import { createPortal } from "react-dom";
 import {
   type FormEvent,
   type KeyboardEvent,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -159,6 +160,8 @@ function SourcePreview({
   position: CitationPopoverPosition;
   source: ChatSource;
 }) {
+  const previewRef = useRef<HTMLElement>(null);
+
   useEffect(() => {
     function closeOnEscape(event: globalThis.KeyboardEvent) {
       if (event.key === "Escape") {
@@ -166,8 +169,25 @@ function SourcePreview({
       }
     }
 
+    function closeOnScroll(event: Event) {
+      const target = event.target;
+
+      if (target instanceof Node && previewRef.current?.contains(target)) {
+        return;
+      }
+
+      onClose();
+    }
+
     window.addEventListener("keydown", closeOnEscape);
-    return () => window.removeEventListener("keydown", closeOnEscape);
+    window.addEventListener("resize", onClose);
+    window.addEventListener("scroll", closeOnScroll, true);
+
+    return () => {
+      window.removeEventListener("keydown", closeOnEscape);
+      window.removeEventListener("resize", onClose);
+      window.removeEventListener("scroll", closeOnScroll, true);
+    };
   }, [onClose]);
 
   return createPortal(
@@ -180,6 +200,7 @@ function SourcePreview({
         className="fixed inset-0 z-40 cursor-default bg-transparent"
       />
       <aside
+        ref={previewRef}
         className="fixed z-50 max-h-[min(16rem,calc(100vh-2rem))] overflow-y-auto rounded-xl border border-blue-200/80 bg-white/95 px-3.5 py-3 text-sm shadow-[0_18px_50px_-18px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-blue-900/80 dark:bg-slate-900/95"
         aria-label={`Source ${number} details`}
         data-placement={position.placement}
@@ -258,18 +279,25 @@ function ThinkingIndicator({
 }
 
 function ConversationMessage({ message }: { message: DocChatUIMessage }) {
-  const text = getUIMessageText(message);
+  const text = useMemo(() => getUIMessageText(message), [message]);
   const [activeCitation, setActiveCitation] = useState<ActiveCitation | null>(
     null,
   );
   const isUser = message.role === "user";
-  const sources = isUser ? [] : getMessageSources(message);
-  const renderedText = isUser ? text : linkDocumentCitations(text, sources.length);
+  const sources = useMemo(
+    () => (isUser ? [] : getMessageSources(message)),
+    [isUser, message],
+  );
+  const renderedText = useMemo(
+    () => (isUser ? text : linkDocumentCitations(text, sources.length)),
+    [isUser, sources.length, text],
+  );
   const activeSource =
     activeCitation === null
       ? undefined
       : sources[activeCitation.sourceNumber - 1];
-  const markdownComponents: Components = {
+  const closeCitation = useCallback(() => setActiveCitation(null), []);
+  const markdownComponents = useMemo<Components>(() => ({
     a({ children, href, node, ...props }) {
       const citationMatch = href?.match(/^#docchat-source-(\d+)$/u);
 
@@ -285,18 +313,20 @@ function ConversationMessage({ message }: { message: DocChatUIMessage }) {
         return (
           <button
             type="button"
-            onClick={(event) =>
+            onClick={(event) => {
+              const position = getCitationPopoverPosition(event.currentTarget);
+
               setActiveCitation((current) =>
                 current?.id === citationId
                   ? null
                   : {
                       id: citationId,
-                      position: getCitationPopoverPosition(event.currentTarget),
+                      position,
                       sourceNumber,
                     },
-              )
-            }
-            aria-expanded={activeCitation?.id === citationId}
+              );
+            }}
+            aria-haspopup="dialog"
             aria-label={`Open source ${sourceNumber}: ${source.filename}, ${source.source.label}`}
             className="mx-0.5 inline-flex translate-y-[-1px] items-center rounded-md border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[0.72em] font-semibold leading-none text-blue-700 no-underline transition-colors hover:border-blue-300 hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300 dark:hover:border-blue-700 dark:hover:bg-blue-900"
           >
@@ -408,7 +438,18 @@ function ConversationMessage({ message }: { message: DocChatUIMessage }) {
     ul({ children }) {
       return <ul className="my-3 list-disc space-y-1.5 pl-6">{children}</ul>;
     },
-  };
+  }), [sources]);
+  const markdownContent = useMemo(
+    () => (
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={markdownComponents}
+      >
+        {renderedText}
+      </ReactMarkdown>
+    ),
+    [markdownComponents, renderedText],
+  );
 
   if (!text) {
     return null;
@@ -433,18 +474,13 @@ function ConversationMessage({ message }: { message: DocChatUIMessage }) {
             className="w-full text-[15px] leading-7 text-slate-800 dark:text-slate-100"
             data-assistant-content
           >
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-              components={markdownComponents}
-            >
-              {renderedText}
-            </ReactMarkdown>
+            {markdownContent}
             {activeSource && activeCitation ? (
               <SourcePreview
                 number={activeCitation.sourceNumber}
                 source={activeSource}
                 position={activeCitation.position}
-                onClose={() => setActiveCitation(null)}
+                onClose={closeCitation}
               />
             ) : null}
           </div>
