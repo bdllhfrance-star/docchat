@@ -170,34 +170,53 @@ async function refreshBatchProgress(
     sessionId: ownership.sessionId,
     id: ownership.batchId,
   } satisfies Filter<BatchRecord>;
-  const batch = await collections.batches.findOne(batchFilter);
-
-  if (!batch) {
-    throw new Error("Batch not found while refreshing progress");
-  }
-
   const documentFilter = {
     sessionId: ownership.sessionId,
     batchId: ownership.batchId,
   };
-  const [readyFiles, failedFiles] = await Promise.all([
-    collections.documents.countDocuments({
-      ...documentFilter,
-      status: "ready",
-    }),
-    collections.documents.countDocuments({
-      ...documentFilter,
-      status: "failed",
-    }),
-  ]);
 
-  await collections.batches.updateOne(batchFilter, {
-    $set: {
-      readyFiles,
-      failedFiles,
-      status: getBatchStatus(batch.totalFiles, readyFiles, failedFiles),
-    },
-  });
+  // Several documents may finish at the same time. Compare-and-swap the
+  // counters so a slower callback cannot overwrite a newer terminal state.
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const batch = await collections.batches.findOne(batchFilter);
+
+    if (!batch) {
+      throw new Error("Batch not found while refreshing progress");
+    }
+
+    const [readyFiles, failedFiles] = await Promise.all([
+      collections.documents.countDocuments({
+        ...documentFilter,
+        status: "ready",
+      }),
+      collections.documents.countDocuments({
+        ...documentFilter,
+        status: "failed",
+      }),
+    ]);
+    const updated = await collections.batches.updateOne(
+      {
+        ...batchFilter,
+        status: batch.status,
+        totalFiles: batch.totalFiles,
+        readyFiles: batch.readyFiles,
+        failedFiles: batch.failedFiles,
+      },
+      {
+        $set: {
+          readyFiles,
+          failedFiles,
+          status: getBatchStatus(batch.totalFiles, readyFiles, failedFiles),
+        },
+      },
+    );
+
+    if (updated.matchedCount === 1) {
+      return;
+    }
+  }
+
+  throw new Error("Batch progress changed too frequently to refresh safely");
 }
 
 export function createBatchRepository(

@@ -61,6 +61,10 @@ class MemoryCollection<T extends object> {
   records: T[] = [];
   failAfterInsertMany = false;
   updateCount = 0;
+  beforeUpdate?: (
+    filter: Filter<T>,
+    update: UpdateFilter<T>,
+  ) => Promise<void>;
 
   async insertOne(document: T): Promise<InsertOneResult<T>> {
     this.records.push(structuredClone(document));
@@ -96,6 +100,7 @@ class MemoryCollection<T extends object> {
     filter: Filter<T>,
     update: UpdateFilter<T>,
   ): Promise<UpdateResult<T>> {
+    await this.beforeUpdate?.(filter, update);
     const record = this.records.find((candidate) => matches(candidate, filter));
 
     if (!record) {
@@ -462,6 +467,77 @@ describe("batch repository", () => {
     expect(batches.records[0]).toMatchObject({
       status: "ready",
       readyFiles: 1,
+      failedFiles: 0,
+    });
+  });
+
+  test("does not let a slower document callback regress a ready batch", async () => {
+    const { batches, documents, repository } = createMemoryRepository();
+    const secondDocumentId = "d365a6b0-1b4c-4911-a5fd-ea6708852f17";
+    const fixture = createFixture();
+    fixture.batch.totalFiles = 2;
+    fixture.documents.push({
+      ...fixture.documents[0],
+      id: secondDocumentId,
+      clientId: "493e0109-080f-4d21-a95d-b67cff53dc48",
+      filename: "classroom.pdf",
+    });
+    await repository.createBatch(fixture);
+    documents.records.forEach((document) => {
+      document.status = "indexing";
+    });
+
+    let releaseFirstRefresh: () => void = () => {};
+    let signalFirstRefresh: () => void = () => {};
+    const firstRefreshStarted = new Promise<void>((resolve) => {
+      signalFirstRefresh = resolve;
+    });
+    const firstRefreshReleased = new Promise<void>((resolve) => {
+      releaseFirstRefresh = resolve;
+    });
+    let refreshCalls = 0;
+    batches.beforeUpdate = async () => {
+      refreshCalls += 1;
+
+      if (refreshCalls === 1) {
+        signalFirstRefresh();
+        await firstRefreshReleased;
+      }
+    };
+    const chunkFor = (id: string, filename: string): ChunkRecord => ({
+      id: `chunk-${id}`,
+      sessionId: sessionA,
+      batchId,
+      documentId: id,
+      filename,
+      fileType: "pdf",
+      text: "Indexed text",
+      embedding: Array.from({ length: 768 }, () => 0.1),
+      source: { label: "Page 1", page: 1 },
+      chunkIndex: 0,
+      createdAt,
+      expiresAt,
+    });
+
+    const firstCompletion = repository.completeDocumentIndexing({
+      sessionId: sessionA,
+      batchId,
+      documentId,
+      chunks: [chunkFor(documentId, "guide.pdf")],
+    });
+    await firstRefreshStarted;
+    await repository.completeDocumentIndexing({
+      sessionId: sessionA,
+      batchId,
+      documentId: secondDocumentId,
+      chunks: [chunkFor(secondDocumentId, "classroom.pdf")],
+    });
+    releaseFirstRefresh();
+    await firstCompletion;
+
+    expect(batches.records[0]).toMatchObject({
+      status: "ready",
+      readyFiles: 2,
       failedFiles: 0,
     });
   });
