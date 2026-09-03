@@ -41,6 +41,23 @@ type EmbedTexts = (
 
 type EmbedQuery = (query: string, signal: AbortSignal) => Promise<number[]>;
 
+function embeddingText(chunk: DocumentChunk): string {
+  const context = [
+    chunk.source.section ? `Section: ${chunk.source.section}` : "",
+    chunk.source.slide ? `Slide: ${chunk.source.slide}` : "",
+    chunk.source.sheet ? `Sheet: ${chunk.source.sheet}` : "",
+    chunk.source.cellRange ? `Cells: ${chunk.source.cellRange}` : "",
+    chunk.source.page ? `Page: ${chunk.source.page}` : "",
+    chunk.source.lineStart
+      ? `Lines: ${chunk.source.lineStart}-${chunk.source.lineEnd ?? chunk.source.lineStart}`
+      : "",
+  ].filter(Boolean);
+
+  return context.length > 0
+    ? `${context.join("\n")}\n\n${chunk.text}`
+    : chunk.text;
+}
+
 export type EmbedDocumentChunkOptions = {
   abortSignal?: AbortSignal;
   embedTexts?: EmbedTexts;
@@ -137,7 +154,7 @@ export async function embedDocumentChunks(
 
   try {
     const embeddings = await (options.embedTexts ?? embedTextsWithGemini)(
-      chunks.map((chunk) => chunk.text),
+      chunks.map(embeddingText),
       signal,
     );
     validateEmbeddings(embeddings, chunks.length);

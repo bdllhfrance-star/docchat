@@ -131,18 +131,35 @@ describe("uploaded document ingestion", () => {
     expect(deps.repository.completeDocumentIndexing).not.toHaveBeenCalled();
   });
 
-  test("fails explicitly when a format parser is not available yet", async () => {
+  test("runs the same ingestion pipeline for a registered Office format", async () => {
     const deps = dependencies();
 
     await expect(
       ingestUploadedDocument({ ...document, fileType: "docx" }, deps),
-    ).resolves.toMatchObject({ outcome: "failed" });
-    expect(deps.loadDocument).not.toHaveBeenCalled();
-    expect(deps.repository.failDocumentProcessing).toHaveBeenCalledWith(
-      expect.objectContaining({
-        error: expect.objectContaining({ code: "PARSER_NOT_AVAILABLE" }),
-      }),
-    );
+    ).resolves.toMatchObject({ outcome: "ready" });
+    expect(deps.loadDocument).toHaveBeenCalledOnce();
+    expect(deps.extract).toHaveBeenCalledOnce();
+    expect(deps.repository.failDocumentProcessing).not.toHaveBeenCalled();
+  });
+
+  test("writes a safe structured ingestion result without document content", async () => {
+    const deps = dependencies();
+    const logger = { info: vi.fn(), warn: vi.fn() };
+
+    await ingestUploadedDocument(document, {
+      ...deps,
+      logger,
+      requestId: "request-1",
+    });
+
+    expect(logger.info).toHaveBeenCalledOnce();
+    const entry = logger.info.mock.calls[0][0];
+    expect(entry).toContain('"event":"document.ingestion.completed"');
+    expect(entry).toContain('"fileType":"pdf"');
+    expect(entry).toContain('"requestId":"request-1"');
+    expect(entry).not.toContain("First page text");
+    expect(entry).not.toContain(document.sessionId);
+    expect(logger.warn).not.toHaveBeenCalled();
   });
 
   test("skips a callback when another invocation already claimed the document", async () => {

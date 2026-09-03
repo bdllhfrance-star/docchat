@@ -894,14 +894,14 @@ du pipeline P0.
 
 | État | ID | Dépend de | Responsable | Tâche et condition de fin |
 | --- | --- | --- | --- | --- |
-| [ ] | FMT-00 | GATE-01 | Principal/Ingestion | Finaliser le registre de parsers autour de `DocumentParser`, sans framework RAG ni abstraction supplémentaire. Un format inconnu est refusé proprement. |
-| [ ] | FMT-01 | FMT-00 | Ingestion | Ajouter TXT et Markdown en conservant lignes, titres et sections dans les sources. Fixtures et tests passent. |
-| [ ] | FMT-02 | FMT-01 | Ingestion | Ajouter CSV avec en-têtes, plages de lignes, encodage contrôlé et limite de taille extraite. Fixtures et tests passent. |
-| [ ] | FMT-03 | FMT-02 | Ingestion | Ajouter DOCX : titres, paragraphes et tableaux, sans macros ni contenu actif. Fixtures et tests passent. |
-| [ ] | FMT-04 | FMT-03 | Ingestion | Ajouter PPTX : numéro, titre, texte et tableaux par slide. Fixtures et tests passent. |
-| [ ] | FMT-05 | FMT-04 | Ingestion | Ajouter XLSX : feuilles, en-têtes, cellules non vides et plages sources, avec limite de 50 000 cellules. Fixtures et tests passent. |
-| [ ] | FMT-06 | FMT-03, FMT-04, FMT-05 | Backend/QA | Vérifier signatures ZIP OOXML, nombre d'entrées, taille décompressée, fichiers chiffrés et formats macro-enabled. Les ZIP bombs sont refusées. |
-| [ ] | UI-07 | FMT-06 | UI | Afficher correctement les formats, statuts et labels de source page/section/slide/feuille/lignes sans modifier le parcours principal. |
+| [x] | FMT-00 | GATE-01 | Principal/Ingestion | Finaliser le registre de parsers autour de `DocumentParser`, sans framework RAG ni abstraction supplémentaire. Un format inconnu est refusé proprement. |
+| [x] | FMT-01 | FMT-00 | Ingestion | Ajouter TXT et Markdown en conservant lignes, titres et sections dans les sources. Fixtures et tests passent. |
+| [x] | FMT-02 | FMT-01 | Ingestion | Ajouter CSV avec en-têtes, plages de lignes, encodage contrôlé et limite de taille extraite. Fixtures et tests passent. |
+| [x] | FMT-03 | FMT-02 | Ingestion | Ajouter DOCX : titres, paragraphes et tableaux, sans macros ni contenu actif. Fixtures et tests passent. |
+| [x] | FMT-04 | FMT-03 | Ingestion | Ajouter PPTX : numéro, titre, texte et tableaux par slide. Fixtures et tests passent. |
+| [x] | FMT-05 | FMT-04 | Ingestion | Ajouter XLSX : feuilles, en-têtes, cellules non vides et plages sources, avec limite de 50 000 cellules. Fixtures et tests passent. |
+| [x] | FMT-06 | FMT-03, FMT-04, FMT-05 | Backend/QA | Vérifier signatures ZIP OOXML, nombre d'entrées, taille décompressée, fichiers chiffrés et formats macro-enabled. Les ZIP bombs sont refusées. |
+| [x] | UI-07 | FMT-06 | UI | Afficher correctement les formats, statuts et labels de source page/section/slide/feuille/lignes sans modifier le parcours principal. |
 | [ ] | TST-02 | UI-07 | QA | Exécuter ingestion et question sourcée sur une fixture de chaque format, plus les erreurs partielles d'un batch mixte. |
 | [ ] | GATE-03 | TST-02 | Principal | Rejouer le parcours multi-format complet sans régression de P0/P1. Chaque format conservé possède une preuve d'extraction et de retrieval. |
 
@@ -1153,3 +1153,5 @@ Le projet est terminé uniquement lorsque :
 | 2026-09-03 | Utiliser l'icône Smartly.ai fournie comme marque et favicon, composer le nom en texte noir/blanc selon le thème et supprimer le sous-titre du header. |
 | 2026-09-03 | Remplacer le badge générique `Pipeline overview` par une signature Gemini professionnelle reliée à la configuration réelle du modèle. |
 | 2026-09-03 | Remplacer le symbole Gemini redessiné par l'asset RGB officiel `Gemini_SparkIcon_4C.original.png` du Press Corner Google. |
+| 2026-09-03 | Activer les sept parseurs annoncés avec un registre direct, conserver la position métier dans les sources et enrichir les embeddings avec cette anatomie sans modifier le texte affiché. |
+| 2026-09-03 | Lire les formats Office comme des archives OOXML bornées avec `fflate` et `fast-xml-parser`, sans service payant ni nouvelle couche d'infrastructure. |

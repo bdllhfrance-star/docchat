@@ -51,6 +51,8 @@ export async function POST(
             repository: documentRepository,
             loadDocument: (storedDocument) =>
               downloadPrivateDocument(storedDocument, getBlobEnv()),
+            logger: console,
+            requestId,
           });
         },
         requestId: () => requestId,

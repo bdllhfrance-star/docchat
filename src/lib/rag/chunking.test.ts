@@ -50,6 +50,20 @@ describe("document chunking", () => {
     ]);
   });
 
+  test("splits delimiter-free content below the embedding character limit", () => {
+    const chunks = chunkDocumentBlocks(
+      [{ text: "x".repeat(25), source: { label: "Line 1", lineStart: 1 } }],
+      { maxCharacters: 10, maxWords: 4, overlapWords: 1 },
+    );
+
+    expect(chunks.map((chunk) => chunk.text)).toEqual([
+      "xxxxxxxxxx",
+      "xxxxxxxxxx",
+      "xxxxx",
+    ]);
+    expect(chunks.every((chunk) => chunk.text.length <= 10)).toBe(true);
+  });
+
   test("ignores empty blocks", () => {
     expect(
       chunkDocumentBlocks([
@@ -69,5 +83,12 @@ describe("document chunking", () => {
     expect(() =>
       chunkDocumentBlocks(blocks, { maxWords: 4, overlapWords: 4 }),
     ).toThrow("overlapWords");
+    expect(() =>
+      chunkDocumentBlocks(blocks, {
+        maxCharacters: 0,
+        maxWords: 4,
+        overlapWords: 1,
+      }),
+    ).toThrow("maxCharacters");
   });
 });

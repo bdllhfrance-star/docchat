@@ -55,6 +55,8 @@ export async function POST(request: Request): Promise<Response> {
               repository: await repository(),
               loadDocument: (storedDocument) =>
                 downloadPrivateDocument(storedDocument, blobEnv),
+              logger: console,
+              requestId,
             });
           },
           requestId: () => requestId,

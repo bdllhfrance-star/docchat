@@ -15,7 +15,9 @@ import type {
 } from "@/types/documents";
 import type { DocumentRecord } from "@/types/persistence";
 
-import { pdfParser, PdfExtractionError } from "./pdf-parser";
+import { DocumentExtractionError } from "./parser-error";
+import { getDocumentParser } from "./parser-registry";
+import { PdfExtractionError } from "./pdf-parser";
 
 type Ownership = {
   sessionId: string;
@@ -48,7 +50,9 @@ export type DocumentIngestionDependencies = {
     chunks: readonly DocumentChunk[],
   ) => Promise<EmbeddedDocumentChunk[]>;
   createId?: () => string;
+  logger?: Pick<Console, "info" | "warn">;
   now?: () => Date;
+  requestId?: string;
 };
 
 export type DocumentIngestionResult =
@@ -58,10 +62,6 @@ export type DocumentIngestionResult =
 
 class IngestionStateError extends Error {
   readonly code = "INGESTION_STATE_CONFLICT";
-}
-
-class ParserNotAvailableError extends Error {
-  readonly code = "PARSER_NOT_AVAILABLE";
 }
 
 function ownership(document: DocumentRecord): Ownership {
@@ -75,10 +75,10 @@ function ownership(document: DocumentRecord): Ownership {
 function processingFailure(error: unknown): { code: string; message: string } {
   if (
     error instanceof PdfExtractionError ||
+    error instanceof DocumentExtractionError ||
     error instanceof EmbeddingError ||
     error instanceof BlobDownloadError ||
-    error instanceof IngestionStateError ||
-    error instanceof ParserNotAvailableError
+    error instanceof IngestionStateError
   ) {
     return { code: error.code, message: error.message };
   }
@@ -130,6 +130,30 @@ function createChunkRecords(
   }));
 }
 
+function logIngestion(
+  document: DocumentRecord,
+  dependencies: DocumentIngestionDependencies,
+  outcome: "ready" | "failed",
+  errorCode?: string,
+): void {
+  const entry = JSON.stringify({
+    timestamp: new Date().toISOString(),
+    level: outcome === "ready" ? "info" : "warn",
+    event:
+      outcome === "ready"
+        ? "document.ingestion.completed"
+        : "document.ingestion.failed",
+    ...(dependencies.requestId ? { requestId: dependencies.requestId } : {}),
+    batchId: document.batchId,
+    documentId: document.id,
+    fileType: document.fileType,
+    outcome,
+    ...(errorCode ? { errorCode } : {}),
+  });
+
+  dependencies.logger?.[outcome === "ready" ? "info" : "warn"](entry);
+}
+
 export async function ingestUploadedDocument(
   document: DocumentRecord,
   dependencies: DocumentIngestionDependencies,
@@ -141,12 +165,7 @@ export async function ingestUploadedDocument(
   const documentOwnership = ownership(document);
 
   try {
-    if (document.fileType !== "pdf") {
-      throw new ParserNotAvailableError(
-        `The ${document.fileType.toUpperCase()} parser is not available yet.`,
-      );
-    }
-
+    const parser = getDocumentParser(document.fileType);
     const content = await dependencies.loadDocument(document);
     const extracting = await dependencies.repository.transitionDocumentStatus(
       documentOwnership,
@@ -158,7 +177,7 @@ export async function ingestUploadedDocument(
       return { outcome: "skipped" };
     }
 
-    const blocks = await (dependencies.extract ?? pdfParser.extract)(content);
+    const blocks = await (dependencies.extract ?? parser.extract)(content);
     await moveTo(
       dependencies.repository,
       documentOwnership,
@@ -198,12 +217,18 @@ export async function ingestUploadedDocument(
       );
     }
 
+    logIngestion(ready, dependencies, "ready");
     return { outcome: "ready", document: ready };
   } catch (error) {
+    const failure = processingFailure(error);
     const failed = await dependencies.repository.failDocumentProcessing({
       ...documentOwnership,
-      error: processingFailure(error),
+      error: failure,
     });
+
+    if (failed) {
+      logIngestion(failed, dependencies, "failed", failure.code);
+    }
 
     return failed
       ? { outcome: "failed", document: failed }

@@ -47,13 +47,43 @@ describe("document embeddings", () => {
     const embedded = await embedDocumentChunks(chunks, { embedTexts });
 
     expect(embedTexts).toHaveBeenCalledWith(
-      ["First passage", "Second passage"],
+      [
+        "Page: 1\n\nFirst passage",
+        "Page: 2\n\nSecond passage",
+      ],
       expect.any(AbortSignal),
     );
     expect(embedded).toEqual([
       { ...chunks[0], embedding: vector(0.1) },
       { ...chunks[1], embedding: vector(0.2) },
     ]);
+  });
+
+  test("adds structural location to embeddings without changing stored text", async () => {
+    const spreadsheetChunk: DocumentChunk = {
+      text: "Amount: 42 EUR",
+      source: {
+        label: "Sales - B2:B2",
+        section: "Invoices",
+        sheet: "Sales",
+        cellRange: "B2:B2",
+      },
+      chunkIndex: 0,
+    };
+    const embedTexts = vi.fn(async () => [vector(0.4)]);
+
+    const [embedded] = await embedDocumentChunks([spreadsheetChunk], {
+      embedTexts,
+    });
+
+    expect(embedTexts).toHaveBeenCalledWith(
+      [
+        "Section: Invoices\nSheet: Sales\nCells: B2:B2\n\nAmount: 42 EUR",
+      ],
+      expect.any(AbortSignal),
+    );
+    expect(embedded.text).toBe("Amount: 42 EUR");
+    expect(embedded.source).toEqual(spreadsheetChunk.source);
   });
 
   test("rejects missing or malformed vectors", async () => {
