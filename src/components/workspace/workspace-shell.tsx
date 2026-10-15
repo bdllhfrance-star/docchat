@@ -18,8 +18,8 @@ function BrandLogo() {
         />
       </span>
       <div className="min-w-0">
-        <p className="text-[11px] font-medium leading-4 text-slate-600 dark:text-slate-300 sm:text-xs">Comité National Olympique Marocain</p>
-        <p className="mt-0.5 text-sm font-semibold tracking-tight text-slate-950 dark:text-white sm:text-base">Assistant documentaire</p>
+        <p className="text-xs font-medium leading-4 text-slate-800 dark:text-slate-200">Comité National Olympique Marocain</p>
+        <p className="mt-0.5 text-xs font-normal leading-4 text-slate-500 dark:text-slate-400">Assistant documentaire</p>
       </div>
     </div>
   );
