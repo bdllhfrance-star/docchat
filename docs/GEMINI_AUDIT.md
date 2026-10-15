@@ -94,6 +94,9 @@ upload → indexation → question → citation.
   document utilisateur n'a été supprimé.
 - 295 tests automatisés réussis dans 46 fichiers ; TypeScript, lint des fichiers
   modifiés et build Vercel validés.
+- Un test ultérieur a validé le parcours complet d'upload privé avec callback,
+  Q&A français/arabe/anglais et ajout/suppression : 19 contrôles réussis.
+  Résultats et limites : [smoke test de production](PRODUCTION_SMOKE_2026-10-15.md).
 
 Les états DNS négatifs ci-dessus sont historiques et ne décrivent plus la
 configuration active. Les secrets partagés dans la conversation doivent encore

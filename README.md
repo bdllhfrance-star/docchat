@@ -726,6 +726,12 @@ sur un déploiement Vercel.
 
 ## Tests et qualité
 
+Le [smoke test de production du 15 octobre 2026](docs/PRODUCTION_SMOKE_2026-10-15.md)
+enregistre 19 contrôles réels réussis : uploads privés et callbacks, Q&A
+français/arabe/anglais avec citations, ajout/suppression, historique après
+suppression et isolation de session. Reproduction explicite (appels cloud réels) :
+`node tests/production-smoke.mjs`.
+
 ```bash
 pnpm lint
 pnpm typecheck
