@@ -47,9 +47,36 @@ type AggregateTextSearch = (
 export type HybridRetrievalOptions = {
   abortSignal?: AbortSignal;
   aggregateText?: AggregateTextSearch;
+  aggregateFallback?: AggregateTextSearch;
   timeoutMilliseconds?: number;
   vector?: Omit<VectorRetrievalOptions, "abortSignal" | "timeoutMilliseconds">;
 };
+
+export function createStoredChunkFallbackPipeline(
+  input: VectorRetrievalInput,
+): Document[] {
+  const documentIds = validateRetrievalInput(input);
+
+  return [
+    {
+      $match: {
+        sessionId: input.sessionId,
+        batchId: input.batchId,
+        documentId: { $in: documentIds },
+      },
+    },
+    // Interleave early chunks across the selected files for overview questions.
+    { $sort: { chunkIndex: 1, documentId: 1, id: 1 } },
+    { $limit: input.limit },
+    {
+      $project: {
+        _id: 0, id: 1, sessionId: 1, batchId: 1, documentId: 1,
+        filename: 1, fileType: 1, text: 1, source: 1, chunkIndex: 1,
+        score: { $literal: 0 },
+      },
+    },
+  ];
+}
 
 export function createTextSearchPipeline(
   input: VectorRetrievalInput,
@@ -250,5 +277,48 @@ export async function retrieveHybridChunks(
     retrieveTextChunks(input, options),
   ]);
 
-  return fuseRankedChunks([vectorResults, textResults], input.limit);
+  const fused = fuseRankedChunks([vectorResults, textResults], input.limit);
+
+  if (fused.length > 0) {
+    return fused;
+  }
+
+  // Atlas Search refreshes asynchronously after ingestion. Stored chunks can
+  // already exist while both search indexes still return no results.
+  const timeoutMilliseconds =
+    options.timeoutMilliseconds ?? HYBRID_SEARCH_CONFIG.timeoutMilliseconds;
+  const timeoutSignal = AbortSignal.timeout(timeoutMilliseconds);
+  const signal = options.abortSignal
+    ? AbortSignal.any([options.abortSignal, timeoutSignal])
+    : timeoutSignal;
+
+  try {
+    const results = await (options.aggregateFallback ?? aggregateTextWithMongo)(
+      createStoredChunkFallbackPipeline(input),
+      { maxTimeMS: timeoutMilliseconds, signal },
+    );
+    const fallback = sanitizeTextResults(
+      results, input, new Set(input.documentIds),
+    ).map((chunk): RetrievedChunk => ({ ...chunk, scoreKind: "context" }));
+
+    console.info(JSON.stringify({
+      timestamp: new Date().toISOString(),
+      level: "info",
+      event: "rag.search.stored_context",
+      chunks: fallback.length,
+    }));
+    return fallback;
+  } catch (error) {
+    if (error instanceof VectorRetrievalError) {
+      throw error;
+    }
+    throw new VectorRetrievalError(
+      options.abortSignal?.aborted
+        ? "RETRIEVAL_ABORTED"
+        : timeoutSignal.aborted
+          ? "RETRIEVAL_TIMEOUT"
+          : "RETRIEVAL_SEARCH_FAILED",
+      "Stored document context could not be retrieved.",
+    );
+  }
 }

@@ -327,17 +327,17 @@ function ThinkingIndicator({
       aria-label={label}
       data-testid="thinking-indicator"
     >
-      <span className="smartly-thinking-mark relative grid size-9 shrink-0 place-items-center" aria-hidden="true">
-        <span className="smartly-thinking-halo absolute inset-0 rounded-full border border-blue-400/40" />
+      <span className="assistant-thinking-mark relative grid size-9 shrink-0 place-items-center" aria-hidden="true">
+        <span className="assistant-thinking-halo absolute inset-0 rounded-full border border-blue-400/40" />
         <Image
-          src="/smartly-ai-mark.png"
+          src="/cnom-logo.png"
           alt=""
-          width={87}
-          height={80}
-          className="smartly-thinking-logo relative h-6 w-auto"
+          width={436}
+          height={508}
+          className="assistant-thinking-logo relative h-7 w-auto dark:brightness-0 dark:invert"
         />
       </span>
-      <span className="smartly-thinking-label">{label}</span>
+      <span className="assistant-thinking-label">{label}</span>
     </div>
   );
 }
@@ -751,7 +751,7 @@ function ActiveChat({
               }}
               onKeyDown={handleKeyDown}
               disabled={isResponding || isContextUpdating}
-              placeholder="Ask a question about your documents"
+              placeholder="Posez une question sur vos documents"
               className="chat-composer-textarea block h-14 min-h-14 max-h-[108px] min-w-0 flex-1 resize-none overflow-y-hidden bg-transparent py-[18px] pr-2 pl-4 text-sm leading-5 text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed dark:text-slate-100 dark:placeholder:text-slate-500"
             />
             {isResponding ? (

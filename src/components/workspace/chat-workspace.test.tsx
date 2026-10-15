@@ -65,13 +65,13 @@ test("enables the composer and sends a trimmed question", async () => {
   );
 
   expect(
-    await screen.findByRole("heading", { name: "Your documents are ready" }),
+    await screen.findByRole("heading", { name: "Vos documents, prêts à éclairer vos décisions" }),
   ).toBeDefined();
   expect(screen.getByTestId("rag-pipeline-visualizer")).toBeDefined();
   expect(screen.queryByText("Process replay")).toBeNull();
   expect(
     screen.getByLabelText(
-      "Powered by Gemini 3.7 Flash. 1,048,576 input tokens, 65,536 output tokens, medium reasoning.",
+      "Powered by Gemini 3.8 Flash. 1,048,576 input tokens, 65,536 output tokens, medium reasoning.",
     ),
   ).toBeDefined();
   expect(container.querySelectorAll("[data-rag-stage]")).toHaveLength(6);
@@ -122,7 +122,7 @@ test("keeps the chat mounted while its document context is updating", async () =
   );
 
   expect(
-    await screen.findByRole("heading", { name: "Your documents are ready" }),
+    await screen.findByRole("heading", { name: "Vos documents, prêts à éclairer vos décisions" }),
   ).toBeDefined();
   expect(screen.getByTestId("rag-pipeline-visualizer")).toBeDefined();
   expect(screen.getByText("Updating document context…")).toBeDefined();
@@ -157,7 +157,7 @@ test("renders progressive text and allows the request to be stopped", async () =
   expect(
     screen
       .getByTestId("thinking-indicator")
-      .querySelector('img[src*="smartly-ai-mark.png"]'),
+      .querySelector('img[src*="cnom-logo.png"]'),
   ).not.toBeNull();
   expect(screen.getByRole("textbox", { name: "Message DocChat" })).toHaveProperty(
     "disabled",

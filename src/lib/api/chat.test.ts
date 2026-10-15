@@ -312,4 +312,22 @@ describe("chat API", () => {
     });
     expect(deps.streamResponse).not.toHaveBeenCalled();
   });
+
+  test("does not send empty document retrieval to the model", async () => {
+    const deps = dependencies({
+      retrieveChunks: vi.fn().mockResolvedValue([]),
+    });
+
+    const response = await handleChatRequest(
+      request({ message: "what are those about", history: [] }),
+      deps,
+    );
+
+    expect(deps.retrieveChunks).toHaveBeenCalledOnce();
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: "PROVIDER_ERROR", message: expect.stringContaining("documents are ready") },
+    });
+    expect(deps.streamResponse).not.toHaveBeenCalled();
+  });
 });

@@ -515,12 +515,12 @@ function DocumentsPanel({
               <Upload size={18} strokeWidth={1.8} aria-hidden="true" />
             </div>
             <h3 className="mt-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
-              Start with your documents
+              Ajoutez vos documents
             </h3>
             <p className="mt-1.5 text-xs leading-5 text-slate-500 dark:text-slate-400">
               {isDragging
                 ? "Drop to add documents"
-                : "Choose or drop files here. Chat unlocks after they are indexed."}
+                : "Ajoutez un règlement, un rapport ou un dossier sportif. Le chat sera disponible après leur préparation."}
             </p>
             <button
               type="button"
@@ -536,12 +536,12 @@ function DocumentsPanel({
           <>
             <div className="mb-3 px-0.5">
               <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                Review your documents
+                Votre sélection documentaire
               </h3>
               <p className="mt-1 text-xs leading-5 text-slate-500 dark:text-slate-400">
                 {hasContext
-                  ? "Add or remove files here. Existing files stay in your context."
-                  : "Check the files, then use the upload action below."}
+                  ? "Ajoutez ou retirez des fichiers pour actualiser vos sources."
+                  : "Vérifiez votre sélection, puis lancez la préparation."}
               </p>
             </div>
             <ul className="space-y-2" aria-label="Selected documents">
@@ -761,7 +761,7 @@ function DisabledComposer({
             rows={1}
             disabled
             aria-describedby="composer-reason"
-            placeholder="Ask a question about your documents"
+            placeholder="Posez une question sur vos documents"
             className="block h-14 min-h-14 min-w-0 flex-1 resize-none overflow-hidden bg-transparent py-[18px] pr-2 pl-4 text-sm leading-5 text-slate-900 outline-none placeholder:text-slate-400 disabled:cursor-not-allowed dark:text-slate-100 dark:placeholder:text-slate-500"
           />
           <button

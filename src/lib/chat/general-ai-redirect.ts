@@ -20,6 +20,8 @@ const redirectRecommendationPatterns = [
 ] as const;
 
 const productScopeBoundaryPatterns = [
+  /\bCNOM\b[\s\S]{0,220}\b(?:dedicated|specialized|designed|dédié|spécialisé|conçu)\b/iu,
+  /(?:CNOM)[\s\S]{0,220}(?:مخصص|متخصص|مصمم)/u,
   /\bSmartly\.ai\b[\s\S]{0,220}\b(?:dedicated|specialized|designed)\b/iu,
   /\b(?:I (?:cannot|can't|do not)|not able to)\b[\s\S]{0,180}\b(?:general (?:knowledge|conversation|questions?|topics?)|outside (?:the )?documents?)\b/iu,
   /\bSmartly\.ai\b[\s\S]{0,220}\b(?:dédié|spécialisé|conçu)\b/iu,

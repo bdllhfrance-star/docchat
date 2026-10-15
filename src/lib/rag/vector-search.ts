@@ -49,7 +49,7 @@ export type RetrievedChunk = {
   source: DocumentSource;
   chunkIndex: number;
   score: number;
-  scoreKind?: "similarity" | "rrf";
+  scoreKind?: "similarity" | "rrf" | "context";
 };
 
 type StoredVectorSearchResult = RetrievedChunk & {

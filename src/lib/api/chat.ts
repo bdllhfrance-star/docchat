@@ -269,6 +269,17 @@ export async function handleChatRequest(
       candidates,
     );
 
+    // Ready describes ingestion, not Atlas Search availability after a restore.
+    // Never ask the model to diagnose an empty retrieval as missing uploads.
+    if (mode === "grounded" && context.chunks.length === 0) {
+      return apiErrorResponse(
+        502,
+        requestId,
+        "PROVIDER_ERROR",
+        "Your documents are ready, but no searchable passages were returned. Please try again shortly.",
+      );
+    }
+
     return dependencies.streamResponse({
       abortSignal: request.signal,
       context,

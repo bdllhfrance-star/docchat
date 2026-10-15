@@ -96,12 +96,12 @@ function uploadResult(
 test("renders the initial document workspace", () => {
   render(<Home />);
 
-  expect(screen.getByLabelText("Smartly.ai")).toBeDefined();
+  expect(screen.getByLabelText("CNOM · Assistant documentaire")).toBeDefined();
   expect(screen.queryByText("Answers grounded in your documents")).toBeNull();
   expect(
     screen.getByRole("heading", {
       level: 3,
-      name: "Start with your documents",
+      name: "Ajoutez vos documents",
     }),
   ).toBeDefined();
   expect(
@@ -113,11 +113,11 @@ test("renders the initial document workspace", () => {
   expect(
     screen.getByRole("heading", {
       level: 1,
-      name: "From files to searchable knowledge",
+      name: "L’information au service du mouvement olympique",
     }),
   ).toBeDefined();
   const geminiSignature = screen.getByLabelText(
-    "Powered by Gemini 3.7 Flash. 1,048,576 input tokens, 65,536 output tokens, medium reasoning.",
+    "Powered by Gemini 3.8 Flash. 1,048,576 input tokens, 65,536 output tokens, medium reasoning.",
   );
   expect(geminiSignature).toBeDefined();
   expect(
@@ -217,7 +217,7 @@ test("selects, validates, and removes multiple files before upload", () => {
   });
 
   expect(
-    screen.getByRole("heading", { name: "Review your documents" }),
+    screen.getByRole("heading", { name: "Votre sélection documentaire" }),
   ).toBeDefined();
   expect(screen.getByRole("list", { name: "Selected documents" })).toBeDefined();
   expect(screen.getByText("guide.pdf")).toBeDefined();
@@ -300,7 +300,7 @@ test("starts one batch action and shows only real upload progress", async () => 
   expect(screen.getByText("Creating batch")).toBeDefined();
   expect(
     screen.getByLabelText(
-      "Powered by Gemini 3.7 Flash. 1,048,576 input tokens, 65,536 output tokens, medium reasoning.",
+      "Powered by Gemini 3.8 Flash. 1,048,576 input tokens, 65,536 output tokens, medium reasoning.",
     ),
   ).toBeDefined();
   expect(screen.queryByText("Pipeline active")).toBeNull();
@@ -470,12 +470,12 @@ test("keeps each file row stable while showing real processing states", async ()
       ?.querySelector('[data-operation="ready"]'),
   ).not.toBeNull();
   expect(
-    await screen.findByRole("heading", { name: "Your documents are ready" }),
+    await screen.findByRole("heading", { name: "Vos documents, prêts à éclairer vos décisions" }),
   ).toBeDefined();
   expect(screen.queryByText("Process replay")).toBeNull();
   expect(
     screen.getByLabelText(
-      "Powered by Gemini 3.7 Flash. 1,048,576 input tokens, 65,536 output tokens, medium reasoning.",
+      "Powered by Gemini 3.8 Flash. 1,048,576 input tokens, 65,536 output tokens, medium reasoning.",
     ),
   ).toBeDefined();
   expect(screen.getByRole("textbox", { name: "Message DocChat" })).toHaveProperty(
@@ -825,12 +825,12 @@ test("deletes the last ready document and returns to the initial workspace", asy
     "document-row-deleting",
   );
   expect(
-    screen.getByRole("heading", { name: "Your documents are ready" }),
+    screen.getByRole("heading", { name: "Vos documents, prêts à éclairer vos décisions" }),
   ).toBeDefined();
   expect(
     within(
       screen.getByRole("region", { name: "Conversation workspace" }),
-    ).queryByRole("heading", { name: "Review your documents" }),
+    ).queryByRole("heading", { name: "Votre sélection documentaire" }),
   ).toBeNull();
   expect(screen.getByText("Updating document context…")).toBeDefined();
   expect(screen.getByRole("textbox", { name: "Message DocChat" })).toHaveProperty(
@@ -841,7 +841,7 @@ test("deletes the last ready document and returns to the initial workspace", asy
 
   expect(deleteDocumentMock).toHaveBeenCalledWith("document-1");
   expect(
-    screen.getByRole("heading", { name: "Start with your documents" }),
+    screen.getByRole("heading", { name: "Ajoutez vos documents" }),
   ).toBeDefined();
   expect(
     screen.getByRole("button", { name: "Choose documents" }),

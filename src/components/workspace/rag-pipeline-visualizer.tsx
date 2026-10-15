@@ -169,24 +169,20 @@ export function RagPipelineVisualizer({
   const content =
     mode === "ready"
       ? {
-          heading: "Your documents are ready",
-          description: `See how ${documentCount} ready ${
-            documentCount === 1 ? "document becomes" : "documents become"
-          } searchable knowledge before your first question.`,
-          footer: "Vector context ready for grounded answers",
+          heading: "Vos documents, prêts à éclairer vos décisions",
+          description: `${documentCount} ${documentCount === 1 ? "document disponible" : "documents disponibles"} pour comparer vos informations, retrouver une disposition et obtenir une réponse avec sa source.`,
+          footer: "Sources prêtes · Réponses ancrées dans vos documents",
         }
       : mode === "processing"
         ? {
-            heading: "Building your document context",
-            description: `${documentCount} ${
-              documentCount === 1 ? "document is" : "documents are"
-            } moving through extraction, chunking, embeddings and vector indexing.`,
-            footer: "Processing securely in your private workspace",
+            heading: "Vos documents entrent en jeu",
+            description: `${documentCount} ${documentCount === 1 ? "document en cours de préparation" : "documents en cours de préparation"}. Chaque passage conserve sa source pour faciliter vos recherches.`,
+            footer: "Préparation dans votre espace privé",
           }
         : {
-            heading: "From files to searchable knowledge",
+            heading: "L’information au service du mouvement olympique",
             description:
-              "Your documents become reliable knowledge, ready to answer your questions.",
+              "Règlements, rapports, dossiers des fédérations et des délégations : retrouvez l’essentiel et remontez à la source, en français comme en arabe.",
             footer: null,
           };
 
@@ -202,7 +198,7 @@ export function RagPipelineVisualizer({
         <GeminiPoweredBadge />
       </div>
 
-      <div className="relative z-10 w-full max-w-6xl">
+      <div className="relative z-10 w-full max-w-6xl pt-24 sm:pt-16 lg:pt-12">
         <h1
           id="rag-pipeline-heading"
           className="mt-0 text-2xl font-semibold tracking-tight text-slate-950 dark:text-white sm:text-3xl"

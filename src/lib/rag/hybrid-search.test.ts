@@ -7,6 +7,7 @@ import type { RetrievedChunk } from "@/lib/rag/vector-search";
 
 import {
   createTextSearchPipeline,
+  createStoredChunkFallbackPipeline,
   fuseRankedChunks,
   retrieveHybridChunks,
 } from "./hybrid-search";
@@ -50,6 +51,54 @@ const input = {
 };
 
 describe("hybrid retrieval", () => {
+  test("bounds stored-context fallback and preserves all ownership filters", () => {
+    expect(createStoredChunkFallbackPipeline(input)).toEqual([
+      { $match: { sessionId, batchId, documentId: { $in: documentIds } } },
+      { $sort: { chunkIndex: 1, documentId: 1, id: 1 } },
+      { $limit: input.limit },
+      expect.objectContaining({ $project: expect.objectContaining({ score: { $literal: 0 } }) }),
+    ]);
+  });
+
+  test("reads owned stored chunks when both Atlas indexes are empty", async () => {
+    const aggregateFallback = vi.fn().mockResolvedValue([storedTextResult({ score: 0 })]);
+    const result = await retrieveHybridChunks(input, {
+      aggregateText: async () => [],
+      aggregateFallback,
+      vector: { embedQuery: async () => Array(768).fill(0.1), aggregate: async () => [] },
+    });
+
+    expect(aggregateFallback).toHaveBeenCalledWith(
+      createStoredChunkFallbackPipeline(input),
+      expect.objectContaining({ maxTimeMS: 10000, signal: expect.any(AbortSignal) }),
+    );
+    expect(result).toMatchObject([{ id: "chunk-text", score: 0, scoreKind: "context" }]);
+  });
+
+  test("rejects another session's chunks in the stored fallback", async () => {
+    await expect(retrieveHybridChunks(input, {
+      aggregateText: async () => [],
+      aggregateFallback: async () => [storedTextResult({ sessionId: "other-session", score: 0 })],
+      vector: { embedQuery: async () => Array(768).fill(0.1), aggregate: async () => [] },
+    })).rejects.toMatchObject({ code: "RETRIEVAL_INVALID_RESULT" });
+  });
+
+  test("keeps an empty result when the selected documents have no stored chunks", async () => {
+    await expect(retrieveHybridChunks(input, {
+      aggregateText: async () => [], aggregateFallback: async () => [],
+      vector: { embedQuery: async () => Array(768).fill(0.1), aggregate: async () => [] },
+    })).resolves.toEqual([]);
+  });
+
+  test("does not hide Atlas failures with a stored fallback", async () => {
+    const aggregateFallback = vi.fn();
+    await expect(retrieveHybridChunks(input, {
+      aggregateText: async () => { throw Error("unavailable"); }, aggregateFallback,
+      vector: { embedQuery: async () => Array(768).fill(0.1), aggregate: async () => [] },
+    })).rejects.toMatchObject({ code: "RETRIEVAL_SEARCH_FAILED" });
+    expect(aggregateFallback).not.toHaveBeenCalled();
+  });
+
   test("builds text search with exact ownership and document filters", () => {
     const pipeline = createTextSearchPipeline(input);
 
@@ -96,9 +145,11 @@ describe("hybrid retrieval", () => {
       { ...storedTextResult(), id: "chunk-vector", score: 0.91 },
     ]);
     const aggregateText = vi.fn().mockResolvedValue([storedTextResult()]);
+    const aggregateFallback = vi.fn();
 
     const results = await retrieveHybridChunks(input, {
       aggregateText,
+      aggregateFallback,
       vector: {
         embedQuery: async () =>
           Array.from(
@@ -115,6 +166,7 @@ describe("hybrid retrieval", () => {
     ]);
     expect(aggregateVector).toHaveBeenCalledOnce();
     expect(aggregateText).toHaveBeenCalledOnce();
+    expect(aggregateFallback).not.toHaveBeenCalled();
   });
 
   test("refuses a lexical result from another session", async () => {

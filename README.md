@@ -1,6 +1,21 @@
-# Smartly.ai DocChat
+# CNOM · Assistant documentaire
 
-![Smartly.ai](public/smartly-ai-logo.png)
+![Comité National Olympique Marocain](public/cnom-logo.png)
+
+Cette version est un **prototype indépendant de démonstration pour un entretien**,
+adapté au Comité National Olympique Marocain. Elle reprend le logo fourni et une
+palette inspirée des anneaux olympiques (bleu, jaune, noir, vert et rouge),
+avec le design DocChat d'origine en modes clair et sombre, pour illustrer la recherche dans des règlements,
+rapports et dossiers de fédérations ou de délégations. Ce n'est pas un service
+officiel du CNOM et aucun document institutionnel n'est chargé automatiquement.
+Le positionnement s'appuie sur les [missions publiques du CNOM](https://www.cnom.org.ma/fr/roles-et-missions).
+Les évaluations ci-dessous décrivent la version d'origine du projet DocChat.
+
+Audit Gemini du 15 octobre 2026 : génération sur `gemini-3.8-flash`, embeddings
+inchangés sur `gemini-embedding-2` en 768 dimensions, nouvelle clé d'autorisation
+AI Studio validée en local. Le SDK installé reste compatible : streaming avec
+raisonnement `medium`, embeddings documentaires français/arabe et embedding de
+requête ont été vérifiés avec de vrais appels. Voir [le compte rendu d'audit](docs/GEMINI_AUDIT.md).
 
 Application full-stack de questions-réponses sur documents réalisée pour le test
 technique Smartly.ai. Un utilisateur dépose jusqu’à dix documents, attend leur
@@ -26,7 +41,7 @@ citations ouvrant l’extrait et la localisation d’origine.
 - Chat bloqué tant que chaque document conservé n’est pas entièrement prêt.
 - Recherche hybride MongoDB Atlas : Vector Search et Search lexical en
   parallèle, puis fusion RRF déterministe.
-- Contexte dynamique adapté à la fenêtre de `gemini-3.7-flash`, sans limite
+- Contexte dynamique adapté à la fenêtre de `gemini-3.8-flash`, sans limite
   arbitraire de cinq chunks.
 - Réponse Gemini streamée avec citations inline, aperçu de source et
   localisation métier.
@@ -167,6 +182,73 @@ stateDiagram-v2
     failed --> queued: remplacement
 ```
 
+Le diagramme suivant zoome sur le parcours technique d'un fichier. Il sépare
+le **plan de contrôle** (manifeste, ownership et autorisation) du **plan de
+données** (transfert du binaire). `queued` est un état MongoDB, pas une file de
+messages : le navigateur utilise deux workers et traite donc au maximum deux
+uploads en parallèle.
+
+```mermaid
+flowchart TD
+    Start[Utilisateur sélectionne un fichier]
+
+    subgraph Browser[Navigateur - React]
+        ClientValidation[Validation locale<br/>extension, MIME, taille et limites du batch]
+        Manifest[Construit un manifeste léger<br/>clientId, nom, MIME et taille]
+        Worker[Worker d'upload<br/>concurrence maximale : 2]
+        Poll[Polling du statut du batch<br/>toutes les 1,5 seconde]
+    end
+
+    subgraph Control[Plan de contrôle - Functions Next.js]
+        Create[POST /api/batches<br/>session signée, rate limit et validation Zod]
+        Reserve[Réserve documentId et pathname<br/>état queued]
+        Token[POST /api/upload<br/>vérifie session, ownership et état]
+        Authorize[Émet une autorisation courte<br/>pathname, MIME et taille bornés]
+        Callback[Callback Blob signé<br/>valide tokenPayload, pathname, MIME et taille]
+    end
+
+    subgraph Storage[Vercel Blob privé]
+        DirectUpload[Upload direct du binaire<br/>sans traverser le body de la Function]
+        Original[(Original privé)]
+    end
+
+    subgraph Ingestion[Pipeline d'ingestion - Function Node.js]
+        Download[Téléchargement privé borné<br/>et contrôle de la taille réelle]
+        Parse[Parseur selon le format<br/>produit des blocs texte + localisation]
+        Chunk[Chunking par bloc sémantique<br/>450 mots, 6 000 caractères, overlap 75]
+        Embed[Gemini Embeddings<br/>RETRIEVAL_DOCUMENT, 768 dimensions]
+        Persist[Remplace les anciens chunks<br/>puis marque le document ready]
+        Failure[Document marqué failed<br/>avec un code d'erreur sûr]
+    end
+
+    subgraph Atlas[MongoDB Atlas]
+        Metadata[(Batch + document + ownership)]
+        Vectors[(Chunks, sources et vecteurs)]
+        Refresh[Recalcule les compteurs du batch<br/>avec compare-and-swap]
+    end
+
+    Ready[UI déverrouille le chat<br/>quand tous les documents sont ready]
+    Recover[Retry, remplacement ou suppression]
+
+    Start --> ClientValidation --> Manifest --> Create --> Reserve
+    Reserve --> Metadata
+    Reserve --> Worker --> Token --> Authorize --> DirectUpload --> Original
+    Original --> Callback --> Download --> Parse --> Chunk --> Embed --> Persist
+    Persist --> Vectors --> Refresh --> Metadata
+    Metadata --> Poll
+    Poll -->|batch ready| Ready
+
+    Callback -->|validation refusée| Failure
+    Download -->|échec| Failure
+    Parse -->|échec| Failure
+    Embed -->|échec ou timeout| Failure
+    Persist -->|conflit ou erreur DB| Failure
+    Failure --> Refresh
+    Failure --> Recover
+    Recover -->|original disponible| Download
+    Recover -->|nouveau fichier| Worker
+```
+
 `ready` signifie que l’upload, l’extraction, le chunking, les embeddings et la
 persistance des vecteurs ont tous réussi. Un batch peut être `partial` si
 certains fichiers ont réussi et d’autres ont échoué, mais le chat reste bloqué
@@ -186,7 +268,7 @@ flowchart TD
     RRF[Fusion RRF et déduplication]
     Budget[Assemblage selon le budget de tokens]
     Prompt[Prompt système + contexte JSONL sourcé]
-    Model[Gemini 3.7 Flash, thinking medium]
+    Model[Gemini 3.8 Flash, thinking medium]
     Stream[Stream texte + citations interactives]
 
     Q --> Validate --> Mode
@@ -248,7 +330,7 @@ de rester dans le contexte RAG.
 | UI + API | Next.js 16.3.3, React 19.2.8, TypeScript strict | Un seul déploiement et des contrats partagés. Le traitement lourd reste néanmoins soumis aux limites des Functions. |
 | Style | Tailwind CSS 4, CSS et SVG manuels, Lucide React | UI cohérente sans bibliothèque d’animations ni composants visuels surdimensionnés. |
 | Streaming | AI SDK 7, `@ai-sdk/react`, `@ai-sdk/google` | Stream UI typé, annulation et sources envoyées comme data parts. |
-| Génération | `gemini-3.7-flash` | Grande fenêtre de contexte, sortie streamée et niveau de raisonnement `medium`; le free tier reste soumis aux quotas Gemini. |
+| Génération | `gemini-3.8-flash` | Grande fenêtre de contexte, sortie streamée et niveau de raisonnement `medium`; le free tier reste soumis aux quotas Gemini. |
 | Embeddings | `gemini-embedding-2`, 768 dimensions | Même fournisseur, tâches distinctes `RETRIEVAL_DOCUMENT` et `RETRIEVAL_QUERY`. |
 | Persistance | MongoDB Atlas | Batches, documents, chunks, filtres, recherche vectorielle et lexicale dans une seule base. Cela évite la synchronisation avec Pinecone/Qdrant. |
 | Fichiers | Vercel Blob privé | Upload direct avec progression et original disponible pour retry. Le callback est externe, donc le flux complet local nécessite un tunnel. |
@@ -347,7 +429,7 @@ Pour une question documentaire :
    d’entrée du modèle.
 
 Le nombre demandé n’est donc pas fixé à cinq chunks. Il est calculé depuis le
-budget restant de `gemini-3.7-flash`, en estimant 600 tokens par chunk, et peut
+budget restant de `gemini-3.8-flash`, en estimant 600 tokens par chunk, et peut
 monter jusqu’à 500 candidats. La fenêtre d’entrée configurée est de 1 048 576
 tokens avec une marge de sécurité de 16 384 tokens après le système, la question
 et l’historique. La sortie maximale est de 65 536 tokens.
@@ -610,6 +692,18 @@ n’ont pas été écrasés.
    par un mot de passe fort, TLS et des droits MongoDB limités.
 3. Créer les 11 index standards puis les deux index Search décrits plus haut.
 4. Attendre l’état `READY` des index Search.
+
+Après une restauration ou une recréation du cluster, revérifier ces deux index :
+la présence des documents et des vecteurs ne garantit pas leur disponibilité
+dans Atlas Search. Ils doivent être `READY` et `queryable: true`. Même ensuite,
+leur rafraîchissement après un upload est asynchrone. Si les deux recherches
+réussissent mais ne retournent aucun résultat, une lecture MongoDB bornée des
+chunks stockés utilise les mêmes filtres session/batch/documents et le même
+budget de contexte. Elle entrelace les premiers chunks des fichiers sélectionnés.
+Ces passages ont le type de score `context` (pas un score de pertinence).
+Les erreurs des fournisseurs ne sont pas masquées. Si aucun passage stocké
+n’est disponible non plus, le tour est rejeté avant génération avec une erreur
+explicite plutôt que d’inventer une absence de fichiers.
 
 ### 4. Lancer
 

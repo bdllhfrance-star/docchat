@@ -13,28 +13,30 @@ const themeInitializer = `
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://docchat-lyart.vercel.app"),
-  title: "Smartly.ai — Chat with your documents",
+  title: "CNOM · Assistant documentaire — Démonstration",
   description:
-    "Upload multiple documents and get streamed, source-grounded answers from your private workspace.",
-  applicationName: "Smartly.ai",
+    "Prototype de démonstration pour le Comité National Olympique Marocain : explorez règlements, rapports et dossiers sportifs, avec des réponses sourcées en français et en arabe.",
+  applicationName: "CNOM · Assistant documentaire",
+  robots: { index: false, follow: false },
   openGraph: {
     type: "website",
-    siteName: "Smartly.ai",
-    title: "Smartly.ai — Chat with your documents",
+    siteName: "CNOM · Démonstration documentaire",
+    title: "CNOM · L’information au service du mouvement olympique",
     description:
-      "Turn PDFs, presentations, spreadsheets and text files into searchable knowledge.",
+      "Règlements, rapports et dossiers des délégations : une démonstration indépendante de recherche documentaire avec citations.",
+    images: [{ url: "/cnom-logo.png", width: 436, height: 508, alt: "Comité National Olympique Marocain" }],
   },
   twitter: {
     card: "summary",
-    title: "Smartly.ai — Chat with your documents",
+    title: "CNOM · Assistant documentaire — Démonstration",
     description:
-      "Turn your documents into searchable knowledge and grounded answers.",
+      "Explorez vos documents sportifs et institutionnels avec des réponses sourcées.",
   },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className="h-full antialiased" suppressHydrationWarning>
+    <html lang="fr" className="h-full antialiased" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitializer }} />
       </head>
