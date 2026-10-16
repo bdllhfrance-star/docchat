@@ -133,11 +133,14 @@ test("renders the initial document workspace", () => {
   const documentsPanel = screen.getByRole("complementary", {
     name: "Documents",
   });
-  expect(
-    within(documentsPanel).getByRole("note", {
+  const formatsNote = within(documentsPanel).getByRole("note", {
       name: "Formats et limites",
-    }),
-  ).toBeDefined();
+    });
+  const disclosure = formatsNote.querySelector("details")!;
+  expect(disclosure.open).toBe(false);
+  expect(within(formatsNote).getByText("Sans OCR")).toBeDefined();
+  fireEvent.click(within(formatsNote).getByText("Formats et limites"));
+  expect(disclosure.open).toBe(true);
   expect(
     within(documentsPanel).getByText(
       "PDF · DOCX · PPTX · XLSX · TXT · MD · CSV · 10 fichiers maximum · 10 Mio par fichier · 50 Mio au total",

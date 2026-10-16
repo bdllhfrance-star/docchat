@@ -3,6 +3,7 @@
 import {
   ArrowUp,
   CheckCircle2,
+  ChevronDown,
   CircleEllipsis,
   Clock3,
   Files,
@@ -475,26 +476,29 @@ function DocumentsPanel({
         </span>
       </div>
       <div
-        className="mx-4 -mt-2 mb-4 flex items-start gap-2 rounded-xl border border-blue-100 bg-blue-50/70 px-3 py-2.5 text-[11px] leading-4 text-slate-600 dark:border-blue-950 dark:bg-blue-950/30 dark:text-slate-300 sm:mx-5"
+        className="mx-4 -mt-2 mb-3 shrink-0 rounded-xl border border-blue-100 bg-blue-50/70 text-[11px] leading-4 text-slate-600 dark:border-blue-950 dark:bg-blue-950/30 dark:text-slate-300 sm:mx-5"
         role="note"
         aria-label="Formats et limites"
       >
-        <Info
-          size={14}
-          className="mt-px shrink-0 text-blue-600 dark:text-blue-400"
-          aria-hidden="true"
-        />
-        <div className="min-w-0">
-          <p>
-            PDF · DOCX · PPTX · XLSX · TXT · MD · CSV · 10 fichiers maximum · 10 Mio par fichier · 50 Mio au total
-          </p>
-          <p className="mt-2 border-t border-blue-100 pt-2 dark:border-blue-900/60">
-            <strong className="block font-semibold text-slate-700 dark:text-slate-200">
-              PDF : texte sélectionnable requis. Aucun OCR intégré.
-            </strong>
-            Les scans nécessitent une reconnaissance de texte préalable. Les pages sans texte ne sont pas analysées.
-          </p>
-        </div>
+        <details className="group">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-xl px-3 text-xs font-medium outline-offset-2 hover:bg-blue-100/40 focus-visible:outline-2 focus-visible:outline-blue-600 dark:hover:bg-blue-950/50 [&::-webkit-details-marker]:hidden">
+            <Info size={14} className="shrink-0 text-blue-600 dark:text-blue-400" aria-hidden="true" />
+            <span>Formats et limites</span>
+            <span className="ml-auto whitespace-nowrap text-[11px] text-slate-500 dark:text-slate-400">Sans OCR</span>
+            <ChevronDown size={14} className="shrink-0 group-open:rotate-180" aria-hidden="true" />
+          </summary>
+          <div className="border-t border-blue-100 px-3 py-2.5 dark:border-blue-900/60">
+            <p>
+              PDF · DOCX · PPTX · XLSX · TXT · MD · CSV · 10 fichiers maximum · 10 Mio par fichier · 50 Mio au total
+            </p>
+            <p className="mt-2 border-t border-blue-100 pt-2 dark:border-blue-900/60">
+              <strong className="block font-semibold text-slate-700 dark:text-slate-200">
+                PDF : texte sélectionnable requis. Aucun OCR intégré.
+              </strong>
+              Les scans nécessitent une reconnaissance de texte préalable. Les pages sans texte ne sont pas analysées.
+            </p>
+          </div>
+        </details>
       </div>
 
       {result.errors.length > 0 ? (
