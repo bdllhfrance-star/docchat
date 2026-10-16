@@ -11,17 +11,17 @@ type PipelineStage = {
 };
 
 const pipelineStages: readonly PipelineStage[] = [
-  { key: "upload", number: "01", label: "Upload", detail: "Secure transfer" },
-  { key: "validate", number: "02", label: "Validate", detail: "Format checks" },
-  { key: "extract", number: "03", label: "Extract", detail: "Readable text" },
-  { key: "chunk", number: "04", label: "Chunk", detail: "Knowledge blocks" },
-  { key: "embed", number: "05", label: "Embed", detail: "Meaning encoded" },
-  { key: "index", number: "06", label: "Index", detail: "Vectors searchable" },
+  { key: "upload", number: "01", label: "Importer", detail: "Transfert sécurisé" },
+  { key: "validate", number: "02", label: "Vérifier", detail: "Vérification du format" },
+  { key: "extract", number: "03", label: "Lire", detail: "Texte exploitable" },
+  { key: "chunk", number: "04", label: "Découper", detail: "Passages structurés" },
+  { key: "embed", number: "05", label: "Vectoriser", detail: "Sens représenté" },
+  { key: "index", number: "06", label: "Indexer", detail: "Recherche disponible" },
 ];
 
 type RagPipelineMode = "processing" | "ready" | "waiting";
 
-const numberFormatter = new Intl.NumberFormat("en-US");
+const numberFormatter = new Intl.NumberFormat("fr-FR");
 
 function GeminiPoweredBadge() {
   const inputTokens = numberFormatter.format(
@@ -34,7 +34,7 @@ function GeminiPoweredBadge() {
   return (
     <div
       className="inline-flex max-w-full flex-wrap items-center justify-center gap-x-3 gap-y-2 rounded-2xl border border-slate-200/90 bg-white/85 px-3.5 py-2 text-left shadow-sm backdrop-blur-md dark:border-slate-700/80 dark:bg-slate-950/75"
-      aria-label={`Powered by ${GEMINI_CHAT_MODEL.displayName}. ${inputTokens} input tokens, ${outputTokens} output tokens, ${GEMINI_CHAT_MODEL.thinkingLevel} reasoning.`}
+      aria-label={`Propulsé par ${GEMINI_CHAT_MODEL.displayName}. ${inputTokens} tokens en entrée, ${outputTokens} tokens en sortie, raisonnement de niveau moyen.`}
     >
       <Image
         src="/gemini-spark-logo.png"
@@ -46,7 +46,7 @@ function GeminiPoweredBadge() {
 
       <div className="min-w-0">
         <p className="text-[9px] font-bold tracking-[0.16em] text-slate-500 uppercase dark:text-slate-400">
-          Powered by Gemini
+          Propulsé par Gemini
         </p>
         <p className="text-xs font-semibold text-slate-900 dark:text-white">
           {GEMINI_CHAT_MODEL.displayName}
@@ -59,13 +59,13 @@ function GeminiPoweredBadge() {
       />
       <div className="flex flex-wrap justify-center gap-1.5 text-[10px] font-medium text-slate-600 dark:text-slate-300">
         <span className="rounded-full bg-slate-100 px-2 py-1 dark:bg-slate-800">
-          1M context
+          Contexte : 1 M
         </span>
         <span className="rounded-full bg-slate-100 px-2 py-1 dark:bg-slate-800">
-          65K output
+          Sortie : 65 k
         </span>
         <span className="rounded-full bg-slate-100 px-2 py-1 capitalize dark:bg-slate-800">
-          {GEMINI_CHAT_MODEL.thinkingLevel} reasoning
+          Raisonnement moyen
         </span>
       </div>
     </div>
@@ -218,7 +218,7 @@ export function RagPipelineVisualizer({
 
           <ol
             className="relative grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6 lg:gap-2.5"
-            aria-label="Document processing pipeline"
+            aria-label="Étapes de préparation des documents"
           >
             {pipelineStages.map((stage, index) => (
               <li

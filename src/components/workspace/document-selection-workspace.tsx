@@ -23,6 +23,7 @@ import {
 } from "react";
 
 import { pollBatchStatus } from "@/lib/batches/client";
+import { frenchError } from "@/lib/ui-french";
 import {
   deleteDocument,
   retryDocument,
@@ -52,28 +53,28 @@ import { RagPipelineVisualizer } from "./rag-pipeline-visualizer";
 
 const acceptedFileTypes = ".pdf,.docx,.pptx,.xlsx,.txt,.md,.csv";
 const fileErrorMessages: Record<FileValidationErrorCode, string> = {
-  EMPTY_FILE: "This file is empty.",
-  FILE_TOO_LARGE: "This file exceeds the 10 MiB limit.",
-  MIME_TYPE_MISMATCH: "The file content type does not match its extension.",
-  UNSAFE_FILENAME: "This file name contains unsupported characters.",
-  UNSUPPORTED_FILE_TYPE: "This file format is not supported.",
+  EMPTY_FILE: "Ce fichier est vide.",
+  FILE_TOO_LARGE: "Ce fichier dépasse la limite de 10 Mio.",
+  MIME_TYPE_MISMATCH: "Le type du fichier ne correspond pas à son extension.",
+  UNSAFE_FILENAME: "Le nom du fichier contient des caractères non autorisés.",
+  UNSUPPORTED_FILE_TYPE: "Ce format de fichier n’est pas pris en charge.",
 };
 
 const batchErrorMessages: Record<BatchValidationErrorCode, string> = {
-  BATCH_TOO_LARGE: "The selection exceeds the 50 MiB batch limit.",
-  TOO_MANY_FILES: "Select no more than 10 files in one batch.",
+  BATCH_TOO_LARGE: "La sélection dépasse la limite totale de 50 Mio.",
+  TOO_MANY_FILES: "Sélectionnez au maximum 10 fichiers.",
 };
 
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) {
-    return `${bytes} B`;
+    return `${bytes} o`;
   }
 
   if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(1)} KiB`;
+    return `${(bytes / 1024).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} Kio`;
   }
 
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`;
+  return `${(bytes / (1024 * 1024)).toLocaleString("fr-FR", { maximumFractionDigits: 1 })} Mio`;
 }
 
 function getBatchStatusFromDocuments(
@@ -201,10 +202,10 @@ function UploadState({ update }: { update: ClientUploadUpdate }) {
       >
         <CircleEllipsis size={13} aria-hidden="true" />
         {update.status === "creating-batch"
-          ? "Creating batch"
+          ? "Création de l’espace documentaire"
           : update.status === "preparing-update"
-            ? "Preparing context update"
-            : "Preparing replacement"}
+            ? "Actualisation des sources"
+            : "Préparation du remplacement"}
       </p>
     );
   }
@@ -217,13 +218,13 @@ function UploadState({ update }: { update: ClientUploadUpdate }) {
     return (
       <div className="mt-2 border-t border-slate-100 pt-2 dark:border-slate-800">
         <div className="flex items-center justify-between gap-3 text-xs text-slate-600 dark:text-slate-300">
-          <span>Uploading</span>
+          <span>Importation</span>
           <span className="font-medium tabular-nums">{progress}%</span>
         </div>
         <div
           className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"
           role="progressbar"
-          aria-label={`Uploading ${progress}%`}
+          aria-label={`Importation : ${progress} %`}
           aria-valuemin={0}
           aria-valuemax={100}
           aria-valuenow={progress}
@@ -245,7 +246,7 @@ function UploadState({ update }: { update: ClientUploadUpdate }) {
         aria-live="polite"
       >
         <Clock3 size={13} aria-hidden="true" />
-        Uploaded · waiting for processing
+        Importé · en attente de traitement
       </p>
     );
   }
@@ -255,22 +256,22 @@ function UploadState({ update }: { update: ClientUploadUpdate }) {
       className="mt-2 border-t border-red-100 pt-2 text-xs leading-5 text-red-700 dark:border-red-950 dark:text-red-300"
       role="alert"
     >
-      <p className="font-medium">Upload failed</p>
-      <p>{update.error ?? "The file could not be uploaded."}</p>
+      <p className="font-medium">Échec de l’importation</p>
+      <p>{frenchError(update.error, "Le fichier n’a pas pu être importé. Réessayez.")}</p>
     </div>
   );
 }
 
 const processingLabels: Record<DocumentStatus, string> = {
-  queued: "Queued for processing",
-  uploading: "Confirming upload",
-  validating: "Validating file",
-  extracting: "Extracting text",
-  chunking: "Creating chunks",
-  embedding: "Generating embeddings",
-  indexing: "Saving search index",
-  ready: "Ready",
-  failed: "Processing failed",
+  queued: "En attente de traitement",
+  uploading: "Confirmation de l’importation",
+  validating: "Vérification du fichier",
+  extracting: "Lecture du texte",
+  chunking: "Découpage en passages",
+  embedding: "Création des vecteurs",
+  indexing: "Indexation pour la recherche",
+  ready: "Prêt",
+  failed: "Échec du traitement",
 };
 
 type ProcessingStateProps = {
@@ -305,7 +306,7 @@ function ProcessingState({
           aria-live="polite"
         >
           <CheckCircle2 className="shrink-0" size={14} aria-hidden="true" />
-          Ready
+          Prêt
         </p>
         <div className="mt-2.5 flex min-w-0 items-stretch gap-2">
           <label className="inline-flex h-9 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-medium text-slate-700 transition-colors hover:border-slate-300 hover:bg-slate-100 has-disabled:cursor-not-allowed has-disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800">
@@ -315,10 +316,10 @@ function ProcessingState({
               onChange={onToggleChatDocument}
               disabled={selectedForChat && selectedForChatCount === 1}
               className="size-3.5 shrink-0 accent-slate-900 dark:accent-blue-500"
-              aria-label={`Use ${document.filename} in chat`}
+              aria-label={`Utiliser ${document.filename} dans le chat`}
             />
             <span className="truncate">
-              {selectedForChat ? "Included in chat" : "Include in chat"}
+              {selectedForChat ? "Inclus dans le chat" : "Inclure dans le chat"}
             </span>
           </label>
           <button
@@ -326,7 +327,7 @@ function ProcessingState({
             onClick={onDelete}
             disabled={actionsDisabled}
             className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-lg border border-transparent px-2.5 text-xs font-medium text-slate-500 hover:border-red-200 hover:bg-red-50 hover:text-red-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-wait disabled:opacity-50 dark:text-slate-400 dark:hover:border-red-900 dark:hover:bg-red-950/60 dark:hover:text-red-300 dark:focus-visible:outline-slate-200"
-            aria-label={`Delete ${document.filename}`}
+            aria-label={`Supprimer ${document.filename}`}
           >
             {action === "deleting" ? (
               <Trash2
@@ -337,12 +338,12 @@ function ProcessingState({
             ) : (
               <Trash2 className="shrink-0" size={14} aria-hidden="true" />
             )}
-            {action === "deleting" ? "Deleting" : "Delete"}
+            {action === "deleting" ? "Suppression…" : "Supprimer"}
           </button>
         </div>
         {actionError ? (
           <p className="mt-2 text-xs leading-5 text-red-700 dark:text-red-300" role="alert">
-            {actionError}
+            {frenchError(actionError, "L’action n’a pas pu être effectuée. Réessayez.")}
           </p>
         ) : null}
       </div>
@@ -355,8 +356,8 @@ function ProcessingState({
         className="mt-2 border-t border-red-100 pt-2 text-xs leading-5 text-red-700 dark:border-red-950 dark:text-red-300"
         role="alert"
       >
-        <p className="font-medium">Processing failed</p>
-        <p>{document.error?.message ?? "The document could not be processed."}</p>
+        <p className="font-medium">Échec du traitement</p>
+        <p>{frenchError(document.error, "Le document n’a pas pu être traité. Réessayez ou choisissez un autre fichier.")}</p>
         <div className="mt-2 flex flex-wrap gap-2">
           {document.canRetry ? (
             <button
@@ -364,14 +365,14 @@ function ProcessingState({
               onClick={onRetry}
               disabled={actionsDisabled}
               className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-wait disabled:opacity-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus-visible:outline-slate-200"
-              aria-label={`Retry ${document.filename}`}
+              aria-label={`Réessayer ${document.filename}`}
             >
               {action === "retrying" ? (
                 <RotateCcw className="document-retry-once" size={13} aria-hidden="true" />
               ) : (
                 <RotateCcw size={13} aria-hidden="true" />
               )}
-              {action === "retrying" ? "Retrying" : "Retry"}
+              {action === "retrying" ? "Nouvelle tentative…" : "Réessayer"}
             </button>
           ) : null}
           <button
@@ -379,19 +380,19 @@ function ProcessingState({
             onClick={onDelete}
             disabled={actionsDisabled}
             className="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-2.5 py-1.5 text-xs font-medium text-red-700 hover:bg-red-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 disabled:cursor-wait disabled:opacity-50 dark:border-red-900 dark:bg-slate-900 dark:text-red-300 dark:hover:bg-red-950/60"
-            aria-label={`Delete ${document.filename}`}
+            aria-label={`Supprimer ${document.filename}`}
           >
             {action === "deleting" ? (
               <Trash2 className="document-delete-once" size={13} aria-hidden="true" />
             ) : (
               <Trash2 size={13} aria-hidden="true" />
             )}
-            {action === "deleting" ? "Deleting" : "Delete"}
+            {action === "deleting" ? "Suppression…" : "Supprimer"}
           </button>
         </div>
         {actionError ? (
           <p className="mt-2 text-xs leading-5 text-red-700 dark:text-red-300" role="alert">
-            {actionError}
+            {frenchError(actionError, "L’action n’a pas pu être effectuée. Réessayez.")}
           </p>
         ) : null}
       </div>
@@ -476,7 +477,7 @@ function DocumentsPanel({
       <div
         className="mx-4 -mt-2 mb-4 flex items-start gap-2 rounded-xl border border-blue-100 bg-blue-50/70 px-3 py-2.5 text-[11px] leading-4 text-slate-600 dark:border-blue-950 dark:bg-blue-950/30 dark:text-slate-300 sm:mx-5"
         role="note"
-        aria-label="Supported files and limits"
+        aria-label="Formats et limites"
       >
         <Info
           size={14}
@@ -484,7 +485,7 @@ function DocumentsPanel({
           aria-hidden="true"
         />
         <p>
-          PDF · DOCX · PPTX · XLSX · TXT · MD · CSV · up to 10 files · 10 MiB each · 50 MiB total
+          PDF · DOCX · PPTX · XLSX · TXT · MD · CSV · 10 fichiers maximum · 10 Mio par fichier · 50 Mio au total
         </p>
       </div>
 
@@ -508,7 +509,7 @@ function DocumentsPanel({
                 : "border-slate-300 dark:border-slate-700"
             }`}
             role="group"
-            aria-label="Document drop zone"
+            aria-label="Zone de dépôt des documents"
             aria-disabled={isSelectionLocked}
           >
             <div className="mx-auto grid size-10 place-items-center rounded-xl bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200">
@@ -519,7 +520,7 @@ function DocumentsPanel({
             </h3>
             <p className="mt-1.5 text-xs leading-5 text-slate-500 dark:text-slate-400">
               {isDragging
-                ? "Drop to add documents"
+                ? "Déposez vos documents ici"
                 : "Ajoutez un règlement, un rapport ou un dossier sportif. Le chat sera disponible après leur préparation."}
             </p>
             <button
@@ -529,7 +530,7 @@ function DocumentsPanel({
               className="mt-4 inline-flex h-9 w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-3 text-xs font-semibold text-white shadow-sm hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:bg-slate-300 dark:bg-blue-600 dark:hover:bg-blue-500 dark:focus-visible:outline-slate-200 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
             >
               <Plus size={15} aria-hidden="true" />
-              Choose documents
+              Choisir des documents
             </button>
           </div>
         ) : (
@@ -544,7 +545,7 @@ function DocumentsPanel({
                   : "Vérifiez votre sélection, puis lancez la préparation."}
               </p>
             </div>
-            <ul className="space-y-2" aria-label="Selected documents">
+            <ul className="space-y-2" aria-label="Documents sélectionnés">
               {result.files.map(({ errors, file, fileType }, index) => {
               const uploadUpdate = uploadUpdates[index];
               const processingDocument = processingDocuments[index];
@@ -596,7 +597,7 @@ function DocumentsPanel({
                         {file.name}
                       </p>
                       <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                        {fileType?.toUpperCase() ?? "Unsupported"} ·{" "}
+                        {fileType?.toUpperCase() ?? "Non pris en charge"} ·{" "}
                         {formatFileSize(file.size)}
                       </p>
                     </div>
@@ -606,7 +607,7 @@ function DocumentsPanel({
                         onClick={() => onRemove(index)}
                         disabled={isSelectionLocked}
                         className="grid size-8 shrink-0 place-items-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-transparent dark:text-slate-500 dark:hover:bg-slate-800 dark:hover:text-slate-200 dark:focus-visible:outline-slate-200"
-                        aria-label={`Remove ${file.name}`}
+                        aria-label={`Retirer ${file.name}`}
                       >
                         <Trash2 size={15} aria-hidden="true" />
                       </button>
@@ -643,7 +644,7 @@ function DocumentsPanel({
                     <UploadState update={uploadUpdate} />
                   ) : (
                     <p className="mt-2 border-t border-slate-100 pt-2 text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
-                      Selected · not uploaded
+                        Sélectionné · non importé
                     </p>
                   )}
                 </li>
@@ -661,7 +662,7 @@ function DocumentsPanel({
               className="mb-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-xs leading-5 text-red-800 dark:border-red-900 dark:bg-red-950/60 dark:text-red-300"
               role="alert"
             >
-              {creationError}
+              {frenchError(creationError, "Les documents n’ont pas pu être importés. Réessayez.")}
             </p>
           ) : null}
           {pendingFileCount > 0 ? (
@@ -674,11 +675,11 @@ function DocumentsPanel({
               <Upload size={16} aria-hidden="true" />
               {isUploading
                 ? hasContext
-                  ? "Updating context"
-                  : "Uploading documents"
+                  ? "Actualisation des sources"
+                  : "Importation des documents"
                 : hasContext
-                  ? "Update context"
-                  : "Upload"}
+                  ? "Actualiser les sources"
+                  : "Importer"}
             </button>
           ) : null}
           {canAddFromSidebar && !isSelectionLocked ? (
@@ -690,14 +691,14 @@ function DocumentsPanel({
               }`}
             >
               <Plus size={16} aria-hidden="true" />
-              Add documents
+              Ajouter des documents
             </button>
           ) : null}
           {pendingFileCount > 0 ? (
             <p className="mt-2 text-center text-xs leading-5 text-slate-500 dark:text-slate-400">
               {isUploading
-                ? "Sending and processing the new documents."
-                : `${pendingFileCount} new ${pendingFileCount === 1 ? "document" : "documents"} waiting to be sent.`}
+                ? "Importation et préparation des nouveaux documents."
+                : `${pendingFileCount} ${pendingFileCount === 1 ? "nouveau document en attente d’importation" : "nouveaux documents en attente d’importation"}.`}
             </p>
           ) : null}
         </div>
@@ -730,23 +731,23 @@ function DisabledComposer({
   const hasUploadedFile = updates.some(
     (update) => update?.status === "uploaded",
   );
-  let reason = "Add and process at least one document to start chatting.";
+  let reason = "Ajoutez et préparez au moins un document pour démarrer le chat.";
 
   if (isUploading) {
-    reason = "Documents are uploading. Chat remains unavailable.";
+    reason = "Importation en cours. Le chat sera disponible une fois les documents prêts.";
   } else if (pendingFileCount > 0) {
-    reason = "Upload the new documents to update the context before chatting.";
+    reason = "Importez les nouveaux documents pour actualiser les sources avant de discuter.";
   } else if (hasFailedUpload || hasFailedProcessing) {
-    reason = "A document failed. Chat remains unavailable.";
+    reason = "Un document n’a pas pu être traité. Réessayez ou supprimez-le pour accéder au chat.";
   } else if (batch?.status === "ready") {
-    reason = "All documents are ready. Chat is available.";
+    reason = "Tous les documents sont prêts. Le chat est disponible.";
   } else if (batch) {
-    reason = "Documents are being processed. Chat remains unavailable.";
+    reason = "Préparation des documents en cours. Le chat sera bientôt disponible.";
   } else if (hasUploadedFile) {
-    reason = "Uploaded documents are waiting for full processing.";
+    reason = "Les documents importés sont en attente de préparation.";
   } else if (hasFiles) {
     reason =
-      "Selected documents must be uploaded and fully processed before chatting.";
+      "Importez et préparez les documents sélectionnés pour démarrer le chat.";
   }
 
   return (
@@ -754,7 +755,7 @@ function DisabledComposer({
       <div className="mx-auto w-full max-w-3xl">
         <div className="flex items-end overflow-hidden rounded-2xl border border-white/80 bg-white/80 shadow-[0_12px_35px_-20px_rgba(15,23,42,0.45)] backdrop-blur-xl dark:border-slate-700/80 dark:bg-slate-900/80">
           <label htmlFor="message" className="sr-only">
-            Message DocChat
+            Votre message
           </label>
           <textarea
             id="message"
@@ -767,7 +768,7 @@ function DisabledComposer({
           <button
             type="button"
             disabled
-            aria-label="Send message"
+            aria-label="Envoyer le message"
             className="m-2.5 ml-0 grid size-9 shrink-0 cursor-not-allowed place-items-center rounded-xl bg-slate-200 text-slate-400 dark:bg-slate-800 dark:text-slate-500"
           >
             <ArrowUp size={17} strokeWidth={2} aria-hidden="true" />
@@ -882,7 +883,7 @@ export function DocumentSelectionWorkspace() {
           error instanceof Error
             ? error.message
             : "The batch status could not be loaded.";
-        setCreationError(`Status update failed: ${message}`);
+        setCreationError(`La mise à jour du statut a échoué : ${message}`);
       }
     });
   }
@@ -1050,7 +1051,7 @@ export function DocumentSelectionWorkspace() {
     } catch (error) {
       setDocumentActionError(
         document.id,
-        error instanceof Error ? error.message : "The retry failed.",
+        error instanceof Error ? error.message : "La nouvelle tentative a échoué.",
       );
     } finally {
       documentActionInFlightRef.current = false;
@@ -1113,7 +1114,7 @@ export function DocumentSelectionWorkspace() {
     } catch (error) {
       setDocumentActionError(
         document.id,
-        error instanceof Error ? error.message : "The deletion failed.",
+        error instanceof Error ? error.message : "La suppression a échoué.",
       );
     } finally {
       documentActionInFlightRef.current = false;
@@ -1165,8 +1166,8 @@ export function DocumentSelectionWorkspace() {
         error instanceof Error
           ? error.message
           : input.targetBatch
-            ? "The context could not be updated."
-            : "The batch could not be created.";
+            ? "Les sources n’ont pas pu être actualisées."
+            : "L’espace documentaire n’a pas pu être créé.";
 
       setUploadUpdates((current) => {
         const next = { ...current };
@@ -1178,7 +1179,7 @@ export function DocumentSelectionWorkspace() {
         return next;
       });
       setCreationError(
-        `${input.targetBatch ? "Context update" : "Upload"} failed: ${message}`,
+        `${input.targetBatch ? "L’actualisation des sources" : "L’importation"} a échoué : ${message}`,
       );
     } finally {
       uploadInFlightRef.current = false;
@@ -1208,7 +1209,7 @@ export function DocumentSelectionWorkspace() {
         onChange={handleInputChange}
         disabled={isSelectionLocked}
         className="sr-only"
-        aria-label="Select documents from device"
+        aria-label="Sélectionner des documents sur cet appareil"
       />
       <DocumentsPanel
         actionErrors={documentActionErrors}
@@ -1238,7 +1239,7 @@ export function DocumentSelectionWorkspace() {
       />
       <section
         className="conversation-surface flex min-h-0 min-w-0 flex-col overflow-hidden"
-        aria-label="Conversation workspace"
+        aria-label="Espace de conversation"
       >
         {canChat ? (
           <ChatWorkspace

@@ -71,23 +71,23 @@ test("enables the composer and sends a trimmed question", async () => {
   expect(screen.queryByText("Process replay")).toBeNull();
   expect(
     screen.getByLabelText(
-      "Powered by Gemini 3.8 Flash. 1,048,576 input tokens, 65,536 output tokens, medium reasoning.",
+      /Propulsé par Gemini 3\.8 Flash\..*tokens en entrée.*raisonnement de niveau moyen\./u,
     ),
   ).toBeDefined();
   expect(container.querySelectorAll("[data-rag-stage]")).toHaveLength(6);
   expect(container.querySelectorAll("[data-vector-value]")).toHaveLength(12);
   expect(container.querySelectorAll("[data-vector-point]")).toHaveLength(6);
   for (const stage of [
-    "Upload",
-    "Validate",
-    "Extract",
-    "Chunk",
-    "Embed",
-    "Index",
+    "Importer",
+    "Vérifier",
+    "Lire",
+    "Découper",
+    "Vectoriser",
+    "Indexer",
   ]) {
     expect(screen.getByText(stage)).toBeDefined();
   }
-  const composer = screen.getByRole("textbox", { name: "Message DocChat" });
+  const composer = screen.getByRole("textbox", { name: "Votre message" });
   Object.defineProperty(composer, "scrollHeight", {
     configurable: true,
     value: 88,
@@ -96,7 +96,7 @@ test("enables the composer and sends a trimmed question", async () => {
   fireEvent.change(composer, { target: { value: "  What is required?  " } });
   expect(composer.style.height).toBe("88px");
   expect(composer.style.overflowY).toBe("hidden");
-  fireEvent.click(screen.getByRole("button", { name: "Send message" }));
+  fireEvent.click(screen.getByRole("button", { name: "Envoyer le message" }));
 
   expect(clearError).toHaveBeenCalledOnce();
   expect(sendMessage).toHaveBeenCalledWith({ text: "What is required?" });
@@ -125,12 +125,12 @@ test("keeps the chat mounted while its document context is updating", async () =
     await screen.findByRole("heading", { name: "Vos documents, prêts à éclairer vos décisions" }),
   ).toBeDefined();
   expect(screen.getByTestId("rag-pipeline-visualizer")).toBeDefined();
-  expect(screen.getByText("Updating document context…")).toBeDefined();
-  expect(screen.getByRole("textbox", { name: "Message DocChat" })).toHaveProperty(
+  expect(screen.getByText("Actualisation des sources documentaires…")).toBeDefined();
+  expect(screen.getByRole("textbox", { name: "Votre message" })).toHaveProperty(
     "disabled",
     true,
   );
-  expect(screen.getByRole("button", { name: "Send message" })).toHaveProperty(
+  expect(screen.getByRole("button", { name: "Envoyer le message" })).toHaveProperty(
     "disabled",
     true,
   );
@@ -153,18 +153,18 @@ test("renders progressive text and allows the request to be stopped", async () =
 
   expect(await screen.findByText("Partial answer")).toBeDefined();
   expect(screen.queryByTestId("rag-pipeline-visualizer")).toBeNull();
-  expect(screen.getByText("Writing the answer…")).toBeDefined();
+  expect(screen.getByText("Rédaction de la réponse…")).toBeDefined();
   expect(
     screen
       .getByTestId("thinking-indicator")
       .querySelector('img[src*="cnom-logo.png"]'),
   ).not.toBeNull();
-  expect(screen.getByRole("textbox", { name: "Message DocChat" })).toHaveProperty(
+  expect(screen.getByRole("textbox", { name: "Votre message" })).toHaveProperty(
     "disabled",
     true,
   );
 
-  fireEvent.click(screen.getByRole("button", { name: "Stop response" }));
+  fireEvent.click(screen.getByRole("button", { name: "Arrêter la réponse" }));
   expect(stop).toHaveBeenCalledOnce();
 });
 
@@ -186,9 +186,9 @@ test("offers a retry when Gemini reports an incomplete response", async () => {
   );
 
   expect(
-    await screen.findByText("The response stopped before it was complete."),
+    await screen.findByText("La réponse a été interrompue avant sa fin."),
   ).toBeDefined();
-  fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+  fireEvent.click(screen.getByRole("button", { name: "Réessayer" }));
   expect(clearError).toHaveBeenCalledOnce();
   expect(regenerate).toHaveBeenCalledOnce();
 });
@@ -235,10 +235,10 @@ test("renders assistant Markdown directly on the surface with inline citations",
   expect(assistantSurface?.className).not.toContain("rounded-2xl");
 
   const citation = screen.getByRole("button", {
-    name: "Open source 1: guide.pdf, Page 2",
+    name: "Ouvrir la source 1 : guide.pdf, Page 2",
   });
   expect(citation.getAttribute("aria-haspopup")).toBe("dialog");
-  expect(screen.queryByLabelText("Source 1 details")).toBeNull();
+  expect(screen.queryByLabelText("Détails de la source 1")).toBeNull();
   vi.spyOn(citation, "getBoundingClientRect").mockReturnValue({
     bottom: 318,
     height: 18,
@@ -252,7 +252,7 @@ test("renders assistant Markdown directly on the surface with inline citations",
   });
 
   fireEvent.click(citation);
-  const sourcePopover = screen.getByLabelText("Source 1 details");
+  const sourcePopover = screen.getByLabelText("Détails de la source 1");
   expect(sourcePopover.className).toContain("fixed");
   expect(sourcePopover.style.left).toBe("240px");
   expect(sourcePopover.style.top).toBe("326px");
@@ -265,12 +265,12 @@ test("renders assistant Markdown directly on the surface with inline citations",
   ).toBeDefined();
 
   fireEvent.scroll(window);
-  expect(screen.queryByLabelText("Source 1 details")).toBeNull();
+  expect(screen.queryByLabelText("Détails de la source 1")).toBeNull();
 
   fireEvent.click(citation);
-  expect(screen.getByLabelText("Source 1 details")).toBeDefined();
-  fireEvent.click(screen.getByRole("button", { name: "Close source details" }));
-  expect(screen.queryByLabelText("Source 1 details")).toBeNull();
+  expect(screen.getByLabelText("Détails de la source 1")).toBeDefined();
+  fireEvent.click(screen.getByRole("button", { name: "Fermer les détails de la source" }));
+  expect(screen.queryByLabelText("Détails de la source 1")).toBeNull();
 });
 
 test("keeps citations attached to the sources of their own answer", async () => {
@@ -323,7 +323,7 @@ test("keeps citations attached to the sources of their own answer", async () => 
   );
 
   const citations = await screen.findAllByRole("button", {
-    name: /Open source 1:/u,
+    name: /Ouvrir la source 1 :/u,
   });
   expect(citations).toHaveLength(2);
   fireEvent.click(citations[1]);
@@ -406,7 +406,7 @@ test("renders trusted general AI destinations only for an explicit redirect", as
   expect(screen.queryByText(GENERAL_AI_REDIRECT_MARKER)).toBeNull();
   expect(
     screen.getByRole("navigation", {
-      name: "Continue with a general AI assistant",
+      name: "Continuer avec un assistant généraliste",
     }),
   ).toBeDefined();
 
@@ -416,7 +416,7 @@ test("renders trusted general AI destinations only for an explicit redirect", as
     ["Gemini", "https://gemini.google.com/", "gemini-spark-logo.png"],
   ] as const) {
     const link = screen.getByRole("link", {
-      name: `Open ${label} in a new tab`,
+      name: `Ouvrir ${label} dans un nouvel onglet`,
     });
     expect(link.getAttribute("href")).toBe(href);
     expect(link.getAttribute("target")).toBe("_blank");
@@ -448,7 +448,7 @@ test("recovers trusted links when Gemini omits the redirect marker", async () =>
 
   expect(
     screen.getByRole("navigation", {
-      name: "Continue with a general AI assistant",
+      name: "Continuer avec un assistant généraliste",
     }),
   ).toBeDefined();
 

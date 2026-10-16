@@ -726,6 +726,14 @@ sur un déploiement Vercel.
 
 ## Tests et qualité
 
+### Langue de l’interface
+
+L’interface est unifiée en français : commandes, statuts, messages d’attente,
+erreurs, libellés accessibles et localisations des citations. Les détails
+techniques des fournisseurs ne sont pas affichés tels quels dans les erreurs.
+Les documents et leurs extraits ne sont pas traduits ; l’assistant continue à
+répondre dans la langue de la question (notamment français, arabe et anglais).
+
 Le [smoke test de production du 15 octobre 2026](docs/PRODUCTION_SMOKE_2026-10-15.md)
 enregistre 19 contrôles réels réussis : uploads privés et callbacks, Q&A
 français/arabe/anglais avec citations, ajout/suppression, historique après

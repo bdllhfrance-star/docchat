@@ -34,6 +34,7 @@ import {
   linkTrustedGeneralAiNames,
 } from "@/lib/chat/general-ai-redirect";
 import { classifyChatTurn, type ChatTurnMode } from "@/lib/chat/turn-mode";
+import { frenchError, frenchSourceLocation } from "@/lib/ui-french";
 import type { ChatSource, DocChatUIMessage } from "@/types/api";
 import { RagPipelineVisualizer } from "./rag-pipeline-visualizer";
 
@@ -109,11 +110,11 @@ const destinationLogos = {
 function GeneralAiDestinations() {
   return (
     <nav
-      aria-label="Continue with a general AI assistant"
+      aria-label="Continuer avec un assistant généraliste"
       className="mt-5 flex flex-wrap items-center gap-2 border-t border-slate-200/80 pt-4 dark:border-slate-800"
     >
       <span className="mr-1 text-xs font-medium tracking-wide text-slate-500 dark:text-slate-400">
-        Continue with
+        Continuer avec
       </span>
       {GENERAL_AI_DESTINATIONS.map((destination) => {
         const logo = destinationLogos[destination.id];
@@ -124,7 +125,7 @@ function GeneralAiDestinations() {
             href={destination.href}
             target="_blank"
             rel="noopener noreferrer"
-            aria-label={`Open ${destination.label} in a new tab`}
+            aria-label={`Ouvrir ${destination.label} dans un nouvel onglet`}
             className="group inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold leading-none text-slate-800 no-underline shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-blue-600"
           >
             <Image
@@ -266,7 +267,7 @@ function SourcePreview({
       <aside
         ref={previewRef}
         className="fixed z-50 max-h-[min(16rem,calc(100vh-2rem))] overflow-y-auto rounded-xl border border-blue-200/80 bg-white/95 px-3.5 py-3 text-sm shadow-[0_18px_50px_-18px_rgba(15,23,42,0.5)] backdrop-blur-xl dark:border-blue-900/80 dark:bg-slate-900/95"
-        aria-label={`Source ${number} details`}
+        aria-label={`Détails de la source ${number}`}
         data-placement={position.placement}
         style={{
           left: position.left,
@@ -285,13 +286,13 @@ function SourcePreview({
               [{number}] {source.filename}
             </p>
             <p className="mt-0.5 text-xs font-medium text-blue-700 dark:text-blue-300">
-              {source.source.label}
+              {frenchSourceLocation(source.source)}
             </p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close source details"
+            aria-label="Fermer les détails de la source"
             className="grid size-7 shrink-0 place-items-center rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
           >
             <X size={14} aria-hidden="true" />
@@ -315,10 +316,10 @@ function ThinkingIndicator({
 }) {
   const label =
     status === "streaming"
-      ? "Writing the answer…"
+      ? "Rédaction de la réponse…"
       : mode === "grounded"
-        ? "Searching your documents…"
-        : "Responding…";
+        ? "Recherche dans vos documents…"
+        : "Préparation de la réponse…";
 
   return (
     <div
@@ -411,7 +412,7 @@ function ConversationMessage({ message }: { message: DocChatUIMessage }) {
               );
             }}
             aria-haspopup="dialog"
-            aria-label={`Open source ${sourceNumber}: ${source.filename}, ${source.source.label}`}
+            aria-label={`Ouvrir la source ${sourceNumber} : ${source.filename}, ${frenchSourceLocation(source.source)}`}
             className="mx-0.5 inline-flex translate-y-[-1px] items-center rounded-md border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-[0.72em] font-semibold leading-none text-blue-700 no-underline transition-colors hover:border-blue-300 hover:bg-blue-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-600 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300 dark:hover:border-blue-700 dark:hover:bg-blue-900"
           >
             [{sourceNumber}]
@@ -476,7 +477,7 @@ function ConversationMessage({ message }: { message: DocChatUIMessage }) {
     img({ alt }) {
       return (
         <span className="text-slate-500">
-          [Image: {alt || "document image"}]
+          [Image: {alt || "image du document"}]
         </span>
       );
     },
@@ -542,7 +543,7 @@ function ConversationMessage({ message }: { message: DocChatUIMessage }) {
   return (
     <article
       className={`flex gap-3 ${isUser ? "justify-end" : "justify-start"}`}
-      aria-label={isUser ? "Your message" : "DocChat answer"}
+      aria-label={isUser ? "Votre message" : "Réponse de l’assistant"}
     >
       <div
         className={`flex min-w-0 flex-col ${
@@ -710,14 +711,14 @@ function ActiveChat({
               className="mb-2 flex items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50/95 px-3 py-2 text-sm text-amber-950 shadow-sm dark:border-amber-900 dark:bg-amber-950/80 dark:text-amber-100"
               role="alert"
             >
-              <span>The response stopped before it was complete.</span>
+              <span>La réponse a été interrompue avant sa fin.</span>
               <button
                 type="button"
                 onClick={retryIncompleteResponse}
                 className="inline-flex shrink-0 items-center gap-1.5 rounded-lg px-2 py-1 font-semibold text-amber-900 hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700 dark:text-amber-100 dark:hover:bg-amber-900"
               >
                 <RotateCcw size={13} aria-hidden="true" />
-                Try again
+                Réessayer
               </button>
             </div>
           ) : null}
@@ -726,19 +727,19 @@ function ActiveChat({
               className="mb-2 flex items-center justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800 dark:border-red-900 dark:bg-red-950/60 dark:text-red-300"
               role="alert"
             >
-              <span>{error.message || "The answer could not be generated."}</span>
+              <span>{frenchError(error, "La réponse n’a pas pu être générée. Réessayez.")}</span>
               <button
                 type="button"
                 onClick={clearError}
                 className="shrink-0 font-semibold underline underline-offset-2"
               >
-                Dismiss
+                Fermer
               </button>
             </div>
           ) : null}
           <div className="flex items-end overflow-hidden rounded-2xl border border-white/80 bg-white/85 shadow-[0_12px_35px_-20px_rgba(15,23,42,0.5)] backdrop-blur-xl focus-within:border-slate-500 focus-within:ring-2 focus-within:ring-slate-200 dark:border-slate-700/80 dark:bg-slate-900/85 dark:focus-within:border-blue-500 dark:focus-within:ring-blue-950">
             <label htmlFor="message" className="sr-only">
-              Message DocChat
+              Votre message
             </label>
             <textarea
               ref={composerRef}
@@ -758,7 +759,7 @@ function ActiveChat({
               <button
                 type="button"
                 onClick={() => void stop()}
-                aria-label="Stop response"
+                aria-label="Arrêter la réponse"
                 className="m-2.5 ml-0 grid size-9 shrink-0 place-items-center rounded-xl bg-slate-900 text-white hover:bg-slate-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 dark:bg-blue-600 dark:hover:bg-blue-500 dark:focus-visible:outline-slate-200"
               >
                 <Square size={13} fill="currentColor" aria-hidden="true" />
@@ -767,7 +768,7 @@ function ActiveChat({
               <button
                 type="submit"
                 disabled={!canSend}
-                aria-label="Send message"
+                aria-label="Envoyer le message"
                 className="m-2.5 ml-0 grid size-9 shrink-0 place-items-center rounded-xl bg-slate-950 text-white hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-400 dark:bg-blue-600 dark:hover:bg-blue-500 dark:focus-visible:outline-slate-200 dark:disabled:bg-slate-800 dark:disabled:text-slate-500"
               >
                 <ArrowUp size={17} strokeWidth={2} aria-hidden="true" />
@@ -780,11 +781,11 @@ function ActiveChat({
               role="status"
             >
               <LoaderCircle size={13} className="animate-spin" aria-hidden="true" />
-              Updating document context…
+              Actualisation des sources documentaires…
             </p>
           ) : (
             <p className="mt-2 text-center text-xs leading-5 text-slate-500 dark:text-slate-400">
-              Answers use {documentIds.length} ready {documentIds.length === 1 ? "document" : "documents"}. Shift + Enter adds a line.
+              Réponses fondées sur {documentIds.length} {documentIds.length === 1 ? "document prêt" : "documents prêts"}. Maj + Entrée pour ajouter une ligne.
             </p>
           )}
         </form>

@@ -108,7 +108,7 @@ test("renders the initial document workspace", () => {
     screen.getByRole("heading", { level: 2, name: "Documents" }),
   ).toBeDefined();
   expect(
-    screen.getByRole("button", { name: "Choose documents" }),
+    screen.getByRole("button", { name: "Choisir des documents" }),
   ).toBeDefined();
   expect(
     screen.getByRole("heading", {
@@ -117,8 +117,9 @@ test("renders the initial document workspace", () => {
     }),
   ).toBeDefined();
   const geminiSignature = screen.getByLabelText(
-    "Powered by Gemini 3.8 Flash. 1,048,576 input tokens, 65,536 output tokens, medium reasoning.",
+    /Propulsé par Gemini 3\.8 Flash\..*tokens en entrée.*raisonnement de niveau moyen\./u,
   );
+  expect(document.body.textContent).not.toMatch(/Choose documents|Upload|Powered by|reasoning|up to 10 files/);
   expect(geminiSignature).toBeDefined();
   expect(
     geminiSignature.querySelector("img")?.getAttribute("src"),
@@ -127,29 +128,29 @@ test("renders the initial document workspace", () => {
   expect(screen.queryByText("Session limits")).toBeNull();
 
   const conversation = screen.getByRole("region", {
-    name: "Conversation workspace",
+    name: "Espace de conversation",
   });
   const documentsPanel = screen.getByRole("complementary", {
     name: "Documents",
   });
   expect(
     within(documentsPanel).getByRole("note", {
-      name: "Supported files and limits",
+      name: "Formats et limites",
     }),
   ).toBeDefined();
   expect(
     within(documentsPanel).getByText(
-      "PDF · DOCX · PPTX · XLSX · TXT · MD · CSV · up to 10 files · 10 MiB each · 50 MiB total",
+      "PDF · DOCX · PPTX · XLSX · TXT · MD · CSV · 10 fichiers maximum · 10 Mio par fichier · 50 Mio au total",
     ),
   ).toBeDefined();
   expect(
     within(conversation).queryByText(
-      "PDF · DOCX · PPTX · XLSX · TXT · MD · CSV · up to 10 files · 10 MiB each · 50 MiB total",
+      "PDF · DOCX · PPTX · XLSX · TXT · MD · CSV · 10 fichiers maximum · 10 Mio par fichier · 50 Mio au total",
     ),
   ).toBeNull();
   expect(conversation.className).toContain("conversation-surface");
   expect(
-    within(conversation).queryByRole("button", { name: "Choose documents" }),
+    within(conversation).queryByRole("button", { name: "Choisir des documents" }),
   ).toBeNull();
   expect(within(conversation).getByTestId("rag-pipeline-visualizer")).toBeDefined();
 });
@@ -158,7 +159,7 @@ test("switches and persists the dark theme", async () => {
   render(<Home />);
 
   const darkThemeButton = await screen.findByRole("button", {
-    name: "Use dark theme",
+    name: "Activer le thème sombre",
   });
   fireEvent.click(darkThemeButton);
 
@@ -167,7 +168,7 @@ test("switches and persists the dark theme", async () => {
   expect(localStorage.getItem("docchat-theme")).toBe("dark");
 
   fireEvent.click(
-    screen.getByRole("button", { name: "Use light theme" }),
+    screen.getByRole("button", { name: "Activer le thème clair" }),
   );
   expect(document.documentElement.classList.contains("dark")).toBe(false);
   expect(localStorage.getItem("docchat-theme")).toBe("light");
@@ -180,21 +181,21 @@ test("reflects a dark theme restored before hydration", async () => {
   render(<Home />);
 
   expect(
-    await screen.findByRole("button", { name: "Use light theme" }),
+    await screen.findByRole("button", { name: "Activer le thème clair" }),
   ).toBeDefined();
 });
 
 test("keeps chat unavailable until documents are processed", () => {
   render(<Home />);
 
-  const composer = screen.getByRole("textbox", { name: "Message DocChat" });
-  const sendButton = screen.getByRole("button", { name: "Send message" });
+  const composer = screen.getByRole("textbox", { name: "Votre message" });
+  const sendButton = screen.getByRole("button", { name: "Envoyer le message" });
 
   expect(composer).toHaveProperty("disabled", true);
   expect(sendButton).toHaveProperty("disabled", true);
   expect(
     screen.getByText(
-      "Add and process at least one document to start chatting.",
+      "Ajoutez et préparez au moins un document pour démarrer le chat.",
     ),
   ).toBeDefined();
   expect(composer.getAttribute("aria-describedby")).toBe("composer-reason");
@@ -203,7 +204,7 @@ test("keeps chat unavailable until documents are processed", () => {
 test("selects, validates, and removes multiple files before upload", () => {
   render(<Home />);
 
-  const input = screen.getByLabelText("Select documents from device");
+  const input = screen.getByLabelText("Sélectionner des documents sur cet appareil");
   const validPdf = file();
   const unsupportedFile = file("legacy.doc", "application/msword");
 
@@ -219,27 +220,27 @@ test("selects, validates, and removes multiple files before upload", () => {
   expect(
     screen.getByRole("heading", { name: "Votre sélection documentaire" }),
   ).toBeDefined();
-  expect(screen.getByRole("list", { name: "Selected documents" })).toBeDefined();
+  expect(screen.getByRole("list", { name: "Documents sélectionnés" })).toBeDefined();
   expect(screen.getByText("guide.pdf")).toBeDefined();
   expect(screen.getByText("legacy.doc")).toBeDefined();
-  expect(screen.getByText("This file format is not supported.")).toBeDefined();
-  expect(screen.getByText("Selected · not uploaded")).toBeDefined();
-  expect(screen.getByRole("button", { name: "Add documents" })).toBeDefined();
+  expect(screen.getByText("Ce format de fichier n’est pas pris en charge.")).toBeDefined();
+  expect(screen.getByText("Sélectionné · non importé")).toBeDefined();
+  expect(screen.getByRole("button", { name: "Ajouter des documents" })).toBeDefined();
   expect(
-    screen.getByRole("button", { name: "Upload" }),
+    screen.getByRole("button", { name: "Importer" }),
   ).toHaveProperty("disabled", true);
 
-  fireEvent.click(screen.getByRole("button", { name: "Remove legacy.doc" }));
+  fireEvent.click(screen.getByRole("button", { name: "Retirer legacy.doc" }));
 
   expect(screen.queryByText("legacy.doc")).toBeNull();
   expect(screen.getByLabelText("1 documents")).toBeDefined();
-  expect(screen.getByRole("textbox", { name: "Message DocChat" })).toHaveProperty(
+  expect(screen.getByRole("textbox", { name: "Votre message" })).toHaveProperty(
     "disabled",
     true,
   );
   expect(
     screen.getByText(
-      "Upload the new documents to update the context before chatting.",
+      "Importez les nouveaux documents pour actualiser les sources avant de discuter.",
     ),
   ).toBeDefined();
 });
@@ -247,7 +248,7 @@ test("selects, validates, and removes multiple files before upload", () => {
 test("adds files by drag and drop and shows session limit errors", () => {
   render(<Home />);
 
-  const dropZone = screen.getByRole("group", { name: "Document drop zone" });
+  const dropZone = screen.getByRole("group", { name: "Zone de dépôt des documents" });
   const oversizedBatch = Array.from({ length: 11 }, (_, index) =>
     file(`${index}.pdf`, "application/pdf", 5 * 1024 * 1024),
   );
@@ -255,7 +256,7 @@ test("adds files by drag and drop and shows session limit errors", () => {
   fireEvent.dragEnter(dropZone, {
     dataTransfer: { files: oversizedBatch },
   });
-  expect(screen.getByText("Drop to add documents")).toBeDefined();
+  expect(screen.getByText("Déposez vos documents ici")).toBeDefined();
 
   fireEvent.drop(dropZone, {
     dataTransfer: { files: oversizedBatch },
@@ -263,10 +264,10 @@ test("adds files by drag and drop and shows session limit errors", () => {
 
   expect(screen.getByLabelText("11 documents")).toBeDefined();
   expect(
-    screen.getByText("Select no more than 10 files in one batch."),
+    screen.getByText("Sélectionnez au maximum 10 fichiers."),
   ).toBeDefined();
   expect(
-    screen.getByText("The selection exceeds the 50 MiB batch limit."),
+    screen.getByText("La sélection dépasse la limite totale de 50 Mio."),
   ).toBeDefined();
 });
 
@@ -284,12 +285,12 @@ test("starts one batch action and shows only real upload progress", async () => 
   });
 
   render(<Home />);
-  fireEvent.change(screen.getByLabelText("Select documents from device"), {
+  fireEvent.change(screen.getByLabelText("Sélectionner des documents sur cet appareil"), {
     target: { files: [file()] },
   });
 
   const uploadButton = screen.getByRole("button", {
-    name: "Upload",
+    name: "Importer",
   });
   expect(uploadButton).toHaveProperty("disabled", false);
 
@@ -297,17 +298,17 @@ test("starts one batch action and shows only real upload progress", async () => 
   fireEvent.click(uploadButton);
 
   expect(createAndUploadBatchMock).toHaveBeenCalledOnce();
-  expect(screen.getByText("Creating batch")).toBeDefined();
+  expect(screen.getByText("Création de l’espace documentaire")).toBeDefined();
   expect(
     screen.getByLabelText(
-      "Powered by Gemini 3.8 Flash. 1,048,576 input tokens, 65,536 output tokens, medium reasoning.",
+      /Propulsé par Gemini 3\.8 Flash\..*tokens en entrée.*raisonnement de niveau moyen\./u,
     ),
   ).toBeDefined();
   expect(screen.queryByText("Pipeline active")).toBeNull();
   expect(
-    screen.queryByRole("button", { name: "Add documents" }),
+    screen.queryByRole("button", { name: "Ajouter des documents" }),
   ).toBeNull();
-  expect(screen.getByRole("button", { name: "Remove guide.pdf" })).toHaveProperty(
+  expect(screen.getByRole("button", { name: "Retirer guide.pdf" })).toHaveProperty(
     "disabled",
     true,
   );
@@ -316,7 +317,7 @@ test("starts one batch action and shows only real upload progress", async () => 
     publishUpdate({ index: 0, status: "uploading", progress: 42 });
   });
 
-  const progress = screen.getByRole("progressbar", { name: "Uploading 42%" });
+  const progress = screen.getByRole("progressbar", { name: "Importation : 42 %" });
   expect(progress.getAttribute("aria-valuenow")).toBe("42");
   expect(
     screen
@@ -324,7 +325,7 @@ test("starts one batch action and shows only real upload progress", async () => 
       .closest("li")
       ?.querySelector('[data-operation="upload-transfer"]'),
   ).not.toBeNull();
-  expect(screen.getByRole("textbox", { name: "Message DocChat" })).toHaveProperty(
+  expect(screen.getByRole("textbox", { name: "Votre message" })).toHaveProperty(
     "disabled",
     true,
   );
@@ -335,13 +336,13 @@ test("starts one batch action and shows only real upload progress", async () => 
   });
 
   expect(
-    screen.getByText("Uploaded · waiting for processing"),
+    screen.getByText("Importé · en attente de traitement"),
   ).toBeDefined();
-  expect(screen.queryByText("Ready")).toBeNull();
+  expect(screen.queryByText("Prêt")).toBeNull();
   expect(
-    screen.getByText("Documents are being processed. Chat remains unavailable."),
+    screen.getByText("Préparation des documents en cours. Le chat sera bientôt disponible."),
   ).toBeDefined();
-  expect(screen.getByRole("button", { name: "Remove guide.pdf" })).toHaveProperty(
+  expect(screen.getByRole("button", { name: "Retirer guide.pdf" })).toHaveProperty(
     "disabled",
     true,
   );
@@ -354,20 +355,20 @@ test("shows a global batch creation error and permits a safe retry", async () =>
   });
 
   render(<Home />);
-  fireEvent.change(screen.getByLabelText("Select documents from device"), {
+  fireEvent.change(screen.getByLabelText("Sélectionner des documents sur cet appareil"), {
     target: { files: [file()] },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+  fireEvent.click(screen.getByRole("button", { name: "Importer" }));
 
   const alert = await screen.findByRole("alert");
   expect(alert.textContent).toContain(
-    "Upload failed: The session could not be created.",
+    "Les documents n’ont pas pu être importés. Réessayez.",
   );
-  expect(screen.getByText("Selected · not uploaded")).toBeDefined();
+  expect(screen.getByText("Sélectionné · non importé")).toBeDefined();
   expect(
-    screen.getByRole("button", { name: "Upload" }),
+    screen.getByRole("button", { name: "Importer" }),
   ).toHaveProperty("disabled", false);
-  expect(screen.getByRole("textbox", { name: "Message DocChat" })).toHaveProperty(
+  expect(screen.getByRole("textbox", { name: "Votre message" })).toHaveProperty(
     "disabled",
     true,
   );
@@ -387,19 +388,19 @@ test("shows an isolated file upload failure without opening chat", async () => {
   });
 
   render(<Home />);
-  fireEvent.change(screen.getByLabelText("Select documents from device"), {
+  fireEvent.change(screen.getByLabelText("Sélectionner des documents sur cet appareil"), {
     target: { files: [file()] },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+  fireEvent.click(screen.getByRole("button", { name: "Importer" }));
 
   await waitFor(() => {
-    expect(screen.getByText("Upload failed")).toBeDefined();
+    expect(screen.getByText("Échec de l’importation")).toBeDefined();
   });
-  expect(screen.getByText("Connection interrupted.")).toBeDefined();
+  expect(screen.getByText("Le fichier n’a pas pu être importé. Réessayez.")).toBeDefined();
   expect(
-    screen.getByText("A document failed. Chat remains unavailable."),
+    screen.getByText("Un document n’a pas pu être traité. Réessayez ou supprimez-le pour accéder au chat."),
   ).toBeDefined();
-  expect(screen.getByRole("button", { name: "Send message" })).toHaveProperty(
+  expect(screen.getByRole("button", { name: "Envoyer le message" })).toHaveProperty(
     "disabled",
     true,
   );
@@ -442,12 +443,12 @@ test("keeps each file row stable while showing real processing states", async ()
   });
 
   render(<Home />);
-  fireEvent.change(screen.getByLabelText("Select documents from device"), {
+  fireEvent.change(screen.getByLabelText("Sélectionner des documents sur cet appareil"), {
     target: { files: [file()] },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+  fireEvent.click(screen.getByRole("button", { name: "Importer" }));
 
-  expect(await screen.findByText("Extracting text")).toBeDefined();
+  expect(await screen.findByText("Lecture du texte")).toBeDefined();
   expect(screen.getByText("guide.pdf")).toBeDefined();
   expect(
     screen
@@ -461,7 +462,7 @@ test("keeps each file row stable while showing real processing states", async ()
 
   act(() => publishReady());
 
-  expect(await screen.findByText("Ready")).toBeDefined();
+  expect(await screen.findByText("Prêt")).toBeDefined();
   expect(screen.getByText("guide.pdf")).toBeDefined();
   expect(
     screen
@@ -475,10 +476,10 @@ test("keeps each file row stable while showing real processing states", async ()
   expect(screen.queryByText("Process replay")).toBeNull();
   expect(
     screen.getByLabelText(
-      "Powered by Gemini 3.8 Flash. 1,048,576 input tokens, 65,536 output tokens, medium reasoning.",
+      /Propulsé par Gemini 3\.8 Flash\..*tokens en entrée.*raisonnement de niveau moyen\./u,
     ),
   ).toBeDefined();
-  expect(screen.getByRole("textbox", { name: "Message DocChat" })).toHaveProperty(
+  expect(screen.getByRole("textbox", { name: "Votre message" })).toHaveProperty(
     "disabled",
     false,
   );
@@ -525,27 +526,27 @@ test("selects all ready documents by default and allows a chat subset", async ()
   });
 
   render(<Home />);
-  fireEvent.change(screen.getByLabelText("Select documents from device"), {
+  fireEvent.change(screen.getByLabelText("Sélectionner des documents sur cet appareil"), {
     target: { files },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+  fireEvent.click(screen.getByRole("button", { name: "Importer" }));
 
   const guideCheckbox = await screen.findByRole("checkbox", {
-    name: "Use guide.pdf in chat",
+    name: "Utiliser guide.pdf dans le chat",
   });
   const appendixCheckbox = screen.getByRole("checkbox", {
-    name: "Use appendix.pdf in chat",
+    name: "Utiliser appendix.pdf dans le chat",
   });
 
   expect(guideCheckbox).toHaveProperty("checked", true);
   expect(appendixCheckbox).toHaveProperty("checked", true);
-  expect(screen.getByText(/Answers use 2 ready documents/)).toBeDefined();
+  expect(screen.getByText(/Réponses fondées sur 2 documents prêts/)).toBeDefined();
 
   fireEvent.click(appendixCheckbox);
 
   expect(appendixCheckbox).toHaveProperty("checked", false);
   expect(guideCheckbox).toHaveProperty("disabled", true);
-  expect(screen.getByText(/Answers use 1 ready document\./)).toBeDefined();
+  expect(screen.getByText(/Réponses fondées sur 1 document prêt\./)).toBeDefined();
 });
 
 test("retries a failed document and resumes status polling", async () => {
@@ -598,17 +599,17 @@ test("retries a failed document and resumes status polling", async () => {
   );
 
   render(<Home />);
-  fireEvent.change(screen.getByLabelText("Select documents from device"), {
+  fireEvent.change(screen.getByLabelText("Sélectionner des documents sur cet appareil"), {
     target: { files: [file()] },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+  fireEvent.click(screen.getByRole("button", { name: "Importer" }));
 
   const retryButton = await screen.findByRole("button", {
-    name: "Retry guide.pdf",
+    name: "Réessayer guide.pdf",
   });
   fireEvent.click(retryButton);
 
-  expect(screen.getByText("Retrying")).toBeDefined();
+  expect(screen.getByText("Nouvelle tentative…")).toBeDefined();
   expect(
     screen
       .getByText("guide.pdf")
@@ -620,7 +621,7 @@ test("retries a failed document and resumes status polling", async () => {
   await act(async () => finishRetry());
 
   expect(retryDocumentMock).toHaveBeenCalledWith("document-1");
-  expect(await screen.findByText("Ready")).toBeDefined();
+  expect(await screen.findByText("Prêt")).toBeDefined();
   expect(pollBatchStatusMock).toHaveBeenCalledTimes(2);
 });
 
@@ -687,17 +688,17 @@ test("adds documents to the existing batch and updates the context", async () =>
   );
 
   render(<Home />);
-  fireEvent.change(screen.getByLabelText("Select documents from device"), {
+  fireEvent.change(screen.getByLabelText("Sélectionner des documents sur cet appareil"), {
     target: { files: [file()] },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Upload" }));
-  await screen.findByRole("button", { name: "Add documents" });
+  fireEvent.click(screen.getByRole("button", { name: "Importer" }));
+  await screen.findByRole("button", { name: "Ajouter des documents" });
 
   const addedFile = file(
     "appendix.xlsx",
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   );
-  fireEvent.change(screen.getByLabelText("Select documents from device"), {
+  fireEvent.change(screen.getByLabelText("Sélectionner des documents sur cet appareil"), {
     target: { files: [addedFile] },
   });
   expect(screen.getByText("guide.pdf")).toBeDefined();
@@ -711,7 +712,7 @@ test("adds documents to the existing batch and updates the context", async () =>
     ),
   );
   expect(await screen.findByRole("checkbox", {
-    name: "Use appendix.xlsx in chat",
+    name: "Utiliser appendix.xlsx dans le chat",
   })).toBeDefined();
   expect(screen.getByText("guide.pdf")).toBeDefined();
   expect(pollBatchStatusMock).toHaveBeenCalledTimes(2);
@@ -758,12 +759,12 @@ test("removes a deleted document from the active chat context", async () => {
   deleteDocumentMock.mockResolvedValue();
 
   render(<Home />);
-  fireEvent.change(screen.getByLabelText("Select documents from device"), {
+  fireEvent.change(screen.getByLabelText("Sélectionner des documents sur cet appareil"), {
     target: { files },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+  fireEvent.click(screen.getByRole("button", { name: "Importer" }));
   fireEvent.click(
-    await screen.findByRole("button", { name: "Delete guide.pdf" }),
+    await screen.findByRole("button", { name: "Supprimer guide.pdf" }),
   );
 
   await waitFor(() => {
@@ -771,9 +772,9 @@ test("removes a deleted document from the active chat context", async () => {
   });
   expect(deleteDocumentMock).toHaveBeenCalledWith("document-1");
   expect(
-    screen.getByRole("checkbox", { name: "Use appendix.pdf in chat" }),
+    screen.getByRole("checkbox", { name: "Utiliser appendix.pdf dans le chat" }),
   ).toHaveProperty("checked", true);
-  expect(screen.getByText(/Answers use 1 ready document\./)).toBeDefined();
+  expect(screen.getByText(/Réponses fondées sur 1 document prêt\./)).toBeDefined();
 });
 
 test("deletes the last ready document and returns to the initial workspace", async () => {
@@ -810,17 +811,17 @@ test("deletes the last ready document and returns to the initial workspace", asy
   );
 
   render(<Home />);
-  fireEvent.change(screen.getByLabelText("Select documents from device"), {
+  fireEvent.change(screen.getByLabelText("Sélectionner des documents sur cet appareil"), {
     target: { files: [file()] },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+  fireEvent.click(screen.getByRole("button", { name: "Importer" }));
 
   const deleteButton = await screen.findByRole("button", {
-    name: "Delete guide.pdf",
+    name: "Supprimer guide.pdf",
   });
   fireEvent.click(deleteButton);
 
-  expect(screen.getByText("Deleting")).toBeDefined();
+  expect(screen.getByText("Suppression…")).toBeDefined();
   expect(screen.getByText("guide.pdf").closest("li")?.className).toContain(
     "document-row-deleting",
   );
@@ -829,11 +830,11 @@ test("deletes the last ready document and returns to the initial workspace", asy
   ).toBeDefined();
   expect(
     within(
-      screen.getByRole("region", { name: "Conversation workspace" }),
+      screen.getByRole("region", { name: "Espace de conversation" }),
     ).queryByRole("heading", { name: "Votre sélection documentaire" }),
   ).toBeNull();
-  expect(screen.getByText("Updating document context…")).toBeDefined();
-  expect(screen.getByRole("textbox", { name: "Message DocChat" })).toHaveProperty(
+  expect(screen.getByText("Actualisation des sources documentaires…")).toBeDefined();
+  expect(screen.getByRole("textbox", { name: "Votre message" })).toHaveProperty(
     "disabled",
     true,
   );
@@ -844,7 +845,7 @@ test("deletes the last ready document and returns to the initial workspace", asy
     screen.getByRole("heading", { name: "Ajoutez vos documents" }),
   ).toBeDefined();
   expect(
-    screen.getByRole("button", { name: "Choose documents" }),
+    screen.getByRole("button", { name: "Choisir des documents" }),
   ).toBeDefined();
 });
 
@@ -874,16 +875,16 @@ test("keeps a document visible when its deletion fails", async () => {
   );
 
   render(<Home />);
-  fireEvent.change(screen.getByLabelText("Select documents from device"), {
+  fireEvent.change(screen.getByLabelText("Sélectionner des documents sur cet appareil"), {
     target: { files: [file()] },
   });
-  fireEvent.click(screen.getByRole("button", { name: "Upload" }));
+  fireEvent.click(screen.getByRole("button", { name: "Importer" }));
   fireEvent.click(
-    await screen.findByRole("button", { name: "Delete guide.pdf" }),
+    await screen.findByRole("button", { name: "Supprimer guide.pdf" }),
   );
 
   expect(
-    await screen.findByText("The stored file could not be removed."),
+    await screen.findByText("L’action n’a pas pu être effectuée. Réessayez."),
   ).toBeDefined();
   expect(screen.getByText("guide.pdf")).toBeDefined();
 });

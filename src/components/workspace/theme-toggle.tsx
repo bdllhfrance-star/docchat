@@ -36,8 +36,8 @@ export function ThemeToggle() {
         setSelectedTheme(nextTheme);
       }}
       className="grid size-9 place-items-center rounded-xl border border-slate-200 bg-white text-slate-600 shadow-sm transition-colors hover:bg-slate-50 hover:text-slate-950 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-950 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-white dark:focus-visible:outline-slate-200"
-      aria-label={isDark ? "Use light theme" : "Use dark theme"}
-      title={isDark ? "Use light theme" : "Use dark theme"}
+      aria-label={isDark ? "Activer le thème clair" : "Activer le thème sombre"}
+      title={isDark ? "Activer le thème clair" : "Activer le thème sombre"}
     >
       {isDark ? (
         <Sun size={17} aria-hidden="true" />
