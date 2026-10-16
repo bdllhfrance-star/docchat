@@ -155,7 +155,7 @@ test("renders the initial document workspace", () => {
   expect(within(conversation).getByTestId("rag-pipeline-visualizer")).toBeDefined();
 });
 
-test("switches and persists the dark theme", async () => {
+test("allows manually switching the theme without persisting it", async () => {
   render(<Home />);
 
   const darkThemeButton = await screen.findByRole("button", {
@@ -165,24 +165,24 @@ test("switches and persists the dark theme", async () => {
 
   expect(document.documentElement.classList.contains("dark")).toBe(true);
   expect(document.documentElement.style.colorScheme).toBe("dark");
-  expect(localStorage.getItem("docchat-theme")).toBe("dark");
+  expect(localStorage.getItem("docchat-theme")).toBeNull();
 
   fireEvent.click(
     screen.getByRole("button", { name: "Activer le thème clair" }),
   );
   expect(document.documentElement.classList.contains("dark")).toBe(false);
-  expect(localStorage.getItem("docchat-theme")).toBe("light");
+  expect(localStorage.getItem("docchat-theme")).toBeNull();
 });
 
-test("reflects a dark theme restored before hydration", async () => {
-  document.documentElement.classList.add("dark");
+test("ignores an old saved dark preference and starts in light mode", async () => {
   localStorage.setItem("docchat-theme", "dark");
 
   render(<Home />);
 
   expect(
-    await screen.findByRole("button", { name: "Activer le thème clair" }),
+    await screen.findByRole("button", { name: "Activer le thème sombre" }),
   ).toBeDefined();
+  expect(document.documentElement.classList.contains("dark")).toBe(false);
 });
 
 test("keeps chat unavailable until documents are processed", () => {

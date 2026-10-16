@@ -1,31 +1,18 @@
 "use client";
 
 import { Moon, Sun } from "lucide-react";
-import { useState, useSyncExternalStore } from "react";
+import { useState } from "react";
 
 type Theme = "dark" | "light";
 
 function applyTheme(theme: Theme): void {
   document.documentElement.classList.toggle("dark", theme === "dark");
   document.documentElement.style.colorScheme = theme;
-  localStorage.setItem("docchat-theme", theme);
-}
-
-function subscribeToClient(onStoreChange: () => void): () => void {
-  const timeoutId = window.setTimeout(onStoreChange, 0);
-  return () => window.clearTimeout(timeoutId);
 }
 
 export function ThemeToggle() {
-  const isClient = useSyncExternalStore(
-    subscribeToClient,
-    () => true,
-    () => false,
-  );
-  const [selectedTheme, setSelectedTheme] = useState<Theme | null>(null);
-  const isDark = selectedTheme
-    ? selectedTheme === "dark"
-    : isClient && document.documentElement.classList.contains("dark");
+  const [selectedTheme, setSelectedTheme] = useState<Theme>("light");
+  const isDark = selectedTheme === "dark";
 
   return (
     <button

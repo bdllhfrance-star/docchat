@@ -734,6 +734,10 @@ techniques des fournisseurs ne sont pas affichés tels quels dans les erreurs.
 Les documents et leurs extraits ne sont pas traduits ; l’assistant continue à
 répondre dans la langue de la question (notamment français, arabe et anglais).
 
+Chaque ouverture démarre en mode clair, indépendamment du thème de l’appareil
+ou d’une ancienne préférence enregistrée. Le bouton permet de passer au mode
+sombre pendant la visite, sans restaurer ce choix au prochain chargement.
+
 Le [smoke test de production du 15 octobre 2026](docs/PRODUCTION_SMOKE_2026-10-15.md)
 enregistre 19 contrôles réels réussis : uploads privés et callbacks, Q&A
 français/arabe/anglais avec citations, ajout/suppression, historique après

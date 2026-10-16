@@ -1,16 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
 
-const themeInitializer = `
-  try {
-    const savedTheme = localStorage.getItem("docchat-theme");
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    const isDark = savedTheme === "dark" || (!savedTheme && prefersDark);
-    document.documentElement.classList.toggle("dark", isDark);
-    document.documentElement.style.colorScheme = isDark ? "dark" : "light";
-  } catch {}
-`;
-
 export const metadata: Metadata = {
   metadataBase: new URL("https://docchat-lyart.vercel.app"),
   title: "CNOM · Assistant documentaire — Démonstration",
@@ -36,10 +26,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="fr" className="h-full antialiased" suppressHydrationWarning>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInitializer }} />
-      </head>
+    <html lang="fr" className="h-full antialiased" style={{ colorScheme: "light" }}>
       <body className="min-h-full">{children}</body>
     </html>
   );
