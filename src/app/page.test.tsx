@@ -144,6 +144,12 @@ test("renders the initial document workspace", () => {
     ),
   ).toBeDefined();
   expect(
+    within(documentsPanel).getByText("PDF : texte sélectionnable requis. Aucun OCR intégré."),
+  ).toBeDefined();
+  expect(
+    within(documentsPanel).getByText(/Les scans nécessitent une reconnaissance de texte préalable/),
+  ).toBeDefined();
+  expect(
     within(conversation).queryByText(
       "PDF · DOCX · PPTX · XLSX · TXT · MD · CSV · 10 fichiers maximum · 10 Mio par fichier · 50 Mio au total",
     ),

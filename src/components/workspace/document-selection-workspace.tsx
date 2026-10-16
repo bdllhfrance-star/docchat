@@ -484,9 +484,17 @@ function DocumentsPanel({
           className="mt-px shrink-0 text-blue-600 dark:text-blue-400"
           aria-hidden="true"
         />
-        <p>
-          PDF · DOCX · PPTX · XLSX · TXT · MD · CSV · 10 fichiers maximum · 10 Mio par fichier · 50 Mio au total
-        </p>
+        <div className="min-w-0">
+          <p>
+            PDF · DOCX · PPTX · XLSX · TXT · MD · CSV · 10 fichiers maximum · 10 Mio par fichier · 50 Mio au total
+          </p>
+          <p className="mt-2 border-t border-blue-100 pt-2 dark:border-blue-900/60">
+            <strong className="block font-semibold text-slate-700 dark:text-slate-200">
+              PDF : texte sélectionnable requis. Aucun OCR intégré.
+            </strong>
+            Les scans nécessitent une reconnaissance de texte préalable. Les pages sans texte ne sont pas analysées.
+          </p>
+        </div>
       </div>
 
       {result.errors.length > 0 ? (
